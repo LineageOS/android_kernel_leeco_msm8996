@@ -483,6 +483,7 @@ struct perf_event_context {
 	 */
 	struct mutex			mutex;
 
+	struct list_head		active_ctx_list;
 	struct list_head		pinned_groups;
 	struct list_head		flexible_groups;
 	struct list_head		event_list;
@@ -533,7 +534,6 @@ struct perf_cpu_context {
 	int				exclusive;
 	struct hrtimer			hrtimer;
 	ktime_t				hrtimer_interval;
-	struct list_head		rotation_list;
 	struct pmu			*unique_pmu;
 	struct perf_cgroup		*cgrp;
 };
