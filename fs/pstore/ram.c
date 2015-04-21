@@ -511,11 +511,17 @@ static void  ramoops_of_init(struct platform_device *pdev)
 	if (ret)
 		pr_info("oops not configured");
 
+	ret = of_property_read_u32(np, "android,ramoops-ftrace-size",
+				&ftrace);
+	if (ret)
+		pr_info("ftrace not configured");
+
 	pdata->mem_address = start;
 	pdata->mem_size = size;
 	pdata->console_size = console;
 	pdata->pmsg_size = pmsg;
 	pdata->record_size = record;
+	pdata->ftrace_size = ftrace;
 	pdata->dump_oops = (int)oops;
 }
 #else
@@ -633,6 +639,7 @@ static int ramoops_probe(struct platform_device *pdev)
 	dump_oops = pdata->dump_oops;
 	ramoops_console_size = pdata->console_size;
 	ramoops_pmsg_size = pdata->pmsg_size;
+	ramoops_ftrace_size = pdata->ftrace_size;
 
 	pr_info("attached 0x%lx@0x%llx, ecc: %d/%d\n",
 		cxt->size, (unsigned long long)cxt->phys_addr,
