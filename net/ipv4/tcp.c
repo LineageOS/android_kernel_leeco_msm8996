@@ -409,6 +409,7 @@ void tcp_init_sock(struct sock *sk)
 	tp->snd_ssthresh = TCP_INFINITE_SSTHRESH;
 	tp->snd_cwnd_clamp = ~0;
 	tp->mss_cache = TCP_MSS_DEFAULT;
+	u64_stats_init(&tp->syncp);
 
 	tp->reordering = sysctl_tcp_reordering;
 	tcp_enable_early_retrans(tp);
@@ -2694,6 +2695,7 @@ void tcp_get_info(struct sock *sk, struct tcp_info *info)
 	u32 now = tcp_time_stamp;
 	u64 rate64;
 	u32 rate;
+	unsigned int start;
 
 	memset(info, 0, sizeof(*info));
 
@@ -2762,12 +2764,13 @@ void tcp_get_info(struct sock *sk, struct tcp_info *info)
 	rate64 = rate != ~0U ? rate : ~0ULL;
 	put_unaligned(rate64, &info->tcpi_max_pacing_rate);
 
-	spin_lock_bh(&sk->sk_lock.slock);
-	info->tcpi_bytes_acked = tp->bytes_acked;
-	info->tcpi_bytes_received = tp->bytes_received;
+	do {
+		start = u64_stats_fetch_begin_irq(&tp->syncp);
+		info->tcpi_bytes_acked = tp->bytes_acked;
+		info->tcpi_bytes_received = tp->bytes_received;
+	} while (u64_stats_fetch_retry_irq(&tp->syncp, start));
 	info->tcpi_segs_out = tp->segs_out;
 	info->tcpi_segs_in = tp->segs_in;
-	spin_unlock_bh(&sk->sk_lock.slock);
 
 	/*
 	* Expose reference count for socket.
