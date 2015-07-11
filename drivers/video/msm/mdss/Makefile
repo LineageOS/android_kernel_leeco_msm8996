@@ -74,3 +74,6 @@ obj-$(CONFIG_FB_MSM_MDSS_HDMI_DP_ANX7816) += dp/
 
 obj-$(CONFIG_FB_MSM_MDSS_HDMI_MHL_SII6400) += sii6400/
 obj-$(CONFIG_FB_MSM_MDSS_HDMI_DP_ANX7816) += dp/
+
+obj-$(CONFIG_FB_MSM_MDSS) += mdss_livedisplay.o
+
