@@ -111,7 +111,7 @@ static inline void flush_tlb_mm(struct mm_struct *mm)
 	dsb();
 	isb();
 #else
-	unsigned long asid = (unsigned long)ASID(mm) << 48;
+	unsigned long asid = ASID(mm) << 48;
 
 	dsb(ishst);
 	__tlbi(aside1is, asid);
@@ -129,8 +129,7 @@ static inline void flush_tlb_page(struct vm_area_struct *vma,
 	dsb();
 	isb();
 #else
-	unsigned long addr = uaddr >> 12 |
-		((unsigned long)ASID(vma->vm_mm) << 48);
+	unsigned long addr = uaddr >> 12 | (ASID(vma->vm_mm) << 48);
 
 	dsb(ishst);
 	__tlbi(vale1is, addr);
