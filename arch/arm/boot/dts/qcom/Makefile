@@ -1,12 +1,9 @@
 dtb-$(CONFIG_ARCH_MSM8996) += \
-	msm8996pro-pmi8996-le_turbo-dvt1.dtb \
 	msm8996-v3-pmi8996-le_zl1-evt.dtb \
 	msm8996-v3-pmi8996-le_zl1-dvt1.dtb \
 	msm8996pro-pmi8996-le_zl1-dvt1.dtb \
-	msm8996pro-pmi8996-le_zl1-na.dtb\
-	msm8996pro-pmi8996-le_zl1-pvt.dtb\
-	msm8996pro-pmi8996-le_turbo_ww-evt.dtb \
-	msm8996pro-pmi8996-le_turbo_ww-dvt1.dtb
+	msm8996pro-pmi8996-le_zl1-na.dtb \
+	msm8996pro-pmi8996-le_zl1-pvt.dtb
 
 dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
 	msm8996-v2-pmi8994-mtp.dtb \
