@@ -728,8 +728,6 @@ void do_exit(long code)
 
 	exit_signals(tsk);  /* sets PF_EXITING */
 
-	sched_exit(tsk);
-
 	if (tsk->flags & PF_SU) {
 		su_exit();
 	}
