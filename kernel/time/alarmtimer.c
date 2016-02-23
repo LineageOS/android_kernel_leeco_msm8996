@@ -31,6 +31,8 @@
 #endif
 #include <linux/workqueue.h>
 
+#define ALARM_DELTA 120
+
 /**
  * struct alarm_base - Alarm timer bases
  * @lock:		Lock for syncrhonized access to the base
@@ -87,7 +89,7 @@ void power_on_alarm_init(void)
 	rtc_tm_to_time(&rt, &alarm_time);
 
 	if (alarm_time) {
-		alarm_ktime = ktime_set(alarm_time, 0);
+		alarm_ktime = ktime_set(alarm_time + ALARM_DELTA, 0);
 		alarm_init(&init_alarm, ALARM_POWEROFF_REALTIME, NULL);
 		alarm_start(&init_alarm, alarm_ktime);
 	}
@@ -134,8 +136,12 @@ void set_power_on_alarm(void)
 	 * alarm_secs have to be bigger than "wall_time +1".
 	 * It is to make sure that alarm time will be always
 	 * bigger than wall time.
+	 * Substract ALARM_DELTA from actual alarm time to
+	 * power up the device before actual alarm expiration
 	*/
-	if (alarm_secs <= wall_time.tv_sec + 1)
+	if (alarm_secs - ALARM_DELTA > wall_time.tv_sec + 1)
+		alarm_secs -= ALARM_DELTA;
+	else
 		goto disable_alarm;
 
 	rtc = alarmtimer_get_rtcdev();
