@@ -1075,7 +1075,7 @@ static int get_args(uint32_t kernel, struct smq_invoke_ctx *ctx)
 	for (oix = 0; oix < inbufs + outbufs; ++oix) {
 		int i = ctx->overps[oix]->raix;
 		struct fastrpc_mmap *map = ctx->maps[i];
-		ssize_t mlen;
+		ssize_t mlen = ctx->overps[oix]->mend - ctx->overps[oix]->mstart;
 		uint64_t buf;
 		ssize_t len = lpra[i].buf.len;
 		if (!len)
