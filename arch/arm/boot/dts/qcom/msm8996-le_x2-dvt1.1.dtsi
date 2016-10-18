@@ -1,0 +1,134 @@
+#include "msm8996-le_x2-dvt1.dtsi"
+#include "dsi-panel-sharp-dualmipi-cmd-le_x2-dvt1_1.dtsi"
+#include "dsi-panel-truly-dualmipi-cmd-le_x2-dvt2.dtsi"
+#include "letv-tp-atmel_mxt_ts-le_x2-dvt1.1.dtsi"
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_cmd>;
+	/delete-property/ vddio-supply;
+	qcom,platform-te-gpio = <&tlmm 97 0>;
+	qcom,platform-reset-gpio = <&tlmm 24 0>;
+	/delete-property/ qcom,platform-bklight-en-gpio;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_cmd>;
+	/delete-property/ vddio-supply;
+	qcom,platform-te-gpio = <&tlmm 97 0>;
+	qcom,platform-reset-gpio = <&tlmm 24 0>;
+	/delete-property/ qcom,platform-bklight-en-gpio;
+};
+
+&dsi_dual_sharp_cmd {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,cont-splash-enabled;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+
+	qcom,mdss-dsi-panel-timings-8996 = [22 1e 07 08 04 03 04 a0
+		22 1e 07 08 04 03 04 a0
+		22 1e 07 08 04 03 04 a0
+		22 1e 07 08 04 03 04 a0
+		 22 18 07 08 04 03 04 a0];
+};
+
+&soc {
+	sound-9335 {
+		qcom,model = "msm8996-tasha-mtp-snd-card";
+
+		qcom,audio-routing =
+			"AIF4 VI", "MCLK",
+			"RX_BIAS", "MCLK",
+			"MADINPUT", "MCLK",
+			"AMIC1", "MIC BIAS1",
+			"MIC BIAS1", "Handset Mic",
+			"AMIC2", "MIC BIAS2",
+			"MIC BIAS2", "Headset Mic",
+			"AMIC3", "MIC BIAS2",
+			"MIC BIAS2", "USB Type-c Back Mic",
+			"AMIC4", "MIC BIAS4",
+			"MIC BIAS4", "REC ANC Analog Mic",
+			"AMIC5", "MIC BIAS3",
+			"MIC BIAS3", "ANC Analog Mic",
+			"AMIC6", "MIC BIAS1",
+			"MIC BIAS1", "Main Mic2";
+
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1", "msm-pcm-dsp.2",
+				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp";
+		asoc-cpu = <&dai_pri_auxpcm>, <&dai_sec_auxpcm>, <&dai_hdmi>,
+				<&dai_pri_mi2s>, <&dai_sec_mi2s>,
+				<&dai_tert_mi2s>, <&dai_quat_mi2s>,
+				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>, <&afe_pcm_rx>,
+				<&afe_pcm_tx>, <&afe_proxy_rx>, <&afe_proxy_tx>,
+				<&incall_record_rx>, <&incall_record_tx>,
+				<&incall_music_rx>, <&incall_music2_rx>,
+				<&sb_5_rx>, <&sb_6_rx>;
+		asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
+				"msm-dai-q6-hdmi.8",
+				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
+				"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
+				"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.16395", "msm-dai-q6-dev.224",
+				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+				"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
+				"msm-dai-q6-dev.16396";
+
+		qcom,hdmi-audio-rx;
+		letv,smartpa-audio;
+		letv,hph_irq_detect = <0>;
+		asoc-codec = <&stub_codec>, <&hdmi_audio>;
+		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-audio-codec-rx";
+		/delete-property/ qcom,hph-en1-gpio;
+		/delete-property/ qcom,hph-en0-gpio;
+		/delete-property/ qcom,us-euro-gpios;
+		/delete-property/ qcom,wsa-devs;
+		/delete-property/ qcom,wsa-aux-dev-prefix;
+	};
+};
+
+&i2c_6 {
+	cyccg:usb_cclogic@08 {        /* The I2C bus that CCG2 connected to */
+		status = "ok";
+		compatible = "cypress,cyccg";
+		reg = <0x08>;                    /* CCG2 I2C address: 0x08*/
+		interrupts = <73 0>;            /* CCG2 interrupt line GPIO: 73*/
+		interrupt-parent = <&tlmm>;      /* CCG2 interrupt line GPIO controller */
+		intr-comm-gpio = <&tlmm 73 0x0>;
+		reset-gpio = <&pmi8994_gpios 9 0x0>;
+		ad-sel-gpio = <&tlmm 25 0x0>;
+		uart-sw-gpio = <&tlmm 132 0x0>;
+		pmi8994_boost_5v-supply = <&pmi8994_boost_5v>;
+
+		external-5v-en-gpio = <&tlmm 39 0x0>;
+	};
+
+	usb_cclogic@28 {
+		status = "disabled";
+	};
+};
+
+/{
+	mtp_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "batterydata-le-x2-3200mah.dtsi"
+	};
+};
+
+&pmi8994_charger {
+	qcom,float-voltage-mv = <4400>;
+	qcom,ignore_otgid;
+};

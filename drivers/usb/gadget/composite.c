@@ -737,6 +737,16 @@ static void reset_config(struct usb_composite_dev *cdev)
 	cdev->delayed_status = 0;
 }
 
+#define BOOT_MODE_CMDLINE_MAX 30
+char g_boot_mode[BOOT_MODE_CMDLINE_MAX];
+
+static int __init get_boot_mode(char *str)
+{
+    strlcpy(g_boot_mode, str, BOOT_MODE_CMDLINE_MAX);
+    return 1;
+}
+__setup("androidboot.mode=", get_boot_mode);
+
 static int set_config(struct usb_composite_dev *cdev,
 		const struct usb_ctrlrequest *ctrl, unsigned number)
 {
@@ -782,8 +792,16 @@ static int set_config(struct usb_composite_dev *cdev,
 	     usb_speed_string(gadget->speed),
 	     number, c ? c->label : "unconfigured");
 
-	if (!c)
+	if (!c) {
+		if (strncmp(g_boot_mode, "charger", 7) == 0) {
+			/* Allow 900mA to draw with Super-Speed */
+			if (gadget->speed == USB_SPEED_SUPER)
+				power = SSUSB_GADGET_VBUS_DRAW;
+			else
+				power = CONFIG_USB_GADGET_VBUS_DRAW;
+		}
 		goto done;
+	}
 
 	usb_gadget_set_state(gadget, USB_STATE_CONFIGURED);
 	cdev->config = c;
@@ -1583,6 +1601,7 @@ static int fill_ext_prop(struct usb_configuration *c, int interface, u8 *buf)
 	return 0;
 }
 
+extern void clear_doubt_float_chgtype(void);
 /*
  * The setup() callback implements all the ep0 functionality that's
  * not handled lower down, in hardware or the hardware driver(like
@@ -1649,6 +1668,7 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 
 			value = min(w_length, (u16) sizeof cdev->desc);
 			memcpy(req->buf, &cdev->desc, value);
+			clear_doubt_float_chgtype();
 			break;
 		case USB_DT_DEVICE_QUALIFIER:
 			if (!gadget_is_dualspeed(gadget) ||

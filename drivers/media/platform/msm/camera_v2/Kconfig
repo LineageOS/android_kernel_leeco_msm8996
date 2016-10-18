@@ -95,6 +95,13 @@ config MSM_EEPROM
           and also provides support for writing data in case of FLASH ROM.
 	  Currently supports I2C, CCI and SPI protocol
 
+config MSM_I2C_FLASH
+        bool "Letv Flash Interface for I2C Flash support on Qualcomm platform"
+        depends on MSMB_CAMERA
+        ---help---
+          Enable support for Letv Flash Interface
+          for I2C Flash on Qualcomm platform.
+
 config MSM_ISPIF
         bool "Qualcomm MSM Image Signal Processing interface support"
         depends on MSMB_CAMERA

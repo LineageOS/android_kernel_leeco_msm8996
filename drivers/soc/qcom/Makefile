@@ -79,8 +79,9 @@ ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 	obj-y += subsystem_notif.o
 	obj-y += subsystem_restart.o
 	obj-y += ramdump.o
+	obj-y += ssr_monitor.o
 endif
-
+obj-$(CONFIG_DEEP_SLEEP_LED_SWITCH) += sleep_light.o
 obj-$(CONFIG_MSM_SERVICE_NOTIFIER) += service-notifier.o
 obj-$(CONFIG_MSM_SYSMON_COMM) += sysmon.o sysmon-qmi.o
 obj-$(CONFIG_MSM_SECURE_BUFFER) += secure_buffer.o

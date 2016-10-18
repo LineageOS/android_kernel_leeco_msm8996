@@ -549,7 +549,7 @@ EXPORT_SYMBOL(smem_find);
  * size_in is already adjusted for alignment, if necessary.  Requires the
  * remote spinlock to already be locked.
  */
-static void *alloc_item_nonsecure(unsigned id, unsigned size_in)
+void *alloc_item_nonsecure(unsigned id, unsigned size_in)
 {
 	void *smem_base = smem_ram_base;
 	struct smem_shared *shared = smem_base;

@@ -564,7 +564,9 @@ int snd_soc_suspend(struct device *dev)
 	/* Due to the resume being scheduled into a workqueue we could
 	* suspend before that's finished - wait for it to complete.
 	 */
+	dev_dbg(card->dev, "ASoC: snd_soc_suspend lock before\n");
 	snd_power_lock(card->snd_card);
+	dev_dbg(card->dev, "ASoC: snd_soc_suspend lock after\n");
 	snd_power_wait(card->snd_card, SNDRV_CTL_POWER_D0);
 	snd_power_unlock(card->snd_card);
 

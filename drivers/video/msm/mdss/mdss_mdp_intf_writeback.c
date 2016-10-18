@@ -436,6 +436,7 @@ static int mdss_mdp_writeback_prepare_rot(struct mdss_mdp_ctl *ctl, void *arg)
 	ctx->dst_rect.y = item->dst_rect.y;
 	ctx->dnsc_factor_w = entry->dnsc_factor_w;
 	ctx->dnsc_factor_h = entry->dnsc_factor_h;
+	ctx->frame_rate = ctl->frame_rate;
 
 	ctx->rot90 = !!(item->flags & MDP_ROTATION_90);
 

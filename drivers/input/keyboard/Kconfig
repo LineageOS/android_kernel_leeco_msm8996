@@ -22,6 +22,15 @@ config KEYBOARD_ADP5520
 	  To compile this driver as a module, choose M here: the module will
 	  be called adp5520-keys.
 
+config TOUCHKEY_ATMEGA48A_LETV
+	tristate "Touch Key Support for ATmega48A IC"
+	default n
+	help
+	This option enables support for the touch key of max1
+
+	To compile this driver as a module, choose Y here: the module will
+	be complied into bootimage.
+
 config KEYBOARD_ADP5588
 	tristate "ADP5588/87 I2C QWERTY Keypad and IO Expander"
 	depends on I2C

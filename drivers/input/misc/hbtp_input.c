@@ -72,7 +72,9 @@ static int fb_notifier_callback(struct notifier_block *self,
 	struct hbtp_data *hbtp_data =
 		container_of(self, struct hbtp_data, fb_notif);
 	char *envp[2] = {HBTP_EVENT_TYPE_DISPLAY, NULL};
+	ktime_t start, diff;
 
+	start = ktime_get();
 	if (evdata && evdata->data && event == FB_EVENT_BLANK &&
 		hbtp_data && hbtp_data->input_dev) {
 		blank = *(int *)(evdata->data);
@@ -83,6 +85,10 @@ static int fb_notifier_callback(struct notifier_block *self,
 			kobject_uevent_env(&hbtp_data->input_dev->dev.kobj,
 					KOBJ_OFFLINE, envp);
 	}
+
+	diff = ktime_sub(ktime_get(), start);
+	if (ktime_to_ms(diff) > 1000)
+		pr_err("%s %s timeout %d ms\n", __FILE__, __func__, (int)ktime_to_ms(diff));
 
 	return 0;
 }

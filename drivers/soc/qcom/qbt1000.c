@@ -26,6 +26,8 @@
 #include <linux/atomic.h>
 #include <linux/of.h>
 #include <linux/input.h>
+#include <linux/pm_runtime.h>
+#include <linux/pm_wakeup.h>
 #include <uapi/linux/qbt1000.h>
 #include <soc/qcom/scm.h>
 #include "qseecom_kernel.h"
@@ -83,7 +85,9 @@ struct qbt1000_drvdata {
 	uint32_t	ssc_subsys_id;
 	uint32_t	ssc_spi_port;
 	uint32_t	ssc_spi_port_slave_index;
+	struct wakeup_source w_lock;
 };
+#define W_LOCK_DELAY_MS (2000)
 
 /**
  * get_cmd_rsp_buffers() - Function sets cmd & rsp buffer pointers and
@@ -754,7 +758,7 @@ static long qbt1000_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	}
 
 	drvdata = file->private_data;
-
+	pm_runtime_get_sync(drvdata->dev);
 	mutex_lock(&drvdata->mutex);
 	if (((drvdata->sensor_conn_type == SPI) && (!drvdata->clock_state)) ||
 	    ((drvdata->sensor_conn_type == SSC_SPI) && (!drvdata->ssc_state))) {
@@ -768,6 +772,7 @@ static long qbt1000_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	case QBT1000_LOAD_APP:
 	{
 		struct qbt1000_app app;
+		struct qseecom_handle *app_handle;
 
 		if (copy_from_user(&app, priv_arg,
 			sizeof(app)) != 0) {
@@ -778,8 +783,15 @@ static long qbt1000_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			goto end;
 		}
 
+		if (!app.app_handle) {
+			dev_err(drvdata->dev, "%s: LOAD app_handle is null\n",
+				__func__);
+			rc = -EINVAL;
+			goto end;
+		}
+
 		/* start the TZ app */
-		rc = qseecom_start_app(app.app_handle, app.name, app.size);
+		rc = qseecom_start_app(&app_handle, app.name, app.size);
 		if (rc == 0) {
 			g_app_buf_size = app.size;
 		} else {
@@ -788,33 +800,76 @@ static long qbt1000_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 			goto end;
 		}
 
+		/* copy the app handle to user */
+		rc = copy_to_user((void __user *)app.app_handle, &app_handle,
+			sizeof(*app.app_handle));
+
+		if (rc != 0) {
+			dev_err(drvdata->dev,
+				"%s: Failed copy 2us LOAD rc:%d\n",
+				 __func__, rc);
+			rc = -ENOMEM;
+			goto end;
+		}
+
 		break;
 	}
 	case QBT1000_UNLOAD_APP:
 	{
 		struct qbt1000_app app;
+		struct qseecom_handle *app_handle;
 
 		if (copy_from_user(&app, priv_arg,
 			sizeof(app)) != 0) {
 			rc = -ENOMEM;
 			dev_err(drvdata->dev,
-				"%s: Failed copy from user space-LOAD\n",
+				"%s: Failed copy from user space-UNLOAD\n",
 				 __func__);
 			goto end;
 		}
 
-		/* if the app hasn't been loaded already, return err */
 		if (!app.app_handle) {
+			dev_err(drvdata->dev, "%s: UNLOAD app_handle is null\n",
+				__func__);
+			rc = -EINVAL;
+			goto end;
+		}
+
+		rc = copy_from_user(&app_handle, app.app_handle,
+			sizeof(app_handle));
+
+		if (rc != 0) {
+			dev_err(drvdata->dev,
+				"%s: Failed copy from user space-UNLOAD handle rc:%d\n",
+				 __func__, rc);
+			rc = -ENOMEM;
+			goto end;
+		}
+
+		/* if the app hasn't been loaded already, return err */
+		if (!app_handle) {
 			dev_err(drvdata->dev, "%s: App not loaded\n",
 				__func__);
 			rc = -EINVAL;
 			goto end;
 		}
 
-		rc = qseecom_shutdown_app(app.app_handle);
+		rc = qseecom_shutdown_app(&app_handle);
 		if (rc != 0) {
 			dev_err(drvdata->dev, "%s: App failed to shutdown\n",
 				__func__);
+			goto end;
+		}
+
+		/* copy the app handle (should be null) to user */
+		rc = copy_to_user((void __user *)app.app_handle, &app_handle,
+			sizeof(*app.app_handle));
+
+		if (rc != 0) {
+			dev_err(drvdata->dev,
+				"%s: Failed copy 2us UNLOAD rc:%d\n",
+				 __func__, rc);
+			rc = -ENOMEM;
 			goto end;
 		}
 
@@ -899,6 +954,8 @@ static long qbt1000_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	}
 
 end:
+	pm_runtime_mark_last_busy(drvdata->dev);
+	pm_runtime_put_autosuspend(drvdata->dev);
 	mutex_unlock(&drvdata->mutex);
 	return rc;
 }
@@ -1006,8 +1063,9 @@ int qbt1000_create_input_device(struct qbt1000_drvdata *drvdata)
 
 	drvdata->in_dev->evbit[0] = BIT_MASK(EV_KEY) |  BIT_MASK(EV_ABS);
 	drvdata->in_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-	drvdata->in_dev->keybit[BIT_WORD(KEY_HOMEPAGE)] =
-		BIT_MASK(KEY_HOMEPAGE);
+    /* enable all 256 key events */
+	memset(drvdata->in_dev->keybit, 0xFE,
+	        BIT_WORD(0x100)*sizeof(unsigned long));
 
 	input_set_abs_params(drvdata->in_dev, ABS_X,
 			     0,
@@ -1217,6 +1275,10 @@ static int qbt1000_probe(struct platform_device *pdev)
 	atomic_set(&drvdata->available, 1);
 
 	mutex_init(&drvdata->mutex);
+	wakeup_source_init(&drvdata->w_lock, "qbt_wake_source");
+	pm_runtime_set_autosuspend_delay(dev, W_LOCK_DELAY_MS);
+	pm_runtime_use_autosuspend(dev);
+	pm_runtime_enable(dev);
 
 	rc = qbt1000_dev_register(drvdata);
 	if (rc < 0)
@@ -1257,9 +1319,10 @@ static int qbt1000_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int qbt1000_suspend(struct platform_device *pdev, pm_message_t state)
+static int qbt1000_suspend(struct device *dev)
 {
 	int rc = 0;
+	struct platform_device *pdev = to_platform_device(dev);
 	struct qbt1000_drvdata *drvdata = platform_get_drvdata(pdev);
 
 	/*
@@ -1278,18 +1341,44 @@ static int qbt1000_suspend(struct platform_device *pdev, pm_message_t state)
 	return rc;
 }
 
+static int qbt1000_runtime_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct qbt1000_drvdata *drvdata = platform_get_drvdata(pdev);
+
+	__pm_relax(&drvdata->w_lock);
+
+	return 0;
+};
+
+static int qbt1000_runtime_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct qbt1000_drvdata *drvdata = platform_get_drvdata(pdev);
+
+	__pm_stay_awake(&drvdata->w_lock);
+
+	return 0;
+};
+
 static struct of_device_id qbt1000_match[] = {
 	{ .compatible = "qcom,qbt1000" },
 	{}
 };
 
+static const struct dev_pm_ops qbt1000_dev_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(qbt1000_suspend, NULL)
+	SET_RUNTIME_PM_OPS(qbt1000_runtime_suspend,
+			   qbt1000_runtime_resume, NULL)
+};
+
 static struct platform_driver qbt1000_plat_driver = {
 	.probe = qbt1000_probe,
 	.remove = qbt1000_remove,
-	.suspend = qbt1000_suspend,
 	.driver = {
 		.name = "qbt1000",
 		.owner = THIS_MODULE,
+		.pm = &qbt1000_dev_pm_ops,
 		.of_match_table = qbt1000_match,
 	},
 };

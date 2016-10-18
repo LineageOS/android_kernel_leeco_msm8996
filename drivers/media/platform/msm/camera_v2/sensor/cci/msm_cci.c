@@ -31,7 +31,8 @@
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
 
-#define CCI_TIMEOUT msecs_to_jiffies(100)
+//#define CCI_TIMEOUT msecs_to_jiffies(100)
+#define CCI_TIMEOUT msecs_to_jiffies(200)
 
 /* TODO move this somewhere else */
 #define MSM_CCI_DRV_NAME "msm_cci"
@@ -572,6 +573,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 	uint32_t val = 0;
 	uint32_t max_queue_size;
 
+    mutex_lock(&cci_dev->cci_master_info[master].mutex);
 	if (i2c_cmd == NULL) {
 		pr_err("%s:%d Failed line\n", __func__,
 			__LINE__);
@@ -656,6 +658,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 				if (rc < 0) {
 					pr_err("%s failed line %d\n",
 						__func__, __LINE__);
+					mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 					return rc;
 				}
 				continue;
@@ -758,6 +761,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 	}
 
 	rc = msm_cci_transfer_end(cci_dev, master, queue);
+    mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 	if (rc < 0) {
 		pr_err("%s: %d failed rc %d\n", __func__, __LINE__, rc);
 		return rc;

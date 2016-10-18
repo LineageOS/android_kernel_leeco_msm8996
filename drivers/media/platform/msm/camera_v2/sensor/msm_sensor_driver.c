@@ -27,8 +27,70 @@
 static struct v4l2_file_operations msm_sensor_v4l2_subdev_fops;
 static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev);
 
+static uint8_t g_front_camera_lot_id[MSM_OTP_FRONT_CAMERA_ID_BUFF_SIZE];
+static uint8_t g_rear_camera_lot_id[MSM_OTP_REAR_CAMERA_ID_BUFF_SIZE];
+int g_rear_camera_ois;
+
+extern int msm_get_otp_data(uint8_t*, uint32_t, uint16_t);
+
+static ssize_t fcid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, 33, "%s", g_front_camera_lot_id);
+}
+
+static ssize_t bcid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, 17, "%s", g_rear_camera_lot_id);
+}
+
+int msm_get_ois_flag(void)
+{
+	return g_rear_camera_ois;
+}
+
+static ssize_t bois_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", g_rear_camera_ois);
+}
+
+static ssize_t bois_store(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	ssize_t status;
+	long value;
+	status = kstrtol(buf, 0, &value);
+	if (status == 0) {
+		g_rear_camera_ois = (int) value;
+		status = size;
+	}
+	return status;
+}
+
+static DEVICE_ATTR(fcid, S_IRUGO, fcid_show, NULL);
+static DEVICE_ATTR(bcid, S_IRUGO, bcid_show, NULL);
+static DEVICE_ATTR(bois, 0644, bois_show, bois_store);
+
 /* Static declaration */
 static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
+/* Get camerainfo struct */
+struct msm_camera_sensor_slave_info *msm_get_camera_slave_info(enum msm_sensor_camera_id_t cam_id)
+{
+	if (g_sctrl[cam_id] == NULL) {
+		pr_err("%s: g_sctrl[%d] is NULL\n", __func__, cam_id);
+		return NULL;
+	}
+	return g_sctrl[cam_id]->sensordata->cam_slave_info;
+}
+
+int msm_sensor_power_onoff(int onoff , int dev_id)
+{
+	if (onoff)
+		return msm_sensor_power_up_no_check_id(g_sctrl[dev_id]);
+	else
+		return msm_sensor_power_down(g_sctrl[dev_id]);
+}
+EXPORT_SYMBOL(msm_sensor_power_onoff);
 
 static int msm_sensor_platform_remove(struct platform_device *pdev)
 {
@@ -639,6 +701,8 @@ static void msm_sensor_fill_sensor_info(struct msm_sensor_ctrl_t *s_ctrl,
 
 	strlcpy(entity_name, s_ctrl->msm_sd.sd.entity.name, MAX_SENSOR_NAME);
 }
+/* camerainfo struct */
+extern struct msm_camera_sensor_slave_info *camera_slave_info[MAX_CAMERAS];
 
 /* static function definition */
 int32_t msm_sensor_driver_probe(void *setting,
@@ -682,7 +746,6 @@ int32_t msm_sensor_driver_probe(void *setting,
 				kfree(slave_info32);
 				goto free_slave_info;
 			}
-
 		strlcpy(slave_info->actuator_name, slave_info32->actuator_name,
 			sizeof(slave_info->actuator_name));
 
@@ -736,16 +799,19 @@ int32_t msm_sensor_driver_probe(void *setting,
 	}
 
 	/* Print slave info */
-	CDBG("camera id %d Slave addr 0x%X addr_type %d\n",
+	pr_err("camera id %d Slave addr 0x%X addr_type %d\n",
 		slave_info->camera_id, slave_info->slave_addr,
 		slave_info->addr_type);
-	CDBG("sensor_id_reg_addr 0x%X sensor_id 0x%X sensor id mask %d",
+	pr_err("sensor_id_reg_addr 0x%X sensor_id 0x%X sensor id mask %d",
 		slave_info->sensor_id_info.sensor_id_reg_addr,
 		slave_info->sensor_id_info.sensor_id,
 		slave_info->sensor_id_info.sensor_id_mask);
-	CDBG("power up size %d power down size %d\n",
+	pr_err("power up size %d power down size %d\n",
 		slave_info->power_setting_array.size,
 		slave_info->power_setting_array.size_down);
+#ifndef LETV_SINGLE_MODULE_VENDOR
+	pr_err("%s print: module_id 0x%x", __func__, slave_info->sensor_id_info.module_id);
+#endif
 
 	if (slave_info->is_init_params_valid) {
 		CDBG("position %d",
@@ -771,7 +837,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 		goto free_slave_info;
 	}
 
-	CDBG("s_ctrl[%d] %p", slave_info->camera_id, s_ctrl);
+	CDBG("s_ctrl[%d] %p\n", slave_info->camera_id, s_ctrl);
 
 	if (s_ctrl->is_probe_succeed == 1) {
 		/*
@@ -824,6 +890,10 @@ int32_t msm_sensor_driver_probe(void *setting,
 	camera_info->sensor_id_reg_addr =
 		slave_info->sensor_id_info.sensor_id_reg_addr;
 	camera_info->sensor_id = slave_info->sensor_id_info.sensor_id;
+#ifndef LETV_SINGLE_MODULE_VENDOR
+	camera_info->camera_id = slave_info->camera_id;
+	camera_info->module_id = slave_info->sensor_id_info.module_id;
+#endif
 	camera_info->sensor_id_mask = slave_info->sensor_id_info.sensor_id_mask;
 
 	/* Fill CCI master, slave address and CCI default params */
@@ -966,10 +1036,12 @@ CSID_TG:
 
 	s_ctrl->msm_sd.sd.entity.flags = mount_pos | MEDIA_ENT_FL_DEFAULT;
 
-	/*Save sensor info*/
+	/* Save sensor info */
 	s_ctrl->sensordata->cam_slave_info = slave_info;
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
+	/* Save sensor info into camerainfo struct */
+	camera_slave_info[slave_info->camera_id] = slave_info;
 
 	return rc;
 
@@ -1214,7 +1286,7 @@ static int32_t msm_sensor_driver_parse(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/* Store sensor control structure in static database */
 	g_sctrl[s_ctrl->id] = s_ctrl;
-	CDBG("g_sctrl[%d] %p", s_ctrl->id, g_sctrl[s_ctrl->id]);
+	pr_err("g_sctrl[%d] %p", s_ctrl->id, g_sctrl[s_ctrl->id]);
 
 	return rc;
 
@@ -1234,6 +1306,7 @@ FREE_SENSOR_I2C_CLIENT:
 static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
+	int err=0;
 	struct msm_sensor_ctrl_t *s_ctrl = NULL;
 
 	/* Create sensor control structure */
@@ -1261,6 +1334,49 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev)
 
 	/* Fill device in power info */
 	s_ctrl->sensordata->power_info.dev = &pdev->dev;
+
+	pr_err("%s:%d pdev->name = %s\n",__func__, __LINE__, pdev->name);
+	if (!strncmp(pdev->name, "a0c000.qcom,cci:qcom,camera@0",
+		strlen("a0c000.qcom,cci:qcom,camera@0"))) {
+		err = sysfs_create_file(&pdev->dev.kobj, &dev_attr_bois.attr);
+		if (err)
+			dev_err(&pdev->dev, "Failed to create REAR sensor ois sysfs files: %d\n",
+				err);
+		g_rear_camera_ois = 1;
+	}
+	if (!strncmp(pdev->name, "a0c000.qcom,cci:qcom,camera@0",
+		strlen("a0c000.qcom,cci:qcom,camera@0"))) {
+		err = sysfs_create_file(&pdev->dev.kobj,& dev_attr_bcid.attr);
+		if (err) {
+			dev_err(&pdev->dev, "Failed to create REAR sensor sysfs files: %d\n", err);
+		}
+
+		memset(g_rear_camera_lot_id,
+			0, MSM_OTP_REAR_CAMERA_ID_BUFF_SIZE);
+
+		err = msm_get_otp_data(g_rear_camera_lot_id,
+			MSM_OTP_REAR_CAMERA_ID_BUFF_SIZE, OTP_REAR_CAMERA_ID);
+		if (err < 0) {
+			pr_err("failed: get rear camera %s : err %d", pdev->name, err);
+		}
+	} else if (!strncmp(pdev->name, "a0c000.qcom,cci:qcom,camera@2",
+		strlen("a0c000.qcom,cci:qcom,camera@2"))) {
+		err = sysfs_create_file(&pdev->dev.kobj,&dev_attr_fcid.attr);
+		if (err) {
+			dev_err(&pdev->dev, "Failed to create FRONT sensor sysfs files: %d\n", err);
+		}
+
+		memset(g_front_camera_lot_id, 0,
+			MSM_OTP_FRONT_CAMERA_ID_BUFF_SIZE);
+
+		err = msm_get_otp_data(g_front_camera_lot_id,
+			MSM_OTP_FRONT_CAMERA_ID_BUFF_SIZE, OTP_FRONT_CAMERA_ID);
+		if (err < 0) {
+			pr_err("failed: get front camera %s : otp data err %d", pdev->name, err);
+		}
+	} else
+		pr_err("%s:%d failed UNKNOWN DEVICE", __func__, __LINE__);
+
 	return rc;
 FREE_S_CTRL:
 	kfree(s_ctrl);

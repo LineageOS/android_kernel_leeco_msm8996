@@ -1229,6 +1229,11 @@ static const struct hid_device_id mt_devices[] = {
 		MT_USB_DEVICE(USB_VENDOR_ID_ILITEK,
 			USB_DEVICE_ID_ILITEK_MULTITOUCH) },
 
+	/* LETV Multitouch touch screen */
+	{  .driver_data = MT_CLS_GENERALTOUCH_TWOFINGERS,
+		HID_USB_DEVICE(USB_VENDOR_ID_LETV,
+			USB_DEVICE_ID_LETV_MULTITOUCH) },
+
 	/* MosArt panels */
 	{ .driver_data = MT_CLS_CONFIDENCE_MINUS_ONE,
 		MT_USB_DEVICE(USB_VENDOR_ID_ASUS,

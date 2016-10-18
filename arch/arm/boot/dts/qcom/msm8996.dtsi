@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,8 +38,11 @@
 		i2c6 = &i2c_6;
 		i2c7 = &i2c_7;
 		i2c8 = &i2c_8;
+		i2c9 = &i2c_9;
+		i2c11 = &i2c_11;
 		i2c12 = &i2c_12;
 		spi0 = &spi_0;
+		spi11 = &spi_11;
 	};
 
 	psci {
@@ -195,6 +198,12 @@
 			size = <0 0x5c00000>;
 		};
 
+		pstore_reserve_mem: pstore_reserve_mem_region {
+			compatible = "shared-dma-pool";
+			no-map;
+			reg = <0 0x91500000 0 0x00100000>;
+		};
+
 		modem_mem: modem_region@88800000 {
 			compatible = "removed-dma-pool";
 			no-map;
@@ -346,6 +355,27 @@
 		pinctrl-1 = <&i2c_12_sleep>;
 	};
 
+	i2c_11: i2c@75b9000 {/* BLSP2 QUP4 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x75b9000 0x1000>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 105 0>;
+		dmas = <&dma_blsp2 20 64 0x20000020 0x20>,
+			<&dma_blsp2 21 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <84>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup5_i2c_apps_clk>;
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_11_active>;
+		pinctrl-1 = <&i2c_11_sleep>;
+	};
 
 	dma_blsp1: qcom,sps-dma@0x7544000{ /* BLSP1 */
 		#dma-cells = <4>;
@@ -407,6 +437,28 @@
 		pinctrl-1 = <&i2c_7_sleep>;
 	};
 
+	i2c_6: i2c@757a000 { /* BLSP1 QUP5 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x757A000 0x1000>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 100 0>;
+		dmas = <&dma_blsp1 22 32 0x20000020 0x20>,
+			<&dma_blsp1 23 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <86>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup6_i2c_apps_clk>;
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_6_active>;
+		pinctrl-1 = <&i2c_6_sleep>;
+	};
+
 	i2c_8: i2c@75b6000 { /* BLSP2 QUP2 */
 		compatible = "qcom,i2c-msm-v2";
 		#address-cells = <1>;
@@ -418,6 +470,7 @@
 		dmas = <&dma_blsp2 14 32 0x20000020 0x20>,
 			<&dma_blsp2 15 32 0x20000020 0x20>;
 		dma-names = "tx", "rx";
+		qcom,disable-dma = <1>;
 		qcom,master-id = <84>;
 		qcom,clk-freq-out = <400000>;
 		qcom,clk-freq-in  = <19200000>;
@@ -427,6 +480,28 @@
 		pinctrl-names = "i2c_active", "i2c_sleep";
 		pinctrl-0 = <&i2c_8_active>;
 		pinctrl-1 = <&i2c_8_sleep>;
+	};
+
+	i2c_9: i2c@75b7000 { /* BLSP2 QUP2 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x75b7000 0x1000>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 103 0>;
+		dmas = <&dma_blsp2 16 32 0x20000020 0x20>,
+			<&dma_blsp2 17 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <84>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup3_i2c_apps_clk>;
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_9_active>;
+		pinctrl-1 = <&i2c_9_sleep>;
 	};
 
 	blsp1_uart2: uart@07570000 { /* BLSP1 UART2 */
@@ -1746,8 +1821,8 @@
 		reg = <0x9830000 0x1000>;
 		reg-names = "wdt-base";
 		interrupts = <0 28 0>, <0 29 0>;
-		qcom,bark-time = <11000>;
-		qcom,pet-time = <10000>;
+		qcom,bark-time = <13000>;
+		qcom,pet-time = <8000>;
 		qcom,ipi-ping;
 		qcom,wakeup-enable;
 	};
@@ -1763,7 +1838,7 @@
 		clock-frequency = <32768>;
 	};
 
-	qcom,msm-imem@66bf000 {
+	msm_imem: qcom,msm-imem@66bf000 {
 		compatible = "qcom,msm-imem";
 		reg = <0x66bf000 0x1000>; /* Address and size of IMEM */
 		ranges = <0x0 0x66bf000 0x1000>;
@@ -1773,6 +1848,11 @@
 		mem_dump_table@10 {
 			compatible = "qcom,msm-imem-mem_dump_table";
 			reg = <0x10 8>;
+		};
+
+		dload-type@1c {
+			compatible = "qcom,msm-imem-dload-type";
+			reg = <0x1c 4>;
 		};
 
 		restart_reason@65c {
@@ -1788,6 +1868,10 @@
 		pil@94c {
 			compatible = "qcom,msm-imem-pil";
 			reg = <0x94c 200>;
+		};
+		sleep_light@b38 {
+			compatible = "qcom,msm-imem-sleep_light";
+			reg = <0xb38 8>;
 		};
 	};
 
@@ -1882,6 +1966,7 @@
 
 		USB3_GDSC-supply = <&gdsc_usb30>;
 		vbus_dwc3-supply = <&smbcharger_charger_otg>;
+		qcom,vbus_set_by_cclogic;
 		qcom,usb-dbm = <&dbm_1p5>;
 		qcom,msm-bus,name = "usb3";
 		qcom,msm-bus,num-cases = <2>;
@@ -2388,6 +2473,34 @@
 			 <&clock_gcc clk_gcc_blsp1_qup1_spi_apps_clk>;
 	};
 
+	spi_11: spi@75B9000 { /* BLSP2 QUP5 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x075B9000 0x600>,
+		      <0x07584000 0x2b000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 105 0>, <0 239 0>;
+		spi-max-frequency = <35000000>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <20>;
+		qcom,bam-producer-pipe-index = <21>;
+		qcom,master-id = <84>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_11_mosi_active &spi_11_miso_active &spi_11_cs1_clk_active>;
+		pinctrl-1 = <&spi_11_mosi_sleep &spi_11_miso_sleep &spi_11_cs1_clk_sleep>;
+
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup5_spi_apps_clk>;
+	};
+
 	qcom,rmnet-ipa {
 		compatible = "qcom,rmnet-ipa";
 		qcom,rmnet-ipa-ssr;
@@ -2493,7 +2606,6 @@
 			 <&clock_gcc clk_gcc_ce1_ahb_m_clk>,
 			 <&clock_gcc clk_gcc_ce1_axi_m_clk>;
 		qcom,ce-opp-freq = <171430000>;
-		qcom,qsee-reentrancy-support = <2>;
 	};
 
 	qcom,qbt1000 {
@@ -2783,7 +2895,7 @@
 			qcom,mitigation-freq-khz = <576000>;
 			qcom,vph-high-threshold-uv = <3500000>;
 			qcom,vph-low-threshold-uv = <3300000>;
-			qcom,soc-low-threshold = <10>;
+			qcom,soc-low-threshold = <5>;
 			qcom,thermal-handle = <&msm_thermal_freq>;
 		};
 	};

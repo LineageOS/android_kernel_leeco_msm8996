@@ -65,7 +65,6 @@
 	((d & 0xff) + ((d >> 8) & 0xff) +	\
 	((d >> 16) & 0xff) + ((d >> 24) & 0xff))
 
-
 /*
  * Pixel Clock to TMDS Character Rate Ratios.
  */
@@ -200,6 +199,11 @@ static int hdmi_tx_audio_setup(struct hdmi_tx_ctrl *hdmi_ctrl);
 static int hdmi_tx_setup_tmds_clk_rate(struct hdmi_tx_ctrl *hdmi_ctrl);
 static void hdmi_tx_set_vendor_specific_infoframe(
 	struct hdmi_tx_ctrl *hdmi_ctrl);
+int msm_hdmi_device_show_register(int (*func)(char *));
+
+struct msm_hdmi_device_ops{
+	int (*hdmi_tx_device_show)(char *buf);
+}hdmi_device_ops;
 
 static struct mdss_hw hdmi_tx_hw = {
 	.hw_ndx = MDSS_HW_HDMI,
@@ -445,7 +449,7 @@ static int hdmi_tx_get_vic_from_panel_info(struct hdmi_tx_ctrl *hdmi_ctrl,
 
 		if (!ret && supported) {
 			new_vic = pinfo->vic;
-			DEV_DBG("%s: %s is supported\n", __func__,
+			DEV_ERR("%s: %s is supported\n", __func__,
 				msm_hdmi_mode_2string(new_vic));
 		} else {
 			DEV_ERR("%s: invalid or not supported vic %d\n",
@@ -1400,6 +1404,23 @@ end:
 	return ret;
 }
 
+static ssize_t hdmi_tx_sysfs_device_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	u32 ret = 0;
+	char str[24];
+
+	if(hdmi_device_ops.hdmi_tx_device_show){
+		if(hdmi_device_ops.hdmi_tx_device_show(str)){
+			DEV_ERR("%s: hdmi_tx_device_show err\n", __func__);
+			return -EINVAL;
+		}
+	}
+
+	ret = snprintf(buf, PAGE_SIZE, "%s\n", str);
+	return ret;
+}
+
 static DEVICE_ATTR(connected, S_IRUGO, hdmi_tx_sysfs_rda_connected, NULL);
 static DEVICE_ATTR(hdmi_audio_cb, S_IWUSR, NULL, hdmi_tx_sysfs_wta_audio_cb);
 static DEVICE_ATTR(hot_plug, S_IWUSR, NULL, hdmi_tx_sysfs_wta_hot_plug);
@@ -1420,6 +1441,7 @@ static DEVICE_ATTR(avi_cn0_1, S_IWUSR, NULL, hdmi_tx_sysfs_wta_avi_cn_bits);
 static DEVICE_ATTR(s3d_mode, S_IRUGO | S_IWUSR, hdmi_tx_sysfs_rda_s3d_mode,
 	hdmi_tx_sysfs_wta_s3d_mode);
 static DEVICE_ATTR(5v, S_IWUSR, NULL, hdmi_tx_sysfs_wta_5v);
+static DEVICE_ATTR(hdmi_device, (S_IRUGO),	hdmi_tx_sysfs_device_show, NULL);
 
 static struct attribute *hdmi_tx_fs_attrs[] = {
 	&dev_attr_connected.attr,
@@ -1435,6 +1457,7 @@ static struct attribute *hdmi_tx_fs_attrs[] = {
 	&dev_attr_avi_cn0_1.attr,
 	&dev_attr_s3d_mode.attr,
 	&dev_attr_5v.attr,
+	&dev_attr_hdmi_device.attr,
 	NULL,
 };
 static struct attribute_group hdmi_tx_fs_attrs_group = {
@@ -1667,13 +1690,13 @@ static u32 hdmi_tx_ddc_read(struct hdmi_tx_ddc_ctrl *ddc_ctrl,
 {
 	u32 block_size = EDID_BLOCK_SIZE;
 	struct hdmi_tx_ddc_data ddc_data;
-	u32 status = 0, retry_cnt = 0, i;
+    u32 retry_cnt = 0, i;
+	u32 status = 0;
 
 	if (!ddc_ctrl || !edid_buf) {
 		DEV_ERR("%s: invalid input\n", __func__);
 		return -EINVAL;
 	}
-
 	do {
 		DEV_DBG("EDID: reading block(%d) with block-size=%d\n",
 				block, block_size);
@@ -2114,7 +2137,10 @@ static void hdmi_tx_hpd_int_work(struct work_struct *work)
 		DSS_REG_W_ND(io, HDMI_DDC_ARBITRATION ,
 			DSS_REG_R(io, HDMI_DDC_ARBITRATION) & ~(BIT(4)));
 
-		hdmi_tx_read_sink_info(hdmi_ctrl);
+		if (hdmi_tx_read_sink_info(hdmi_ctrl)) {
+			DEV_ERR("%s: Failed to read_sink_info\n", __func__);
+			return;
+		}
 
 		if (hdmi_tx_enable_power(hdmi_ctrl, HDMI_TX_DDC_PM, false))
 			DEV_ERR("%s: Failed to disable ddc power\n", __func__);
@@ -3570,6 +3596,14 @@ static int hdmi_tx_set_mhl_max_pclk(struct platform_device *pdev, u32 max_val)
 	return 0;
 }
 
+int msm_hdmi_device_show_register(int (*func)(char *))
+{
+	hdmi_device_ops.hdmi_tx_device_show = func;
+
+	return 0;
+}
+EXPORT_SYMBOL(msm_hdmi_device_show_register);
+
 int msm_hdmi_register_mhl(struct platform_device *pdev,
 			  struct msm_hdmi_mhl_ops *ops, void *data)
 {
@@ -3588,11 +3622,13 @@ int msm_hdmi_register_mhl(struct platform_device *pdev,
 	ops->tmds_enabled = hdmi_tx_tmds_enabled;
 	ops->set_mhl_max_pclk = hdmi_tx_set_mhl_max_pclk;
 	ops->set_upstream_hpd = hdmi_tx_set_mhl_hpd;
+	hdmi_ctrl->hdmi_tx_hpd_done = (void *)(ops->notify);
 
 	hdmi_ctrl->ds_registered = true;
 
 	return 0;
 }
+EXPORT_SYMBOL(msm_hdmi_register_mhl);
 
 static int hdmi_tx_get_cable_status(struct platform_device *pdev, u32 vote)
 {
@@ -4069,8 +4105,10 @@ end:
 
 	hdmi_tx_hpd_polarity_setup(hdmi_ctrl, HPD_DISCONNECT_POLARITY);
 
+/*
 	if (hdmi_ctrl->hdmi_tx_hpd_done)
 		hdmi_ctrl->hdmi_tx_hpd_done(hdmi_ctrl->downstream_data);
+*/
 
 	return rc;
 } /* hdmi_tx_power_on */

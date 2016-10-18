@@ -1064,6 +1064,9 @@ int diag_process_apps_pkt(unsigned char *buf, int len,
 		diag_send_rsp(driver->apps_rsp_buf, write_len);
 		return 0;
 	}
+	diag_send_error_rsp(buf, len);
+	return 0;
+
 	write_len = diag_cmd_disable_hdlc(buf, len, driver->apps_rsp_buf,
 					  DIAG_MAX_RSP_SIZE);
 	if (write_len > 0) {

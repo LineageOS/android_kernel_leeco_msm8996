@@ -17,7 +17,7 @@
 #include <linux/device.h>
 #include "mdss_fb.h"
 #include "mdss_hdmi_edid.h"
-
+#include <video/msm_hdmi_modes.h>
 #define DBC_START_OFFSET 4
 #define EDID_DTD_LEN 18
 /*

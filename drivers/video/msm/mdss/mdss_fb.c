@@ -69,7 +69,9 @@
 
 #define BLANK_FLAG_LP	FB_BLANK_NORMAL
 #define BLANK_FLAG_ULP	FB_BLANK_VSYNC_SUSPEND
+//#define MDSS_FB_SPEC_CAR_SEQ_CMDLINE_MAX 30
 
+char spec_char_seq[32];
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
 
@@ -752,6 +754,24 @@ static ssize_t mdss_fb_get_dfps_mode(struct device *dev,
 	return ret;
 }
 
+static int __init get_spec_char_seq(char *str)
+{
+    strlcpy(spec_char_seq, str, 32);
+
+    return 1;
+}
+__setup("android.letv.spec_charseq=", get_spec_char_seq);
+
+static ssize_t mdss_fb_get_spec_char_seq(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int ret;
+
+	ret = strlcpy(buf, spec_char_seq, (sizeof(buf)+1));
+
+	return ret;
+}
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO | S_IWUSR, mdss_fb_show_split,
 					mdss_fb_store_split);
@@ -768,6 +788,8 @@ static DEVICE_ATTR(msm_fb_panel_status, S_IRUGO | S_IWUSR,
 	mdss_fb_get_panel_status, mdss_fb_force_panel_dead);
 static DEVICE_ATTR(msm_fb_dfps_mode, S_IRUGO | S_IWUSR,
 	mdss_fb_get_dfps_mode, mdss_fb_change_dfps_mode);
+static DEVICE_ATTR(msm_fb_spec_char_seq, S_IRUGO | S_IWUSR,
+	mdss_fb_get_spec_char_seq, NULL);
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
 	&dev_attr_msm_fb_split.attr,
@@ -779,6 +801,7 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_thermal_level.attr,
 	&dev_attr_msm_fb_panel_status.attr,
 	&dev_attr_msm_fb_dfps_mode.attr,
+	&dev_attr_msm_fb_spec_char_seq.attr,
 	NULL,
 };
 

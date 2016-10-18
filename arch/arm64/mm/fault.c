@@ -29,6 +29,7 @@
 #include <linux/sched.h>
 #include <linux/highmem.h>
 #include <linux/perf_event.h>
+#include <linux/panic_reason.h>
 
 #include <asm/exception.h>
 #include <asm/debug-monitors.h>
@@ -97,6 +98,7 @@ static void __do_kernel_fault(struct mm_struct *mm, unsigned long addr,
 	/*
 	 * No handler, we'll have to terminate things with extreme prejudice.
 	 */
+	set_panic_trig_rsn(TRIG_KERN_MEM_FAULT);
 	bust_spinlocks(1);
 	pr_alert("Unable to handle kernel %s at virtual address %08lx\n",
 		 (addr < PAGE_SIZE) ? "NULL pointer dereference" :

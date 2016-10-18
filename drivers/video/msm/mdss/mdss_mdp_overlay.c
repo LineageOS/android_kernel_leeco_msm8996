@@ -48,6 +48,7 @@
 	((flags & MDSS_MDP_RIGHT_MIXER) || (dst_x >= left_lm_w))
 
 #define BUF_POOL_SIZE 32
+static struct workqueue_struct *letv_retire_wq;
 
 static int mdss_mdp_overlay_free_fb_pipe(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd);
@@ -4654,6 +4655,7 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_mdp_mixer *mixer;
 	int need_cleanup;
+	int retire_cnt;
 
 	if (!mfd)
 		return -ENODEV;
@@ -4720,13 +4722,18 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	 * for retire fence to be updated.
 	 * As a last resort signal the timeline if vsync doesn't arrive.
 	 */
-	if (mdp5_data->retire_cnt) {
+	mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
+	retire_cnt = mdp5_data->retire_cnt;
+	mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
+	if (retire_cnt) {
 		u32 fps = mdss_panel_get_framerate(mfd->panel_info);
 		u32 vsync_time = 1000 / (fps ? : DEFAULT_FRAME_RATE);
 
 		msleep(vsync_time);
-
-		__vsync_retire_signal(mfd, mdp5_data->retire_cnt);
+		mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
+		retire_cnt = mdp5_data->retire_cnt;
+		mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
+		__vsync_retire_signal(mfd, retire_cnt);
 
 		/*
 		 * the retire work can still schedule after above retire_signal
@@ -4940,7 +4947,7 @@ static void __vsync_retire_handle_vsync(struct mdss_mdp_ctl *ctl, ktime_t t)
 	}
 
 	mdp5_data = mfd_to_mdp5_data(mfd);
-	schedule_work(&mdp5_data->retire_work);
+	queue_work(letv_retire_wq, &mdp5_data->retire_work);
 }
 
 static void __vsync_retire_work_handler(struct work_struct *work)
@@ -5011,9 +5018,13 @@ static int __vsync_set_vsync_handler(struct msm_fb_data_type *mfd)
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	struct mdss_mdp_ctl *ctl;
 	int rc;
+	int retire_cnt;
 
 	ctl = mdp5_data->ctl;
-	if (!mdp5_data->retire_cnt ||
+	mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
+	retire_cnt = mdp5_data->retire_cnt;
+	mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
+	if (!retire_cnt ||
 		mdp5_data->vsync_retire_handler.enabled)
 		return 0;
 
@@ -5138,6 +5149,12 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 	struct mdss_overlay_private *mdp5_data = NULL;
 	struct irq_info *mdss_irq;
 	int rc;
+
+	letv_retire_wq = alloc_workqueue("letv_retire_wq", WQ_UNBOUND | WQ_HIGHPRI, 0);
+	if (!letv_retire_wq) {
+		pr_err("fail to allocate letv_retire_wq");
+		return -ENOMEM;
+	}
 
 	mdp5_data = kzalloc(sizeof(struct mdss_overlay_private), GFP_KERNEL);
 	if (!mdp5_data) {

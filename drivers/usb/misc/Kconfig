@@ -157,6 +157,7 @@ config USB_APPLEDISPLAY
 	  Displays over USB. This driver provides a sysfs interface.
 
 source "drivers/usb/misc/sisusbvga/Kconfig"
+source "drivers/usb/misc/anx7418/Kconfig"
 
 config USB_LD
 	tristate "USB LD driver"
@@ -255,3 +256,28 @@ config USB_LINK_LAYER_TEST
 	  This driver is for generating specific traffic for Super Speed Link
 	  Layer Test Device. Say Y only when you want to conduct USB Super Speed
 	  Link Layer Test for host controllers.
+
+config USB_CCLOGIC_PI5USB
+	bool "USB cc logic PI5USB"
+	help
+	  This driver is for cc logic chip PI5USB
+
+config USB_CCLOGIC_TUSB302L
+	bool "USB cc logic TUSB302L"
+	help
+	  This driver is for cc logic chip TUSB302L
+
+config USB_CYCCG
+	tristate "Cypress USB Type-C and PD Controller"
+	depends on I2C
+	default y
+	help
+	  This driver adds support for Cypress USB Type-C and PD Controller
+	  devices. It enables user mode CCG Application access CCG firmware
+	  register map directly.
+
+	  Say Y here if you have a Cypress USB Type-C and PD Controller device
+	  integrated in the system.
+
+	  To compile this driver as a module, choose M here: the module will be
+	  called cyccg.

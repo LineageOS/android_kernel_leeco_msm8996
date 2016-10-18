@@ -309,7 +309,7 @@ int msm_isp_get_clk_info(struct vfe_device *vfe_dev,
 void msm_isp_get_timestamp(struct msm_isp_timestamp *time_stamp)
 {
 	struct timespec ts;
-	get_monotonic_boottime(&ts);
+	ktime_get_ts(&ts);
 	time_stamp->buf_time.tv_sec    = ts.tv_sec;
 	time_stamp->buf_time.tv_usec   = ts.tv_nsec/1000;
 	do_gettimeofday(&(time_stamp->event_time));
@@ -739,6 +739,8 @@ static int msm_isp_set_dual_HW_master_slave_mode(
 	vfe_dev->common_data->ms_resource.dual_hw_type = DUAL_HW_MASTER_SLAVE;
 	vfe_dev->vfe_ub_policy = MSM_WM_UB_EQUAL_SLICING;
 	if (dual_hw_ms_cmd->primary_intf < VFE_SRC_MAX) {
+		ISP_DBG("%s: vfe %d primary_intf %d\n", __func__,
+			vfe_dev->pdev->id, dual_hw_ms_cmd->primary_intf);
 		src_info = &vfe_dev->axi_data.
 			src_info[dual_hw_ms_cmd->primary_intf];
 		src_info->dual_hw_ms_info.dual_hw_ms_type =
@@ -749,7 +751,7 @@ static int msm_isp_set_dual_HW_master_slave_mode(
 	if (src_info != NULL &&
 		dual_hw_ms_cmd->dual_hw_ms_type == MS_TYPE_MASTER) {
 		src_info->dual_hw_type = DUAL_HW_MASTER_SLAVE;
-		ISP_DBG("%s: Master\n", __func__);
+		ISP_DBG("%s: vfe %d Master\n", __func__, vfe_dev->pdev->id);
 
 		src_info->dual_hw_ms_info.sof_info =
 			&vfe_dev->common_data->ms_resource.master_sof_info;
@@ -760,7 +762,7 @@ static int msm_isp_set_dual_HW_master_slave_mode(
 			&vfe_dev->common_data->common_dev_data_lock,
 			flags);
 		src_info->dual_hw_type = DUAL_HW_MASTER_SLAVE;
-		ISP_DBG("%s: Slave\n", __func__);
+		ISP_DBG("%s: vfe %d Slave\n", __func__, vfe_dev->pdev->id);
 
 		for (j = 0; j < MS_NUM_SLAVE_MAX; j++) {
 			if (vfe_dev->common_data->ms_resource.
@@ -787,7 +789,8 @@ static int msm_isp_set_dual_HW_master_slave_mode(
 			return -EBUSY;
 		}
 	}
-	ISP_DBG("%s: num_src %d\n", __func__, dual_hw_ms_cmd->num_src);
+	ISP_DBG("%s: vfe %d num_src %d\n", __func__, vfe_dev->pdev->id,
+		dual_hw_ms_cmd->num_src);
 	/* This for loop is for non-primary intf to be marked with Master/Slave
 	 * in order for frame id sync. But their timestamp is not saved.
 	 * So no sof_info resource is allocated */
@@ -797,7 +800,9 @@ static int msm_isp_set_dual_HW_master_slave_mode(
 				dual_hw_ms_cmd->input_src[i]);
 			return -EINVAL;
 		}
-		ISP_DBG("%s: src %d\n", __func__, dual_hw_ms_cmd->input_src[i]);
+		ISP_DBG("%s: vfe %d src %d type %d\n", __func__,
+			vfe_dev->pdev->id, dual_hw_ms_cmd->input_src[i],
+			dual_hw_ms_cmd->dual_hw_ms_type);
 		src_info = &vfe_dev->axi_data.
 			src_info[dual_hw_ms_cmd->input_src[i]];
 		src_info->dual_hw_type = DUAL_HW_MASTER_SLAVE;
@@ -939,6 +944,7 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
 {
 	long rc = 0;
+	long rc2 = 0;
 	struct vfe_device *vfe_dev = v4l2_get_subdevdata(sd);
 
 	if (!vfe_dev || !vfe_dev->vfe_base) {
@@ -1018,7 +1024,9 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		if (atomic_read(&vfe_dev->error_info.overflow_state)
 			!= HALT_ENFORCED) {
 			rc = msm_isp_stats_reset(vfe_dev);
-			rc |= msm_isp_axi_reset(vfe_dev, arg);
+			rc2 = msm_isp_axi_reset(vfe_dev, arg);
+			if (!rc && rc2)
+				rc = rc2;
 		} else {
 			pr_err_ratelimited("%s: no HW reset, halt enforced.\n",
 				__func__);
@@ -1030,7 +1038,9 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		if (atomic_read(&vfe_dev->error_info.overflow_state)
 			!= HALT_ENFORCED) {
 			rc = msm_isp_stats_restart(vfe_dev);
-			rc |= msm_isp_axi_restart(vfe_dev, arg);
+			rc2 = msm_isp_axi_restart(vfe_dev, arg);
+			if (!rc && rc2)
+				rc = rc2;
 		} else {
 			pr_err_ratelimited("%s: no AXI restart, halt enforced.\n",
 				__func__);
@@ -1810,8 +1820,6 @@ void msm_isp_update_error_frame_count(struct vfe_device *vfe_dev)
 {
 	struct msm_vfe_error_info *error_info = &vfe_dev->error_info;
 	error_info->info_dump_frame_count++;
-	if (error_info->info_dump_frame_count == 0)
-		error_info->info_dump_frame_count++;
 }
 
 
@@ -1872,6 +1880,7 @@ static void msm_isp_process_overflow_irq(
 	/*Mask out all other irqs if recovery is started*/
 	if (atomic_read(&vfe_dev->error_info.overflow_state) != NO_OVERFLOW) {
 		uint32_t halt_restart_mask0, halt_restart_mask1;
+
 		vfe_dev->hw_info->vfe_ops.core_ops.
 		get_halt_restart_mask(&halt_restart_mask0,
 			&halt_restart_mask1);
@@ -1883,12 +1892,11 @@ static void msm_isp_process_overflow_irq(
 
 	/*Check if any overflow bit is set*/
 	vfe_dev->hw_info->vfe_ops.core_ops.
-		get_overflow_mask(&overflow_mask);
+	get_overflow_mask(&overflow_mask);
 	overflow_mask &= *irq_status1;
 
 	if (overflow_mask) {
 		struct msm_isp_event_data error_event;
-		struct msm_vfe_axi_halt_cmd halt_cmd;
 
 		if (vfe_dev->reset_pending == 1) {
 			pr_err("%s:%d failed: overflow %x during reset\n",
@@ -1898,18 +1906,39 @@ static void msm_isp_process_overflow_irq(
 			return;
 		}
 
-		halt_cmd.overflow_detected = 1;
-		halt_cmd.stop_camif = 1;
-		halt_cmd.blocking_halt = 0;
+		ISP_DBG("%s: VFE%d Bus overflow detected: start recovery!\n",
+			__func__, vfe_dev->pdev->id);
 
-		msm_isp_axi_halt(vfe_dev, &halt_cmd);
+		/* maks off irq for current vfe */
+		atomic_cmpxchg(&vfe_dev->error_info.overflow_state,
+			NO_OVERFLOW, OVERFLOW_DETECTED);
+		vfe_dev->hw_info->vfe_ops.core_ops.
+			set_halt_restart_mask(vfe_dev);
 
-		/*Update overflow state*/
+		/* mask off other vfe if dual vfe is used */
+		if (vfe_dev->is_split) {
+			uint32_t other_vfe_id;
+
+			other_vfe_id = (vfe_dev->pdev->id == ISP_VFE0) ?
+				ISP_VFE1 : ISP_VFE0;
+
+			atomic_cmpxchg(&(vfe_dev->common_data->dual_vfe_res->
+				vfe_dev[other_vfe_id]->error_info.overflow_state),
+				NO_OVERFLOW, OVERFLOW_DETECTED);
+
+			vfe_dev->hw_info->vfe_ops.core_ops.
+				set_halt_restart_mask(vfe_dev->common_data->
+				dual_vfe_res->vfe_dev[other_vfe_id]);
+		}
+
+		/* reset irq status so skip further process */
 		*irq_status0 = 0;
 		*irq_status1 = 0;
 
+		/* send overflow event as needed */
 		if (atomic_read(&vfe_dev->error_info.overflow_state)
 			!= HALT_ENFORCED) {
+			memset(&error_event, 0, sizeof(error_event));
 			error_event.frame_id =
 				vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
 			error_event.u.error_info.err_type =
@@ -1956,7 +1985,7 @@ static void msm_isp_enqueue_tasklet_cmd(struct vfe_device *vfe_dev,
 		MSM_VFE_TASKLETQ_SIZE;
 	list_add_tail(&queue_cmd->list, &vfe_dev->tasklet_q);
 	spin_unlock_irqrestore(&vfe_dev->tasklet_lock, flags);
-	tasklet_schedule(&vfe_dev->vfe_tasklet);
+	tasklet_hi_schedule(&vfe_dev->vfe_tasklet);
 }
 
 irqreturn_t msm_isp_process_irq(int irq_num, void *data)
@@ -1983,8 +2012,7 @@ irqreturn_t msm_isp_process_irq(int irq_num, void *data)
 	error_mask1 &= irq_status1;
 	irq_status0 &= ~error_mask0;
 	irq_status1 &= ~error_mask1;
-	if (!vfe_dev->ignore_error &&
-		((error_mask0 != 0) || (error_mask1 != 0)))
+	if ((error_mask0 != 0) || (error_mask1 != 0))
 		msm_isp_update_error_info(vfe_dev, error_mask0, error_mask1);
 
 	if ((irq_status0 == 0) && (irq_status1 == 0) &&
@@ -2111,10 +2139,14 @@ int msm_isp_open_node(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 
 	ISP_DBG("%s open_cnt %u\n", __func__, vfe_dev->vfe_open_cnt);
 
-	if (vfe_dev->common_data == NULL) {
-		pr_err("%s: Error in probe. No common_data\n", __func__);
+	if (vfe_dev->common_data == NULL ||
+		vfe_dev->common_data->dual_vfe_res == NULL) {
+		pr_err("%s: Error in probe. No common_data or dual vfe resource\n", __func__);
 		return -EINVAL;
 	}
+
+	if (vfe_dev->pdev->id == ISP_VFE0)
+		vfe_dev->common_data->dual_vfe_res->epoch_sync_mask = 0;
 
 	mutex_lock(&vfe_dev->realtime_mutex);
 	mutex_lock(&vfe_dev->core_mutex);
@@ -2296,7 +2328,8 @@ void msm_isp_save_framedrop_values(struct vfe_device *vfe_dev,
 		stream_info =
 			&vfe_dev->axi_data.stream_info[j];
 		spin_lock_irqsave(&stream_info->lock, flags);
-		stream_info->prev_framedrop_period &= ~0x80000000;
+		stream_info->activated_framedrop_period  =
+			stream_info->requested_framedrop_period;
 		spin_unlock_irqrestore(&stream_info->lock, flags);
 	}
 }

@@ -17,6 +17,7 @@
 #include <linux/slab.h>
 #include <linux/irq.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 #include <linux/interrupt.h>
 #include <linux/gpio.h>
 #include <linux/spinlock.h>
@@ -123,10 +124,8 @@ static irqreturn_t nqx_dev_irq_handler(int irq, void *dev_id)
 	unsigned long flags;
 	int ret;
 
-	if (device_may_wakeup(&nqx_dev->client->dev) &&
-		(nqx_dev->client->dev.power.is_suspended == true)) {
+	if (device_may_wakeup(&nqx_dev->client->dev))
 		pm_wakeup_event(&nqx_dev->client->dev, WAKEUP_SRC_TIMEOUT);
-	}
 	ret = gpio_get_value_cansleep(nqx_dev->irq_gpio);
 	if (!ret) {
 #ifdef NFC_KERNEL_BU
@@ -139,6 +138,7 @@ static irqreturn_t nqx_dev_irq_handler(int irq, void *dev_id)
 	spin_lock_irqsave(&nqx_dev->irq_enabled_lock, flags);
 	nqx_dev->count_irq++;
 	spin_unlock_irqrestore(&nqx_dev->irq_enabled_lock, flags);
+	nqx_disable_irq(nqx_dev);
 	wake_up(&nqx_dev->read_wq);
 
 	return IRQ_HANDLED;
@@ -168,8 +168,7 @@ static ssize_t nfc_read(struct file *filp, char __user *buf,
 			ret = -EAGAIN;
 			goto err;
 		}
-		nqx_dev->irq_enabled = true;
-		enable_irq(nqx_dev->client->irq);
+		nqx_enable_irq(nqx_dev);
 		if (gpio_get_value_cansleep(nqx_dev->irq_gpio)) {
 			nqx_disable_irq(nqx_dev);
 		} else {
@@ -548,6 +547,7 @@ static int nqx_probe(struct i2c_client *client,
 {
 	int r = 0;
 	int irqn = 0;
+	struct clk *nfc_clk = NULL;
 	struct nqx_platform_data *platform_data;
 	struct nqx_dev *nqx_dev;
 
@@ -606,6 +606,18 @@ static int nqx_probe(struct i2c_client *client,
 				goto err_free_dev;
 		}
 
+	if (!strcmp(platform_data->clk_src_name, "BBCLK2")) {
+	    nfc_clk = clk_get(&client->dev, "ref_clk");
+	    if (nfc_clk == NULL)
+		    goto err_free_dev;
+	    r = clk_prepare_enable(nfc_clk);
+	    if (r)
+		    goto err_get_clk;
+	} else {
+		dev_err(&client->dev, "%s: BBCLK2 clock not provided\n", __func__);
+		goto err_free_dev;
+	}
+
 	if (gpio_is_valid(platform_data->en_gpio)) {
 		r = gpio_request(platform_data->en_gpio, "nfc_reset_gpio");
 		if (r) {
@@ -613,7 +625,7 @@ static int nqx_probe(struct i2c_client *client,
 			"%s: unable to request gpio [%d]\n",
 				__func__,
 				platform_data->en_gpio);
-			goto err_free_dev;
+			goto err_enable_clk;
 		}
 		r = gpio_direction_output(platform_data->en_gpio, 0);
 		if (r) {
@@ -625,7 +637,7 @@ static int nqx_probe(struct i2c_client *client,
 		}
 	} else {
 		dev_err(&client->dev, "%s: dis gpio not provided\n", __func__);
-		goto err_free_dev;
+		goto err_enable_clk;
 	}
 
 	if (gpio_is_valid(platform_data->irq_gpio)) {
@@ -719,7 +731,7 @@ static int nqx_probe(struct i2c_client *client,
 	/* NFC_INT IRQ */
 	nqx_dev->irq_enabled = true;
 	r = request_irq(client->irq, nqx_dev_irq_handler,
-			  IRQF_TRIGGER_RISING, client->name, nqx_dev);
+			  IRQF_TRIGGER_HIGH, client->name, nqx_dev);
 	if (r) {
 		dev_err(&client->dev, "%s: request_irq failed\n", __func__);
 		goto err_request_irq_failed;
@@ -780,6 +792,10 @@ err_irq:
 	gpio_free(platform_data->irq_gpio);
 err_en_gpio:
 	gpio_free(platform_data->en_gpio);
+err_enable_clk:
+    clk_disable_unprepare(nfc_clk);
+err_get_clk:
+    clk_put(nfc_clk);
 err_free_dev:
 	kfree(nqx_dev);
 	dev_err(&client->dev,
@@ -808,8 +824,14 @@ static int nqx_suspend(struct device *device)
 	struct i2c_client *client = to_i2c_client(device);
 	struct nqx_dev *nqx_dev = i2c_get_clientdata(client);
 
-	if (device_may_wakeup(&client->dev) && nqx_dev->irq_enabled)
+	if (gpio_get_value_cansleep(nqx_dev->irq_gpio)) {
+		dev_err(&client->dev, "%s: Read not finished.return -EBUSY\n", __func__);
+		return -EBUSY;
+	}
+	if (device_may_wakeup(&client->dev) && nqx_dev->irq_enabled) {
+		nqx_enable_irq(nqx_dev);
 		enable_irq_wake(client->irq);
+	}
 	return 0;
 }
 

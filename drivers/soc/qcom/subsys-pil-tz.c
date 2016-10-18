@@ -31,7 +31,7 @@
 #include <soc/qcom/scm.h>
 
 #include <soc/qcom/smem.h>
-
+#include "ssr_monitor.h"
 #include "peripheral-loader.h"
 
 #define XO_FREQ			19200000
@@ -785,6 +785,7 @@ static void log_failure_reason(const struct pil_tz_data *d)
 	strlcpy(reason, smem_reason, min(size, MAX_SSR_REASON_LEN));
 	pr_err("%s subsystem failure reason: %s.\n", name, reason);
 
+	ssr_monitor_store_crashreason(reason);
 	smem_reason[0] = '\0';
 	wmb();
 }

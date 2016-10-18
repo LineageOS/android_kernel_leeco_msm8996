@@ -38,6 +38,7 @@
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/ipc_logging.h>
+#include <linux/panic_reason.h>
 
 #include <soc/qcom/ramdump.h>
 #include <soc/qcom/smd.h>
@@ -2549,6 +2550,7 @@ static irqreturn_t smsm_irq_handler(int irq, void *data)
 
 		SMSM_DBG("<SM %08x %08x>\n", apps, modm);
 		if (modm & SMSM_RESET) {
+			set_panic_trig_rsn(TRIG_SUB_SYSTEM_RESET);
 			pr_err("SMSM: Modem SMSM state changed to SMSM_RESET.\n");
 		} else if (modm & SMSM_INIT) {
 			if (!(apps & SMSM_INIT))

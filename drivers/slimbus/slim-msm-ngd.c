@@ -26,6 +26,7 @@
 #include <linux/of_slimbus.h>
 #include <linux/timer.h>
 #include <linux/msm-sps.h>
+#include <linux/reboot.h>
 #include "slim-msm.h"
 
 #define NGD_SLIM_NAME	"ngd_msm_ctrl"
@@ -1271,9 +1272,11 @@ static int ngd_slim_power_up(struct msm_slim_ctrl *dev, bool mdm_restart)
 	/* reconnect BAM pipes if needed and enable NGD */
 	ngd_slim_setup(dev);
 
-	timeout = wait_for_completion_timeout(&dev->reconf, HZ);
+	timeout = wait_for_completion_timeout(&dev->reconf, 3 * HZ);
 	if (!timeout) {
 		SLIM_WARN(dev, "capability exchange timed-out\n");
+		pr_err("capability exchange timed-out, Now to machine_restarted!!!\n");
+		machine_restart("slim_power_up");
 		return -ETIMEDOUT;
 	}
 	/* mutliple transactions waiting on slimbus to power up? */

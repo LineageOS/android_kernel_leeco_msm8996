@@ -16,7 +16,7 @@
 #include <soc/qcom/camera2.h>
 #include "msm_camera_io_util.h"
 
-/* #define CONFIG_MSM_ISP_DBG 1 */
+#undef CONFIG_MSM_ISP_DBG
 
 #ifdef CONFIG_MSM_ISP_DBG
 #define ISP_DBG(fmt, args...) printk(fmt, ##args)

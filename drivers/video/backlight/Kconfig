@@ -155,7 +155,7 @@ endif # LCD_CLASS_DEVICE
 #
 config BACKLIGHT_CLASS_DEVICE
         tristate "Lowlevel Backlight controls"
-	default m
+	default y
 	help
 	  This framework adds support for low-level control of the LCD
           backlight. This includes support for brightness and power.
@@ -442,6 +442,13 @@ config BACKLIGHT_BD6107
 	help
 	  If you have a Rohm BD6107 say Y to enable the backlight driver.
 
+config BACKLIGHT_LM3697
+	tristate "Backlight driver for TI LM3697"
+	depends on BACKLIGHT_CLASS_DEVICE && I2C
+	help
+	  Say Y to enable the backlight driver for TI LM3697.
+	  Up to 3 backlight strings and 11 bit dimming is supported.
+	  PWM brightness control is also supported.
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT

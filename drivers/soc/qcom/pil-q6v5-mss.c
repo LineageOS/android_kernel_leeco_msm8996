@@ -32,6 +32,7 @@
 #include <soc/qcom/smem.h>
 #include <soc/qcom/smsm.h>
 
+#include "ssr_monitor.h"
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
 #include "pil-msa.h"
@@ -59,7 +60,12 @@ static void log_modem_sfr(void)
 		return;
 	}
 
+	memset(reason, 0, MAX_SSR_REASON_LEN);
+	memcpy(reason, smem_reason, min(size, (u32)sizeof(reason)));
+	ssr_monitor_store_crashreason(reason);
+
 	strlcpy(reason, smem_reason, min(size, MAX_SSR_REASON_LEN));
+	pr_err("@MODEM_CRASH@ : %s .\n", reason);
 	pr_err("modem subsystem failure reason: %s.\n", reason);
 
 	smem_reason[0] = '\0';

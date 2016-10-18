@@ -25,6 +25,7 @@
 #include <linux/delay.h>
 #include <linux/qpnp/power-on.h>
 #include <linux/of_address.h>
+#include <linux/sysfs.h>
 
 #include <asm/cacheflush.h>
 #include <asm/system_misc.h>
@@ -32,7 +33,7 @@
 #include <soc/qcom/scm.h>
 #include <soc/qcom/restart.h>
 #include <soc/qcom/watchdog.h>
-
+#include <linux/panic_reason.h>
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -175,6 +176,7 @@ static void enable_emergency_dload_mode(void)
 		pr_err("Failed to set secure EDLOAD mode: %d\n", ret);
 }
 
+extern void set_sahara_mode(int on);
 static int dload_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
@@ -191,6 +193,7 @@ static int dload_set(const char *val, struct kernel_param *kp)
 		return -EINVAL;
 	}
 
+	set_sahara_mode(download_mode);
 	set_dload_mode(download_mode);
 
 	return 0;
@@ -288,13 +291,6 @@ static void msm_restart_prepare(const char *cmd)
 				(cmd != NULL && cmd[0] != '\0'));
 	}
 
-	/* Hard reset the PMIC unless memory contents must be maintained. */
-	if (need_warm_reset) {
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
-	} else {
-		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
-	}
-
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			qpnp_pon_set_restart_reason(
@@ -331,7 +327,18 @@ static void msm_restart_prepare(const char *cmd)
 			enable_emergency_dload_mode();
 		} else {
 			__raw_writel(0x77665501, restart_reason);
+			need_warm_reset = 1;
 		}
+	} else {
+		need_warm_reset = 1;
+	}
+
+	pr_info("need_warm_reset=%d\n", need_warm_reset);
+	/* Hard reset the PMIC unless memory contents must be maintained. */
+	if (need_warm_reset) {
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+	} else {
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 	}
 
 	flush_cache_all();
@@ -370,7 +377,7 @@ static void deassert_ps_hold(void)
 static void do_msm_restart(enum reboot_mode reboot_mode, const char *cmd)
 {
 	pr_notice("Going down for restart now\n");
-
+	set_panic_trig_rsn(KERNEL_ALIVE);
 	msm_restart_prepare(cmd);
 
 #ifdef CONFIG_MSM_DLOAD_MODE
@@ -393,6 +400,7 @@ static void do_msm_poweroff(void)
 {
 	pr_notice("Powering off the SoC\n");
 
+	set_panic_trig_rsn(KERNEL_ALIVE);
 	set_dload_mode(0);
 	qpnp_pon_system_pwr_off(PON_POWER_OFF_SHUTDOWN);
 
@@ -516,6 +524,7 @@ static int msm_restart_probe(struct platform_device *pdev)
 				"qcom,msm-imem-dload-type");
 	if (!np) {
 		pr_err("unable to find DT imem dload-type node\n");
+		goto skip_sysfs_create;
 	} else {
 		dload_type_addr = of_iomap(np, 0);
 		if (!dload_type_addr) {

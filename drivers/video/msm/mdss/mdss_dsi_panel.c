@@ -270,16 +270,20 @@ disp_en_gpio_err:
 	return rc;
 }
 
+extern char spec_char_seq[32];
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_panel_info *pinfo = NULL;
 	int i, rc = 0;
+	static char panel_id[2];
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
+
+	strncpy(panel_id, spec_char_seq, 2);
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -348,7 +352,11 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+
+		if (strcmp (panel_id , "5A") == 0)
+			gpio_set_value((ctrl_pdata->rst_gpio), 1);
+		else
+			gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
@@ -597,6 +605,8 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 	mdss_dsi_panel_cmds_send(ctrl_pdata, pcmds, flags);
 }
 
+extern int lm3697_bl_set(int bl_level);
+
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
@@ -625,6 +635,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		led_trigger_event(bl_led_trigger, bl_level);
 		break;
 	case BL_PWM:
+		lm3697_bl_set(bl_level);
 		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
 		break;
 	case BL_DCS_CMD:

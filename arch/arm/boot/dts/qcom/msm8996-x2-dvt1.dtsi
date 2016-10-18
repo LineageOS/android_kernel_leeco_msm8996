@@ -1,0 +1,354 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8996-mtp.dtsi"
+#include "msm8996-pinctrl-x2.dtsi"
+#include "dsi-panel-truly-dualmipi-cmd-x2-dvt1.dtsi"
+#include "letv-tp-synaptics-dsx-i2c.dtsi"
+#include "msm8996-camera-sensor-x2-dvt1.dtsi"
+#include "letv-ft-hideep-i2c.dtsi"
+
+&sdhc_2 {
+	status = "disabled";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_truly_cmd>;
+	/delete-property/ vddio-supply;
+	qcom,platform-te-gpio = <&tlmm 97 0>;
+	qcom,platform-reset-gpio = <&tlmm 24 0>;
+	/delete-property/ qcom,platform-bklight-en-gpio;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_truly_cmd>;
+	/delete-property/ vddio-supply;
+	qcom,platform-te-gpio = <&tlmm 97 0>;
+	qcom,platform-reset-gpio = <&tlmm 24 0>;
+	/delete-property/ qcom,platform-bklight-en-gpio;
+};
+
+&lab_regulator {
+	qcom,qpnp-lab-init-lcd-voltage = <5900000>;
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-init-lcd-voltage = <5900000>;
+};
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d800 {
+			qcom,fs-curr-ua = <20000>;
+			qcom,led-strings-list = [00 01];
+		};
+	};
+
+	qcom,pm8994@0 {
+		/* configure pm8994 MPP2 as back-light of touch key */
+		touch_key_led: qcom,leds@a100 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa100 0x100>;
+			status = "okay";
+
+			qcom,led_mpp_2 {
+				label = "mpp";
+				linux,name = "button-backlight";
+				linux,default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,current-setting = <5>;
+				qcom,max-current = <40>;
+				qcom,id = <6>;
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>; /* current sink mode */
+				qcom,mode = "manual";
+			};
+		};
+
+		/*long press power key hardreset,  long press power+vol_donw into ramdump mode*/
+		qcom,power-on@800 {
+			qcom,pon_1 {
+				qcom,s1-timer = <6720>;
+				qcom,s2-type = <7>;
+			};
+
+			qcom,pon_3 {
+				qcom,s1-timer = <4480>;
+				qcom,s2-type = <1>;
+			};
+		};
+	};
+};
+
+&dsi_dual_truly_cmd {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,cont-splash-enabled;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+
+	qcom,mdss-dsi-panel-timings-8996 = [22 1e 07 08 04 03 04 a0
+		22 1e 07 08 04 03 04 a0
+		22 1e 07 08 04 03 04 a0
+		22 1e 07 08 04 03 04 a0
+		 22 18 07 08 04 03 04 a0];
+};
+
+&usb_otg_switch {
+	status = "disabled";
+};
+
+&pmi8994_gpios {
+	/delete-node/ gpio@c000; /* PMI8994 GPIO 1 */
+	/delete-node/ gpio@c100; /* PMI8994 GPIO 2 */
+	/delete-node/ gpio@c200; /* PMI8994 GPIO 3 */
+	/delete-node/ gpio@c300; /* PMI8994 GPIO 4 */
+	/delete-node/ gpio@c400; /* PMI8994 GPIO 5 */
+	/delete-node/ gpio@c600; /* PMI8994 GPIO 7 */
+	/delete-node/ gpio@c700; /* PMI8994 GPIO 8 */
+	/delete-node/ gpio@c900; /* PMI8994 GPIO 10 */
+
+	gpio@c800 { /* GPIO 9 */ /* cclogic reset enable gpio */
+		qcom,mode = <1>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+};
+
+&pm8994_gpios {
+	/delete-node/ gpio@c200; /* PM8996 GPIO 3 */
+	/delete-node/ gpio@c400; /* PM8996 GPIO 5 */
+	/delete-node/ gpio@c500; /* PM8996 GPIO 6 */
+	/delete-node/ gpio@c600; /* PM8996 GPIO 7 */
+	/delete-node/ gpio@c900; /* PM8996 GPIO 10 */
+	/delete-node/ gpio@cb00; /* PM8996 GPIO 12 */
+	/delete-node/ gpio@cc00; /* PM8996 GPIO 13 */
+	/delete-node/ gpio@cd00; /* PM8996 GPIO 14 */
+
+	gpio@d500 { /* GPIO 22 */ /* cclogic cable interrupt gpio */
+		qcom,mode = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		status = "okay";
+	};
+};
+
+&slim_msm {
+	tasha_codec {
+		qcom,cdc-micbias1-mv = <1800>;
+		qcom,cdc-micbias2-mv = <2700>;
+		qcom,cdc-micbias3-mv = <1800>;
+		qcom,cdc-micbias4-mv = <1800>;
+
+		/delete-node/ wsa881x@20170211;
+		/delete-node/ wsa881x@20170212;
+		/delete-node/ wsa881x@21170213;
+		/delete-node/ wsa881x@21170214;
+	};
+};
+
+&soc {
+	i2c@75ba000 {
+		synaptics@20 {
+			status = "disabled";
+			synaptics,button-map = <158 139 102>;
+		};
+		synaptics_dsx@4b {
+			synaptics,report-pressure-hideep = <0>;
+		};
+	};
+	i2c@75b9000 {
+		hideep_z@6c {
+			status = "disabled";
+			hideep,project_name = "x2";
+		};
+	};
+
+	/delete-node/ gen-vkeys;
+
+	gpio_keys {
+		/delete-node/ cam_focus;
+	};
+
+	/delete-node/ flash_led;
+
+	sound-9335 {
+		qcom,model = "msm8996-tasha-mtp-snd-card";
+
+		qcom,audio-routing =
+			"AIF4 VI", "MCLK",
+			"RX_BIAS", "MCLK",
+			"MADINPUT", "MCLK",
+			"AMIC2", "MIC BIAS2",
+			"MIC BIAS2", "Headset Mic",
+			"AMIC3", "MIC BIAS2",
+			"MIC BIAS2", "ANCRight Headset Mic",
+			"AMIC4", "MIC BIAS2",
+			"MIC BIAS2", "ANCLeft Headset Mic",
+			"AMIC1", "MIC BIAS1",
+			"MIC BIAS1", "Handset Mic",
+			"AMIC4", "MIC BIAS4",
+			"MIC BIAS4", "REC ANC Analog Mic",
+			"AMIC5", "MIC BIAS3",
+			"MIC BIAS3", "ANC Analog Mic",
+			"AMIC6", "MIC BIAS3",
+			"MIC BIAS3", "Analog Mic6",
+			"DMIC0", "MIC BIAS1",
+			"MIC BIAS1", "Digital Mic0",
+			"DMIC1", "MIC BIAS1",
+			"MIC BIAS1", "Digital Mic1",
+			"DMIC2", "MIC BIAS3",
+			"MIC BIAS3", "Digital Mic2",
+			"DMIC3", "MIC BIAS3",
+			"MIC BIAS3", "Digital Mic3",
+			"DMIC4", "MIC BIAS4",
+			"MIC BIAS4", "Digital Mic4",
+			"DMIC5", "MIC BIAS4",
+			"MIC BIAS4", "Digital Mic5";
+
+		qcom,hdmi-audio-rx;
+		letv,smartpa-audio;
+		letv,hph_irq_detect = <0>;
+		asoc-codec = <&stub_codec>, <&hdmi_audio>;
+		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-audio-codec-rx";
+		/delete-property/ qcom,hph-en1-gpio;
+		/delete-property/ qcom,hph-en0-gpio;
+		/delete-property/ qcom,us-euro-gpios;
+		/delete-property/ qcom,wsa-devs;
+		/delete-property/ qcom,wsa-aux-dev-prefix;
+	};
+
+	ir-remote {
+		compatible = "qcom,ir-remote";
+		lable = "maxq616-v";
+		pinctrl-names = "ir_active", "ir_sleep";
+		pinctrl-0 = <&blsp2_uart6_active>;
+		pinctrl-1 = <&blsp2_uart6_sleep>;
+		qcom,ir-en-gpio = <&tlmm 74 0>;
+	};
+
+	blsp2_uart6: serial@075b4000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0x075b4000 0x1000>;
+		interrupts = <0 118 0>;
+		status = "disabled";
+
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_uart6_apps_clk>,
+		 <&clock_gcc clk_gcc_blsp2_ahb_clk>;
+        };
+};
+
+&blsp2_uart6 {
+	status = "ok";
+};
+
+&i2c_6 {
+	usb_cclogic@28 {
+		compatible = "analogix,ohio";
+		reg = <0x28>;
+		avdd33-supply = <&pm8994_l21>;
+		dvdd_io-supply = <&pm8994_s4>;
+		interrupt-extended = <&tlmm 73 0x3>,<&spmi_bus 0x0 0xd5 0x0>;
+		p-on-gpio = <&tlmm 81 0x0>;
+		reset-gpio = <&pmi8994_gpios 9 0x0>;
+		cbl-det-gpio = <&pm8994_gpios 22 0x0>;
+		intr-comm-gpio = <&tlmm 73 0x0>;
+		uart-sw-gpio = <&tlmm 132 0x0>;
+		uart-sw2-gpio = <&tlmm 21 0x0>;
+		ad-sel-gpio = <&tlmm 25 0x0>;
+	};
+};
+
+&i2c_7 {
+	silabs4705@11 { /* SiLabs FM chip, slave id 0x11*/
+		status = "disabled";
+	};
+};
+
+&i2c_8 {
+	tfa9890@34 { /* tfa9890 smartpa device */
+		compatible = "nxp,tfa9890";
+		reg = <0x34>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <122 0x00>;
+		irq-gpio = <&tlmm 122 0x00>;
+		reset-gpio = <&tlmm 90 0x00>;
+	};
+
+	at24@51 {
+		compatible = "atmel,24c32";
+		reg = <0x51>;
+	};
+
+};
+&pm8994_mpps {
+	/* Remove pm8994 MPP2 reference function, because it is
+	configured as back-light of touch key */
+	/delete-node/ mpp@a100; /* MPP 2 */
+};
+
+/*haptics start*/
+&pmi8994_haptics {
+	status = "disabled";
+};
+
+&i2c_9 {
+	drv2604l@5a {
+		status = "ok";
+		compatible = "ti,drv2604l";
+		reg = <0x5a>;
+		input-mode = <1>;
+		loop-mode = <1>;
+		rtp-format = <0>;
+		actuator-type = <1>;
+		frequency = <204>;
+		vib-rated-mv = <2000>;
+		vib-overdrive-mv = <2500>;
+		enable-gpio = <&tlmm 38 0>;
+	};
+};
+/*haptics end*/
+
+/{
+	mtp_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "batterydata-max-plus-3395mah.dtsi"
+	};
+};
+
+&uartblsp2dm1 {
+        pinctrl-names = "default", "sleep";
+        pinctrl-0 = <&uart_console_active>;
+        pinctrl-1 = <&uart_console_sleep>;
+};
+
+&qusb_phy0 {
+        qcom,qusb-phy-init-seq = <0x78 0x80
+                                0xAC 0x84
+                                0x94 0x88
+                                0xCF 0x8C
+                                0x30 0x08
+                                0x79 0x0C
+                                0x21 0x10
+                                0x14 0x9C
+                                0x80 0x04
+                                0x9F 0x1C
+                                0x00 0x18>;
+};
+&spi_11 {
+	status = "disabled";
+};

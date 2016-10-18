@@ -29,6 +29,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/power-on.h>
+#include <linux/panic_reason.h>
 
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
@@ -92,6 +93,8 @@
 #define QPNP_PON_S3_DBC_CTL(pon)		((pon)->base + 0x75)
 #define QPNP_PON_SMPL_CTL(pon)			((pon)->base + 0x7F)
 #define QPNP_PON_TRIGGER_EN(pon)		((pon)->base + 0x80)
+
+#define QPNP_PON_DVDD_RB_SPARE(pon)		((pon)->base + 0x8D)
 #define QPNP_PON_XVDD_RB_SPARE(pon)		((pon)->base + 0x8E)
 #define QPNP_PON_SOFT_RB_SPARE(pon)		((pon)->base + 0x8F)
 #define QPNP_PON_SEC_ACCESS(pon)		((pon)->base + 0xD0)
@@ -297,6 +300,9 @@ static const char * const qpnp_poff_reason[] = {
  */
 static int warm_boot;
 module_param(warm_boot, int, 0);
+
+unsigned int poff_reason;
+EXPORT_SYMBOL(poff_reason);
 
 static int
 qpnp_pon_masked_write(struct qpnp_pon *pon, u16 addr, u8 mask, u8 val)
@@ -825,6 +831,9 @@ static irqreturn_t qpnp_kpdpwr_irq(int irq, void *_pon)
 
 static irqreturn_t qpnp_kpdpwr_bark_irq(int irq, void *_pon)
 {
+	struct qpnp_pon *pon = _pon;
+	set_panic_trig_rsn(TRIG_LONG_PRESS_PWR_KEY);
+	dev_emerg(&pon->spmi->dev, "qpnp_kpdpwr_bark_irq!\n");
 	return IRQ_HANDLED;
 }
 
@@ -841,6 +850,9 @@ static irqreturn_t qpnp_resin_irq(int irq, void *_pon)
 
 static irqreturn_t qpnp_kpdpwr_resin_bark_irq(int irq, void *_pon)
 {
+	struct qpnp_pon *pon = _pon;
+	set_panic_trig_rsn(TRIG_LONG_PRESS_PWR_KEY);
+	dev_emerg(&pon->spmi->dev, "qpnp_kpdpwr_resin_bark_irq!\n");
 	return IRQ_HANDLED;
 }
 
@@ -1742,6 +1754,7 @@ static struct kernel_param_ops smpl_en_ops = {
 
 module_param_cb(smpl_en, &smpl_en_ops, &smpl_en, 0644);
 
+#ifndef CONFIG_PANIC_REASON_USE_XVDD_RB_REG
 static bool dload_on_uvlo;
 
 static int qpnp_pon_debugfs_uvlo_dload_get(char *buf,
@@ -1814,6 +1827,7 @@ static struct kernel_param_ops dload_on_uvlo_ops = {
 };
 
 module_param_cb(dload_on_uvlo, &dload_on_uvlo_ops, &dload_on_uvlo, 0644);
+#endif
 
 #if defined(CONFIG_DEBUG_FS)
 
@@ -2263,6 +2277,8 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 		pon->is_spon = true;
 	} else {
 		boot_reason = ffs(pon_sts);
+		if (poff_sts)
+			poff_reason = ffs(poff_sts);
 	}
 
 	/* config whether store the hard reset reason */
@@ -2271,6 +2287,7 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 					"qcom,store-hard-reset-reason");
 
 	qpnp_pon_debugfs_init(spmi);
+
 	return 0;
 }
 
@@ -2319,6 +2336,8 @@ static void __exit qpnp_pon_exit(void)
 	return spmi_driver_unregister(&qpnp_pon_driver);
 }
 module_exit(qpnp_pon_exit);
+
+#include "qpnp-power-on_letv.c"
 
 MODULE_DESCRIPTION("QPNP PMIC POWER-ON driver");
 MODULE_LICENSE("GPL v2");

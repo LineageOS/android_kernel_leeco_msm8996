@@ -49,6 +49,7 @@
 #include <linux/suspend.h>
 #include <linux/uaccess.h>
 #include <linux/uio_driver.h>
+#include <linux/panic_reason.h>
 
 #define CREATE_TRACE_POINTS
 #define TRACE_MSM_THERMAL
@@ -2706,6 +2707,7 @@ static void msm_thermal_bite(int zone_id, long temp)
 	int ret = 0;
 
 	ret = zone_id_to_tsen_id(zone_id, &tsens_id);
+	set_panic_trig_rsn(TRIG_OVER_TEMPERATURE);
 	if (ret < 0) {
 		pr_err("Zone:%d reached temperature:%ld. Err = %d System reset\n",
 			zone_id, temp, ret);

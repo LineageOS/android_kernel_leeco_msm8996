@@ -765,6 +765,16 @@ static int hid_scan_report(struct hid_device *hid)
 	hid->group = HID_GROUP_GENERIC;
 
 	/*
+	 * LincolnUSB: hack the scan function to support LECV Cool Pro1
+	 */
+	switch (hid->vendor) {
+	case USB_VENDOR_ID_LETV:
+		hid->group = HID_GROUP_LETV;
+		break;
+	}
+
+
+	/*
 	 * The parsing is simpler than the one in hid_open_report() as we should
 	 * be robust against hid errors. Those errors will be raised by
 	 * hid_open_report() anyway.
@@ -1397,6 +1407,7 @@ int hid_report_raw_event(struct hid_device *hid, int type, u8 *data, int size,
 	int rsize, csize = size;
 	u8 *cdata = data;
 	int ret = 0;
+	int report_size_with_id;
 
 	report = hid_get_report(report_enum, data);
 	if (!report)
@@ -1426,12 +1437,18 @@ int hid_report_raw_event(struct hid_device *hid, int type, u8 *data, int size,
 			goto out;
 	}
 
+	report_size_with_id = (report->size >> 3) + (report_enum->numbered ? 1 : 0);
+
 	if (hid->claimed != HID_CLAIMED_HIDRAW && report->maxfield) {
-		for (a = 0; a < report->maxfield; a++)
-			hid_input_field(hid, report->field[a], cdata, interrupt);
-		hdrv = hid->driver;
-		if (hdrv && hdrv->report)
-			hdrv->report(hid, report);
+		while (csize > 0) {
+			for (a = 0; a < report->maxfield; a++)
+				hid_input_field(hid, report->field[a], cdata, interrupt);
+			hdrv = hid->driver;
+			if (hdrv && hdrv->report)
+				hdrv->report(hid, report);
+			csize -= report_size_with_id;
+			cdata += report_size_with_id;
+		}
 	}
 
 	if (hid->claimed & HID_CLAIMED_INPUT)
@@ -1976,6 +1993,18 @@ static const struct hid_device_id hid_have_special_driver[] = {
 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_MICROSOFT, USB_DEVICE_ID_MS_PRESENTER_8K_BT) },
 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_NINTENDO, USB_DEVICE_ID_NINTENDO_WIIMOTE) },
 	{ HID_BLUETOOTH_DEVICE(USB_VENDOR_ID_NINTENDO, USB_DEVICE_ID_NINTENDO_WIIMOTE2) },
+#if IS_ENABLED(CONFIG_HID_OVR)
+	{ HID_USB_DEVICE(USB_VENDOR_ID_OVR, USB_DEVICE_ID_OVR_TRACKER) },
+	{ HID_USB_DEVICE(USB_VENDOR_ID_OVR, USB_DEVICE_ID_OVR_KTRACKER) },
+	{ HID_USB_DEVICE(USB_VENDOR_ID_OVR, USB_DEVICE_ID_OVR_LATENCY_TESTER) },
+	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_GEARVR_1) },
+	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_GEARVR_2) },
+	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_GEARVR_3) },
+	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_GEARVR_4) },
+	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_GEARVR_5) },
+	{ HID_USB_DEVICE(USB_VENDOR_ID_SAMSUNG_ELECTRONICS, USB_DEVICE_ID_SAMSUNG_GEARVR_6) },
+//    { HID_USB_DEVICE(USB_VENDOR_ID_LETV, USB_DEVICE_ID_LECV_COOLPRO_1) },  //LincolnUSB
+#endif
 	{ }
 };
 

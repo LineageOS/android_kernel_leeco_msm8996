@@ -1599,6 +1599,7 @@ enum msm_camera_vreg_name_t {
 	CAM_VIO,
 	CAM_VANA,
 	CAM_VAF,
+	CAM_V_CUSTOM1,
 	CAM_VREG_MAX,
 };
 

@@ -491,6 +491,7 @@ static int enter_state(suspend_state_t state)
 	return error;
 }
 
+int utc_pm_mark_enabled = 0;
 static void pm_suspend_marker(char *annotation)
 {
 	struct timespec ts;
@@ -501,6 +502,16 @@ static void pm_suspend_marker(char *annotation)
 	pr_info("PM: suspend %s %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
 		annotation, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 		tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
+
+	if (!utc_pm_mark_enabled)
+		utc_pm_mark_enabled = 1;
+
+	if (0 == (strncmp("entry", annotation ,strlen(annotation)))) {
+		/* dont calibrate time, only use local time. */
+		do_prk_utc_cali(0);
+	} else {
+		do_prk_utc_cali(ts.tv_sec);
+	}
 }
 
 /**

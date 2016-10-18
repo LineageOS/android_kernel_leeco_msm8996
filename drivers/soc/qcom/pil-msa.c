@@ -228,38 +228,44 @@ static int pil_mss_restart_reg(struct q6v5_data *drv, u32 mss_restart)
 
 	return ret;
 }
-
+int debug_PBL_mba = 0;
 static int pil_msa_wait_for_mba_ready(struct q6v5_data *drv)
 {
 	struct device *dev = drv->desc.dev;
 	int ret;
 	u32 status;
-
+	debug_PBL_mba = 0;
 	/* Wait for PBL completion. */
 	ret = readl_poll_timeout(drv->rmb_base + RMB_PBL_STATUS, status,
 		status != 0, POLL_INTERVAL_US, pbl_mba_boot_timeout_ms * 1000);
 	if (ret) {
 		dev_err(dev, "PBL boot timed out\n");
+		debug_PBL_mba = -1;
 		return ret;
 	}
 	if (status != STATUS_PBL_SUCCESS) {
 		dev_err(dev, "PBL returned unexpected status %d\n", status);
+		debug_PBL_mba = -2;
 		return -EINVAL;
 	}
-
+	debug_PBL_mba = 1;
+	printk("PBL completion");
 	/* Wait for MBA completion. */
 	ret = readl_poll_timeout(drv->rmb_base + RMB_MBA_STATUS, status,
 		status != 0, POLL_INTERVAL_US, pbl_mba_boot_timeout_ms * 1000);
 	if (ret) {
 		dev_err(dev, "MBA boot timed out\n");
+		debug_PBL_mba = -3;
 		return ret;
 	}
 	if (status != STATUS_XPU_UNLOCKED &&
 	    status != STATUS_XPU_UNLOCKED_SCRIBBLED) {
 		dev_err(dev, "MBA returned unexpected status %d\n", status);
+		debug_PBL_mba = -4;
 		return -EINVAL;
 	}
-
+	debug_PBL_mba = 2;
+	printk("MBA completion");
 	return 0;
 }
 
@@ -402,7 +408,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 
 	if (drv->mba_dp_phys)
 		start_addr = drv->mba_dp_phys;
-
+	printk("pil_mss_reset entered\n");
 	/*
 	 * Bring subsystem out of reset and enable required
 	 * regulators and clocks.
@@ -410,12 +416,12 @@ static int pil_mss_reset(struct pil_desc *pil)
 	ret = pil_mss_power_up(drv);
 	if (ret)
 		goto err_power;
-
+	printk("bring modem out of reset\n");
 	/* Deassert reset to subsystem and wait for propagation */
 	ret = pil_mss_restart_reg(drv, 0);
 	if (ret)
 		goto err_restart;
-
+	printk("Deassert reset to subsystem and wait for propagation\n");
 	ret = pil_mss_enable_clks(drv);
 	if (ret)
 		goto err_clks;
@@ -435,7 +441,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 		writel_relaxed((start_addr >> 4) & 0x0FFFFFF0,
 				drv->reg_base + QDSP6SS_RST_EVB);
 	}
-
+	printk("Program Image Address done\n");
 	/* Program DP Address */
 	if (drv->dp_size) {
 		writel_relaxed(start_addr + SZ_1M, drv->rmb_base +
@@ -448,11 +454,11 @@ static int pil_mss_reset(struct pil_desc *pil)
 	}
 	/* Make sure RMB regs are written before bringing modem out of reset */
 	mb();
-
+	printk("Program DP Address done\n");
 	ret = pil_q6v5_reset(pil);
 	if (ret)
 		goto err_q6v5_reset;
-
+	printk("pil_q6v5_reset done\n");
 	/* Wait for MBA to start. Check for PBL and MBA errors while waiting. */
 	if (drv->self_auth) {
 		ret = pil_msa_wait_for_mba_ready(drv);
@@ -547,14 +553,14 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	memcpy(mba_dp_virt, data, count);
 	/* Ensure memcpy of the MBA memory is done before loading the DP */
 	wmb();
-
+	printk("memcpy of the MBA memory is done\n");
 	/* Load the DP image into memory */
 	if (drv->mba_dp_size > SZ_1M) {
 		memcpy(mba_dp_virt + SZ_1M, dp_fw->data, dp_fw->size);
 		/* Ensure memcpy is done before powering up modem */
 		wmb();
 	}
-
+	printk("memcpy of the DP image is done\n");
 	if (pil->subsys_vmid > 0) {
 		ret = pil_assign_mem_to_subsys(pil, drv->mba_dp_phys,
 							drv->mba_dp_size);
@@ -563,7 +569,7 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 			goto err_mba_data;
 		}
 	}
-
+	printk("scm_call is done\n");
 	ret = pil_mss_reset(pil);
 	if (ret) {
 		dev_err(pil->dev, "MBA boot failed.\n");
