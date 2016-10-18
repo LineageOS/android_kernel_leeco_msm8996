@@ -681,7 +681,6 @@ static int functionfs_ready_callback(struct ffs_data *ffs)
 		return -ENODEV;
 
 	mutex_lock(&dev->mutex);
-
 	config->data = ffs;
 	config->opened = true;
 
@@ -689,7 +688,6 @@ static int functionfs_ready_callback(struct ffs_data *ffs)
 		android_enable(dev);
 
 	mutex_unlock(&dev->mutex);
-
 	return 0;
 }
 

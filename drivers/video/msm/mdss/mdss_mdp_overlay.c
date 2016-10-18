@@ -27,6 +27,7 @@
 #include <linux/sort.h>
 #include <linux/sw_sync.h>
 #include <linux/kmemleak.h>
+#include <asm/div64.h>
 
 #include <soc/qcom/event_timer.h>
 #include <linux/msm-bus.h>
@@ -1321,14 +1322,22 @@ int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 		mdss_mdp_release_splash_pipe(mfd);
 		return 0;
 	} else if (mfd->panel_info->cont_splash_enabled) {
-		mutex_lock(&mdp5_data->list_lock);
-		rc = list_empty(&mdp5_data->pipes_used);
-		mutex_unlock(&mdp5_data->list_lock);
-		if (rc) {
-			pr_debug("empty kickoff on fb%d during cont splash\n",
+		if (mdp5_data->allow_kickoff) {
+			mdp5_data->allow_kickoff = false;
+		} else {
+			mutex_lock(&mdp5_data->list_lock);
+			rc = list_empty(&mdp5_data->pipes_used);
+			mutex_unlock(&mdp5_data->list_lock);
+			if (rc) {
+				pr_debug("empty kickoff on fb%d during cont splash\n",
 					mfd->index);
-			return 0;
+				return -EPERM;
+			}
 		}
+	} else if (mdata->handoff_pending) {
+		pr_warn("fb%d: commit while splash handoff pending\n",
+				mfd->index);
+		return -EPERM;
 	}
 
 	pr_debug("starting fb%d overlay\n", mfd->index);
@@ -1754,7 +1763,8 @@ int mdss_mode_switch_post(struct msm_fb_data_type *mfd, u32 mode)
 		 * DCS to panel.
 		 */
 		frame_rate = mdss_panel_get_framerate
-			(&(ctl->panel_data->panel_info));
+			(&(ctl->panel_data->panel_info),
+			FPS_RESOLUTION_HZ);
 		if (!(frame_rate >= 24 && frame_rate <= 240))
 			frame_rate = 24;
 		frame_rate = ((1000/frame_rate) + 1);
@@ -1881,6 +1891,649 @@ set_roi:
 	mdss_mdp_set_roi(ctl, &l_roi, &r_roi);
 }
 
+static bool __is_supported_candence(int cadence)
+{
+	return (cadence == FRC_CADENCE_22) ||
+		(cadence == FRC_CADENCE_23) ||
+		(cadence == FRC_CADENCE_23223);
+}
+
+/* compute how many vsyncs between these 2 timestamp */
+static int __compute_vsync_diff(s64 cur_ts,
+	s64 base_ts, int display_fp1000s)
+{
+	int vsync_diff;
+	int round_up = 0;
+	s64 ts_diff = (cur_ts - base_ts) * display_fp1000s;
+
+	do_div(ts_diff, 1000000);
+	vsync_diff = (int)ts_diff;
+	/*
+	 * In most case DIV_ROUND_UP_ULL is enough, but calculation might be
+	 * impacted by possible jitter when vsync_diff is close to boundaries.
+	 * E.g., we have 30fps like 12.0->13.998->15.999->18.0->19.998->21.999
+	 * and 7460.001->7462.002->7464.0->7466.001->7468.002. DIV_ROUND_UP_ULL
+	 * fails in the later case.
+	 */
+	round_up = ((vsync_diff % 1000) >= 900) ? 1 : 0;
+	/* round up vsync count to accommodate fractions: base & diff */
+	vsync_diff = (vsync_diff / 1000) + round_up + 1;
+	return vsync_diff;
+}
+
+static bool __validate_frc_info(struct mdss_mdp_frc_info *frc_info)
+{
+	struct mdss_mdp_frc_data *cur_frc = &frc_info->cur_frc;
+	struct mdss_mdp_frc_data *last_frc = &frc_info->last_frc;
+	struct mdss_mdp_frc_data *base_frc = &frc_info->base_frc;
+
+	pr_debug("frc: cur_fcnt=%d, cur_ts=%lld, last_fcnt=%d, last_ts=%lld, base_fcnt=%d, base_ts=%lld last_v_cnt=%d, last_repeat=%d base_v_cnt=%d\n",
+		cur_frc->frame_cnt, cur_frc->timestamp,
+		last_frc->frame_cnt, last_frc->timestamp,
+		base_frc->frame_cnt, base_frc->timestamp,
+		frc_info->last_vsync_cnt, frc_info->last_repeat,
+		frc_info->base_vsync_cnt);
+
+	if ((cur_frc->frame_cnt == last_frc->frame_cnt) &&
+			(cur_frc->timestamp == last_frc->timestamp)) {
+		/* repeated frame: video w/ UI layers */
+		pr_debug("repeated frame input\n");
+		return false;
+	}
+
+	if ((cur_frc->timestamp < base_frc->timestamp) ||
+			(cur_frc->timestamp < last_frc->timestamp)) {
+		/* stale timestamp */
+		pr_err("incorrect video timestamp, base %lld - cur %lld\n",
+			base_frc->timestamp, cur_frc->timestamp);
+		return false;
+	}
+
+	return true;
+}
+
+static void __init_cadence_calc(struct mdss_mdp_frc_cadence_calc *calc)
+{
+	memset(calc, 0, sizeof(struct mdss_mdp_frc_cadence_calc));
+}
+
+static int __calculate_cadence_id(struct mdss_mdp_frc_info *frc_info, int cnt)
+{
+	struct mdss_mdp_frc_cadence_calc *calc = &frc_info->calc;
+	struct mdss_mdp_frc_data *first = &calc->samples[0];
+	struct mdss_mdp_frc_data *last = &calc->samples[cnt-1];
+	s64 ts_diff =
+		(last->timestamp - first->timestamp)
+				* frc_info->display_fp1000s;
+	u32 fcnt_diff =
+		last->frame_cnt - first->frame_cnt;
+	u32 fps_ratio;
+	u32 cadence_id = FRC_CADENCE_NONE;
+
+	do_div(ts_diff, fcnt_diff);
+	fps_ratio = (u32)ts_diff;
+
+	if ((fps_ratio > FRC_CADENCE_23_RATIO_LOW) &&
+			(fps_ratio < FRC_CADENCE_23_RATIO_HIGH))
+		cadence_id = FRC_CADENCE_23;
+	else if ((fps_ratio > FRC_CADENCE_22_RATIO_LOW) &&
+			(fps_ratio < FRC_CADENCE_22_RATIO_HIGH))
+		cadence_id = FRC_CADENCE_22;
+	else if ((fps_ratio > FRC_CADENCE_23223_RATIO_LOW) &&
+			(fps_ratio < FRC_CADENCE_23223_RATIO_HIGH))
+		cadence_id = FRC_CADENCE_23223;
+
+	pr_debug("frc: first=%lld, last=%lld, cnt=%d, fps_ratio=%u, cadence_id=%d\n",
+			first->timestamp, last->timestamp, fcnt_diff,
+			fps_ratio, cadence_id);
+
+	return cadence_id;
+}
+
+static void __check_known_cadence(struct mdss_mdp_frc_info *frc_info)
+{
+	struct mdss_mdp_frc_cadence_calc *calc = &frc_info->calc;
+
+	if (calc->sample_cnt < FRC_CADENCE_DETECT_WINDOW) {
+		calc->samples[calc->sample_cnt++] = frc_info->cur_frc;
+	} else {
+		/*
+		 * Get enough samples and check known candence. FRC_CADENCE_23
+		 * and FRC_CADENCE_22 need at least 2 deltas, and at least 5
+		 * deltas are necessary for computing FRC_CADENCE_23223.
+		 */
+		u32 cadence_id = FRC_CADENCE_23;
+		u32 sample_cnt[FRC_MAX_SUPPORT_CADENCE] = {0, 5, 5, 6};
+
+		while (cadence_id < FRC_CADENCE_FREE_RUN) {
+			if (cadence_id == __calculate_cadence_id(frc_info,
+					sample_cnt[cadence_id]))
+				break;
+			cadence_id++;
+		}
+
+		frc_info->cadence_id = cadence_id;
+		pr_info("frc: cadence_id=%d\n", cadence_id);
+	}
+}
+
+static void __reset_seq_gen(struct mdss_mdp_frc_seq_gen *gen)
+{
+	memset(gen, 0, sizeof(struct mdss_mdp_frc_seq_gen));
+	gen->pos = -EBADSLT;
+	gen->base = -1;
+}
+
+static void __init_seq_gen(struct mdss_mdp_frc_seq_gen *gen, int cadence_id)
+{
+	int cadence22[2] = {2, 2};
+	int cadence23[2] = {2, 3};
+	int cadence23223[5] = {2, 3, 2, 2, 3};
+	int *cadence = NULL;
+	int len = 0;
+
+	switch (cadence_id) {
+	case FRC_CADENCE_22:
+		cadence = cadence22;
+		len = 2;
+		break;
+	case FRC_CADENCE_23:
+		cadence = cadence23;
+		len = 2;
+		break;
+	case FRC_CADENCE_23223:
+		cadence = cadence23223;
+		len = 5;
+		break;
+	default:
+		break;
+	}
+
+	if (len > 0) {
+		memcpy(gen->seq, cadence, len * sizeof(int));
+		gen->len = len;
+		gen->retry = 0;
+	}
+
+	pr_debug("init sequence, cadence=%d len=%d\n", cadence_id, len);
+}
+
+static int __match_sequence(struct mdss_mdp_frc_seq_gen *gen)
+{
+	int pos, i;
+	int len = gen->len;
+
+	/* use default position if many attempts have failed */
+	if (gen->retry++ >= FRC_CADENCE_SEQUENCE_MAX_RETRY)
+		return 0;
+
+	for (pos = 0; pos < len; pos++) {
+		for (i = 0; i < len; i++) {
+			if (gen->cache[(i+len-1) % len]
+					!= gen->seq[(pos+i) % len])
+				break;
+		}
+		if (i == len)
+			return pos;
+	}
+
+	return -EBADSLT;
+}
+
+static void __reset_cache(struct mdss_mdp_frc_seq_gen *gen)
+{
+	memset(gen->cache, 0, gen->len * sizeof(int));
+	gen->base = -1;
+}
+
+static void __cache_last(struct mdss_mdp_frc_seq_gen *gen, int expected_vsync)
+{
+	int i = 0;
+
+	/* only cache last in case of pre-defined cadence */
+	if ((gen->pos < 0) && (gen->len > 0)) {
+		/* set first sample's expected vsync as base */
+		if (gen->base < 0) {
+			gen->base = expected_vsync;
+			return;
+		}
+
+		/* cache is 0 if not filled */
+		while (gen->cache[i] && (i < gen->len))
+			i++;
+
+		gen->cache[i] = expected_vsync - gen->base;
+		gen->base = expected_vsync;
+
+		if (i == (gen->len - 1)) {
+			/* find init pos in sequence when cache is full */
+			gen->pos = __match_sequence(gen);
+			/* reset cache and re-collect samples for matching */
+			if (gen->pos < 0)
+				__reset_cache(gen);
+		}
+	}
+}
+
+static inline bool __is_seq_gen_matched(struct mdss_mdp_frc_seq_gen *gen)
+{
+	return (gen->len > 0) && (gen->pos >= 0);
+}
+
+static int __expected_repeat(struct mdss_mdp_frc_seq_gen *gen)
+{
+	int next_repeat = -1;
+
+	if (__is_seq_gen_matched(gen)) {
+		next_repeat = gen->seq[gen->pos];
+		gen->pos = (gen->pos + 1) % gen->len;
+	}
+
+	return next_repeat;
+}
+
+static bool __is_display_fps_changed(struct mdss_mdp_frc_info *frc_info,
+	u32 display_fp1000s)
+{
+	bool display_fps_changed = false;
+
+	if (frc_info->display_fp1000s != display_fp1000s) {
+		pr_info("fps changes from %d to %d\n",
+			frc_info->display_fp1000s, display_fp1000s);
+		display_fps_changed = true;
+	}
+
+	frc_info->display_fp1000s = display_fp1000s;
+
+	return display_fps_changed;
+}
+
+static bool __is_video_fps_changed(struct mdss_mdp_frc_info *frc_info)
+{
+	bool video_fps_changed = false;
+
+	if ((frc_info->cur_frc.frame_cnt - frc_info->video_stat.frame_cnt)
+			== FRC_VIDEO_FPS_DETECT_WINDOW) {
+		s64 delta_t = frc_info->cur_frc.timestamp -
+			frc_info->video_stat.timestamp;
+
+		if (frc_info->video_stat.last_delta) {
+			video_fps_changed =
+				abs64(delta_t - frc_info->video_stat.last_delta)
+				> (FRC_VIDEO_FPS_CHANGE_THRESHOLD_US *
+					FRC_VIDEO_FPS_DETECT_WINDOW);
+
+			if (video_fps_changed)
+				pr_info("video fps changed from [%d]%lld to [%d]%lld\n",
+					frc_info->video_stat.frame_cnt,
+					frc_info->video_stat.last_delta,
+					frc_info->cur_frc.frame_cnt,
+					delta_t);
+		}
+
+		frc_info->video_stat.frame_cnt = frc_info->cur_frc.frame_cnt;
+		frc_info->video_stat.timestamp = frc_info->cur_frc.timestamp;
+		frc_info->video_stat.last_delta = delta_t;
+	}
+
+	return video_fps_changed;
+}
+
+static bool __is_video_seeking(struct mdss_mdp_frc_info *frc_info)
+{
+	s32 delta_f =
+		frc_info->cur_frc.frame_cnt - frc_info->last_frc.frame_cnt;
+	s64 ts_diff =
+		frc_info->cur_frc.timestamp - frc_info->last_frc.timestamp;
+	bool video_seek = false;
+
+	video_seek =
+		(delta_f == 1)
+			&& (abs(ts_diff) > FRC_VIDEO_TS_DELTA_THRESHOLD_US);
+
+	if (video_seek)
+		pr_info("video seeking: %lld -> %lld\n",
+			frc_info->last_frc.timestamp,
+			frc_info->cur_frc.timestamp);
+
+	return video_seek;
+}
+
+/*
+ * disable frc when dropping too many buffers, this might happens
+ * in some extreme cases like video is heavily loaded so any extra
+ * latency could make things worse.
+ */
+static void __collect_video_drop_stat(struct mdss_mdp_frc_info *frc_info)
+{
+	struct mdss_mdp_frc_drop_stat *drop_stat = &frc_info->drop_stat;
+
+	if (!drop_stat->drop_cnt) {
+		drop_stat->frame_cnt = frc_info->last_frc.frame_cnt;
+	} else if (drop_stat->drop_cnt > FRC_MAX_VIDEO_DROPPING_CNT) {
+		frc_info->drop_stat.drop_cnt = 0;
+		if ((frc_info->cur_frc.frame_cnt - drop_stat->frame_cnt)
+				< FRC_VIDEO_DROP_TOLERANCE_WINDOW) {
+			frc_info->cadence_id = FRC_CADENCE_DISABLE;
+			pr_err("disable frc because there're too many drops\n");
+		}
+	}
+
+	drop_stat->drop_cnt++;
+}
+
+static bool __is_buffer_dropped(struct mdss_mdp_frc_info *frc_info)
+{
+	int buffer_drop_cnt
+		= frc_info->cur_frc.frame_cnt - frc_info->last_frc.frame_cnt;
+	if (buffer_drop_cnt > 1) {
+		pr_info("video buffer drop from %d to %d\n",
+			frc_info->last_frc.frame_cnt,
+			frc_info->cur_frc.frame_cnt);
+		__collect_video_drop_stat(frc_info);
+	}
+	return buffer_drop_cnt > 1;
+}
+
+static bool __is_video_cnt_rollback(struct mdss_mdp_frc_info *frc_info)
+{
+	/* video frame_cnt is assumed to increase monotonically */
+	bool video_rollback
+		= (frc_info->cur_frc.frame_cnt < frc_info->last_frc.frame_cnt)
+			|| (frc_info->cur_frc.frame_cnt <
+				frc_info->base_frc.frame_cnt);
+
+	if (video_rollback)
+		pr_debug("video frame_cnt rolls back from %d to %d\n",
+			frc_info->last_frc.frame_cnt,
+			frc_info->cur_frc.frame_cnt);
+
+	return video_rollback;
+}
+
+static bool __is_video_pause(struct mdss_mdp_ctl *ctl,
+	struct mdss_mdp_frc_info *frc_info)
+{
+	bool video_pause =
+		(frc_info->cur_frc.frame_cnt - frc_info->last_frc.frame_cnt
+				== 1)
+		&& (ctl->vsync_cnt - frc_info->last_vsync_cnt >
+				FRC_VIDEO_PAUSE_THRESHOLD);
+
+	if (video_pause)
+		pr_info("video paused: vsync elapsed %d\n",
+			ctl->vsync_cnt - frc_info->last_vsync_cnt);
+
+	return video_pause;
+}
+
+/*
+ * Workaround for some cases that video has the same timestamp for
+ * different frame. E.g., video player might provide the same frame
+ * twice to codec when seeking/flushing.
+ */
+static bool __is_timestamp_duplicated(struct mdss_mdp_frc_info *frc_info)
+{
+	bool ts_dup =
+		(frc_info->cur_frc.frame_cnt != frc_info->last_frc.frame_cnt)
+			&& (frc_info->cur_frc.timestamp
+				== frc_info->last_frc.timestamp);
+
+	if (ts_dup)
+		pr_err("timestamp of frame %d and %d are duplicated\n",
+			frc_info->last_frc.frame_cnt,
+			frc_info->cur_frc.frame_cnt);
+
+	return ts_dup;
+}
+
+/*
+ * The first time of entry to FRC so we never set base_frc and base_vsync_cnt.
+ * It assumes that frc_info is reset at the beginning of FRC enable, and vsync
+ * count should not be 0 when setting base_frc.
+ */
+static bool __is_first_sample(struct mdss_mdp_frc_info *frc_info)
+{
+	return (frc_info->base_vsync_cnt == 0);
+}
+
+static bool __is_frc_disabled(struct mdss_mdp_frc_info *frc_info)
+{
+	/* cadence set to FREE_RUN means FRC is intentionally disabled */
+	return (frc_info->cadence_id == FRC_CADENCE_DISABLE);
+}
+
+static bool __need_reset_base(struct mdss_mdp_ctl *ctl,
+	struct mdss_mdp_frc_info *frc_info, int display_fp1000s)
+{
+	/*
+	 * base_frc needs reset in below cases since we need an accurate base
+	 * to calculate video's speed:
+	 *
+	 * 1) base_frc has never been set, e.g. first entry of this function.
+	 * 2) video frame_cnt has been rolled back by codec.
+	 * 3) buffer drop.
+	 * 4) video fast-foward or rewind.
+	 * 5) display fps has changed.
+	 * 6) video frame rate has changed.
+	 * 7) video pauses. it could be considered as lag case.
+	 * 8) duplicated timestamp for different frames which breaks FRC.
+	 */
+	return __is_first_sample(frc_info) ||
+		__is_video_cnt_rollback(frc_info) ||
+		__is_buffer_dropped(frc_info) ||
+		__is_video_seeking(frc_info) ||
+		__is_video_fps_changed(frc_info) ||
+		__is_display_fps_changed(frc_info, display_fp1000s) ||
+		__is_video_pause(ctl, frc_info) ||
+		__is_timestamp_duplicated(frc_info);
+}
+
+static void __set_frc_base(struct mdss_mdp_ctl *ctl,
+	struct mdss_mdp_frc_info *frc_info)
+{
+	if (!__is_frc_disabled(frc_info)) {
+		frc_info->base_vsync_cnt = ctl->vsync_cnt;
+		frc_info->base_frc = frc_info->cur_frc;
+		frc_info->last_frc = frc_info->cur_frc;
+		frc_info->last_repeat = 0;
+		frc_info->last_vsync_cnt = 0;
+		frc_info->cadence_id = FRC_CADENCE_NONE;
+		frc_info->video_stat.last_delta = 0;
+		frc_info->video_stat.frame_cnt = frc_info->cur_frc.frame_cnt;
+		frc_info->video_stat.timestamp = frc_info->cur_frc.timestamp;
+
+		__init_cadence_calc(&frc_info->calc);
+		__reset_seq_gen(&frc_info->gen);
+
+		pr_debug("frc_base: vsync_cnt=%d frame_cnt=%d timestamp=%lld\n",
+			frc_info->base_vsync_cnt, frc_info->cur_frc.frame_cnt,
+			frc_info->cur_frc.timestamp);
+	}
+}
+
+/*
+ * Ensure video is faster than display. Drop buffer might be a better choice
+ * since it will not introduce extra latency to pipeline.
+ * Currently increase video's phase offset to better align with vsync.
+ * This value needs tuning in various cases according to system latency.
+ */
+static int __video_phase_offset(struct mdss_mdp_frc_info *frc_info)
+{
+	return __is_supported_candence(frc_info->cadence_id) ? 2 : 0;
+}
+
+/* calculate when we'd like to kickoff current frame based on its timestamp */
+static int __calculate_remaining_vsync(struct msm_fb_data_type *mfd,
+	struct mdss_mdp_frc_info *frc_info)
+{
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	struct mdss_mdp_frc_data *cur_frc = &frc_info->cur_frc;
+	struct mdss_mdp_frc_data *base_frc = &frc_info->base_frc;
+	int vsync_diff, expected_vsync_cnt, remaining_vsync;
+
+	/* how many vsync intervals between current & base */
+	vsync_diff = __compute_vsync_diff(cur_frc->timestamp,
+			base_frc->timestamp, frc_info->display_fp1000s);
+
+	/* expected vsync where we'd like to kickoff current frame */
+	expected_vsync_cnt = frc_info->base_vsync_cnt + vsync_diff;
+	/* introduce more delay for better alignment with video */
+	expected_vsync_cnt += __video_phase_offset(frc_info);
+	/* how many remaining vsync we need display till kickoff */
+	remaining_vsync = expected_vsync_cnt - ctl->vsync_cnt;
+
+	/* cache last expected vsync to compute start pos in cadence */
+	__cache_last(&frc_info->gen, expected_vsync_cnt);
+
+	pr_debug("frc: expected_vsync_cnt=%d, cur_vsync_cnt=%d, remaining=%d\n",
+		expected_vsync_cnt, ctl->vsync_cnt, remaining_vsync);
+
+	return remaining_vsync;
+}
+
+/* tune latency computed previously if possible jitter exists */
+static int __tune_possible_jitter(struct msm_fb_data_type *mfd,
+	struct mdss_mdp_frc_info *frc_info, int remaining_vsync)
+{
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	int cadence_id = frc_info->cadence_id;
+	int remaining = remaining_vsync;
+	int expected_repeat = __expected_repeat(&frc_info->gen);
+
+	if (cadence_id && (expected_repeat > 0)) {
+		int expected_vsync_cnt = remaining + ctl->vsync_cnt;
+		/* how many times current frame will be repeated */
+		int cur_repeat = expected_vsync_cnt - frc_info->last_vsync_cnt;
+
+		remaining -= cur_repeat - expected_repeat;
+		pr_debug("frc: tune vsync, input=%d, output=%d, last_repeat=%d, cur_repeat=%d, expected_repeat=%d\n",
+			remaining_vsync, remaining, frc_info->last_repeat,
+			cur_repeat, expected_repeat);
+	}
+
+	return remaining;
+}
+
+/* compute how many vsync we still need to wait for keeping cadence */
+static int __calculate_remaining_repeat(struct msm_fb_data_type *mfd,
+	struct mdss_mdp_frc_info *frc_info)
+{
+	int remaining_vsync = __calculate_remaining_vsync(mfd, frc_info);
+
+	remaining_vsync =
+		__tune_possible_jitter(mfd, frc_info, remaining_vsync);
+
+	return remaining_vsync;
+}
+
+static int __repeat_current_frame(struct mdss_mdp_ctl *ctl, int repeat)
+{
+	int ret = 0;
+	int expected_vsync = ctl->vsync_cnt + repeat;
+	int cnt = 0;
+
+	while (ctl->vsync_cnt < expected_vsync) {
+		cnt++;
+		ret = ctl->ops.wait_vsync_fnc(ctl);
+		if (ret < 0)
+			break;
+	}
+
+	pr_debug("frc: wait for %d more vsync\n", cnt);
+
+	if (repeat && ret)
+		pr_err("wrong waiting, pending repeat %d\n", repeat);
+
+	return ret;
+}
+
+static int mdss_mdp_overlay_update_frc(struct msm_fb_data_type *mfd)
+{
+	struct mdss_mdp_ctl *ctl = mfd_to_ctl(mfd);
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	struct mdss_mdp_frc_info *frc_info = mdp5_data->frc_info;
+	struct mdss_mdp_frc_data *cur_frc = &frc_info->cur_frc;
+	struct mdss_mdp_frc_data *last_frc = &frc_info->last_frc;
+	u32 display_fp1000s;
+	int remaining_repeat = 0;
+	int ret = 0;
+
+	if (!ctl->ops.wait_vsync_fnc) {
+		pr_debug("wait vsync not supported\n");
+		return -EPERM;
+	}
+
+	if (__is_frc_disabled(frc_info))
+		goto FRC_UPDATE_EXIT;
+
+	display_fp1000s
+		= mdss_panel_get_framerate(mfd->panel_info, FPS_RESOLUTION_KHZ);
+	if (!display_fp1000s) {
+		pr_err("incorrect display fps\n");
+		goto FRC_UPDATE_EXIT;
+	}
+
+	pr_debug("frc: display_fp1000s=%d\n", display_fp1000s);
+
+	if (__need_reset_base(ctl, frc_info, display_fp1000s)) {
+		__set_frc_base(ctl, frc_info);
+		remaining_repeat = 0;
+	} else {
+		/* validate input frc_info */
+		if (!__validate_frc_info(frc_info))
+			goto FRC_UPDATE_EXIT;
+
+		/*
+		 * cadence_id needs re-calculation after setting frc_base. It
+		 * requires enough video samples to compute.
+		 */
+		if (frc_info->cadence_id == FRC_CADENCE_NONE) {
+			__check_known_cadence(frc_info);
+
+			/* detected supported cadence, start sequence match */
+			if (__is_supported_candence(frc_info->cadence_id))
+				__init_seq_gen(&frc_info->gen,
+					frc_info->cadence_id);
+		}
+
+		/* only delay in case of supported cadence */
+		if (__is_supported_candence(frc_info->cadence_id)) {
+			remaining_repeat =
+				__calculate_remaining_repeat(mfd, frc_info);
+
+			/* video arrives later than expected */
+			if (remaining_repeat < 0) {
+				pr_info("Frame %d lags behind %d vsync\n",
+					cur_frc->frame_cnt, -remaining_repeat);
+				__set_frc_base(ctl, frc_info);
+				remaining_repeat = 0;
+			}
+		} else {
+			/* kickoff current frame immediately */
+			remaining_repeat = 0;
+		}
+	}
+
+	mdss_debug_frc_add_kickoff_sample_pre(ctl, frc_info, remaining_repeat);
+
+	if (mdss_debug_frc_frame_repeat_disabled())
+		remaining_repeat = 0;
+
+	ret = __repeat_current_frame(ctl, remaining_repeat);
+
+	/* save last data */
+	frc_info->last_repeat = ctl->vsync_cnt - frc_info->last_vsync_cnt;
+	frc_info->last_vsync_cnt = ctl->vsync_cnt;
+
+FRC_UPDATE_EXIT:
+	mdss_debug_frc_add_kickoff_sample_post(ctl, frc_info, remaining_repeat);
+
+	*last_frc = *cur_frc;
+
+	return ret;
+}
+
 int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 				struct mdp_display_commit *data)
 {
@@ -1978,6 +2631,9 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 	mutex_unlock(&mdp5_data->list_lock);
 
 	mdp5_data->kickoff_released = false;
+
+	if (mdp5_data->frc_info->enable)
+		mdss_mdp_overlay_update_frc(mfd);
 
 	if (mfd->panel.type == WRITEBACK_PANEL) {
 		ATRACE_BEGIN("wb_kickoff");
@@ -2407,7 +3063,7 @@ done:
 static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 {
 	struct mdss_mdp_data *buf_l = NULL, *buf_r = NULL;
-	struct mdss_mdp_pipe *l_pipe, *r_pipe;
+	struct mdss_mdp_pipe *l_pipe, *r_pipe, *pipe, *tmp;
 	struct fb_info *fbi;
 	struct mdss_overlay_private *mdp5_data;
 	struct mdss_data_type *mdata;
@@ -2436,6 +3092,19 @@ static void mdss_mdp_overlay_pan_display(struct msm_fb_data_type *mfd)
 
 	if (IS_ERR_OR_NULL(mfd->fbmem_buf) || fbi->fix.smem_len == 0 ||
 		mdp5_data->borderfill_enable) {
+		if (mdata->handoff_pending) {
+			/*
+			 * Move pipes to cleanup queue and avoid kickoff if
+			 * pan display is called before handoff is completed.
+			 */
+			mutex_lock(&mdp5_data->list_lock);
+			list_for_each_entry_safe(pipe, tmp,
+			    &mdp5_data->pipes_used, list) {
+				list_move(&pipe->list,
+					&mdp5_data->pipes_cleanup);
+			}
+			mutex_unlock(&mdp5_data->list_lock);
+		}
 		mfd->mdp.kickoff_fnc(mfd, NULL);
 		return;
 	}
@@ -2586,6 +3255,13 @@ static void mdss_mdp_recover_underrun_handler(struct mdss_mdp_ctl *ctl,
 	schedule_work(&ctl->remove_underrun_handler);
 }
 
+/* do nothing in case of deterministic frame rate control, only keep vsync on */
+static void mdss_mdp_overlay_frc_handler(struct mdss_mdp_ctl *ctl,
+						ktime_t t)
+{
+	pr_debug("vsync on ctl%d vsync_cnt=%d\n", ctl->num, ctl->vsync_cnt);
+}
+
 /* function is called in irq context should have minimum processing */
 static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 						ktime_t t)
@@ -2614,6 +3290,30 @@ static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 
 	mdp5_data->vsync_time = t;
 	sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+}
+
+/* function is called in irq context should have minimum processing */
+static void mdss_mdp_overlay_handle_lineptr(struct mdss_mdp_ctl *ctl,
+						ktime_t t)
+{
+	struct mdss_overlay_private *mdp5_data = NULL;
+
+	if (!ctl || !ctl->mfd) {
+		pr_warn("Invalid handle for lineptr\n");
+		return;
+	}
+
+	mdp5_data = mfd_to_mdp5_data(ctl->mfd);
+	if (!mdp5_data) {
+		pr_err("mdp5_data is NULL\n");
+		return;
+	}
+
+	pr_debug("lineptr irq on fb%d play_cnt=%d\n",
+			ctl->mfd->index, ctl->play_cnt);
+
+	mdp5_data->lineptr_time = t;
+	sysfs_notify_dirent(mdp5_data->lineptr_event_sd);
 }
 
 int mdss_mdp_overlay_vsync_ctrl(struct msm_fb_data_type *mfd, int en)
@@ -2689,7 +3389,7 @@ static int calc_extra_blanking(struct mdss_panel_data *pdata, u32 new_fps)
 	int add_porches, diff;
 
 	/* calculate extra: lines for vfp-method, pixels for hfp-method */
-	diff = pdata->panel_info.default_fps - new_fps;
+	diff = abs(pdata->panel_info.default_fps - new_fps);
 	add_porches = mult_frac(pdata->panel_info.saved_total,
 		diff, new_fps);
 
@@ -2705,7 +3405,8 @@ static void cache_initial_timings(struct mdss_panel_data *pdata)
 		 * actual dfps update happen in hw.
 		 */
 		pdata->panel_info.current_fps =
-			mdss_panel_get_framerate(&pdata->panel_info);
+			mdss_panel_get_framerate(&pdata->panel_info,
+				FPS_RESOLUTION_DEFAULT);
 
 		/*
 		 * Keep the initial fps and porch values for this panel before
@@ -2713,7 +3414,8 @@ static void cache_initial_timings(struct mdss_panel_data *pdata)
 		 * in further calculations.
 		 */
 		pdata->panel_info.default_fps =
-			mdss_panel_get_framerate(&pdata->panel_info);
+			mdss_panel_get_framerate(&pdata->panel_info,
+				FPS_RESOLUTION_DEFAULT);
 
 		if (pdata->panel_info.dfps_update ==
 					DFPS_IMMEDIATE_PORCH_UPDATE_MODE_VFP) {
@@ -2723,7 +3425,11 @@ static void cache_initial_timings(struct mdss_panel_data *pdata)
 				pdata->panel_info.lcdc.v_front_porch;
 
 		} else if (pdata->panel_info.dfps_update ==
-					DFPS_IMMEDIATE_PORCH_UPDATE_MODE_HFP) {
+				DFPS_IMMEDIATE_PORCH_UPDATE_MODE_HFP ||
+			pdata->panel_info.dfps_update ==
+				DFPS_IMMEDIATE_MULTI_UPDATE_MODE_CLK_HFP ||
+			pdata->panel_info.dfps_update ==
+				DFPS_IMMEDIATE_MULTI_MODE_HFP_CALC_CLK) {
 			pdata->panel_info.saved_total =
 				mdss_panel_get_htotal(&pdata->panel_info, true);
 			pdata->panel_info.saved_fporch =
@@ -2732,9 +3438,19 @@ static void cache_initial_timings(struct mdss_panel_data *pdata)
 	}
 }
 
-static void dfps_update_panel_params(struct mdss_panel_data *pdata,
-	u32 new_fps)
+static inline void dfps_update_fps(struct mdss_panel_info *pinfo, u32 fps)
 {
+	if (pinfo->type == DTV_PANEL)
+		pinfo->lcdc.frame_rate = fps;
+	else
+		pinfo->mipi.frame_rate = fps;
+}
+
+static void dfps_update_panel_params(struct mdss_panel_data *pdata,
+	struct dynamic_fps_data *data)
+{
+	u32 new_fps = data->fps;
+
 	/* Keep initial values before any dfps update */
 	cache_initial_timings(pdata);
 
@@ -2748,7 +3464,9 @@ static void dfps_update_panel_params(struct mdss_panel_data *pdata,
 		/* update panel info with new values */
 		pdata->panel_info.lcdc.v_front_porch =
 			pdata->panel_info.saved_fporch + add_v_lines;
-		pdata->panel_info.mipi.frame_rate = new_fps;
+
+		dfps_update_fps(&pdata->panel_info, new_fps);
+
 		pdata->panel_info.prg_fet =
 			mdss_mdp_get_prefetch_lines(&pdata->panel_info);
 
@@ -2760,19 +3478,57 @@ static void dfps_update_panel_params(struct mdss_panel_data *pdata,
 		add_h_pixels = calc_extra_blanking(pdata, new_fps);
 
 		/* update panel info */
-		pdata->panel_info.lcdc.h_front_porch =
-			pdata->panel_info.saved_fporch + add_h_pixels;
-		pdata->panel_info.mipi.frame_rate = new_fps;
+		if (pdata->panel_info.default_fps > new_fps)
+			pdata->panel_info.lcdc.h_front_porch =
+				pdata->panel_info.saved_fporch + add_h_pixels;
+		else
+			pdata->panel_info.lcdc.h_front_porch =
+				pdata->panel_info.saved_fporch - add_h_pixels;
+
+		dfps_update_fps(&pdata->panel_info, new_fps);
+	} else if (pdata->panel_info.dfps_update ==
+		DFPS_IMMEDIATE_MULTI_UPDATE_MODE_CLK_HFP) {
+
+		pr_debug("hfp=%d, hbp=%d, hpw=%d, clk=%d, fps=%d\n",
+			data->hfp, data->hbp, data->hpw,
+			data->clk_rate, data->fps);
+
+		pdata->panel_info.lcdc.h_front_porch = data->hfp;
+		pdata->panel_info.lcdc.h_back_porch  = data->hbp;
+		pdata->panel_info.lcdc.h_pulse_width = data->hpw;
+
+		pdata->panel_info.clk_rate = data->clk_rate;
+		if (pdata->panel_info.type == DTV_PANEL)
+			pdata->panel_info.clk_rate *= 1000;
+
+		dfps_update_fps(&pdata->panel_info, new_fps);
+	} else if (pdata->panel_info.dfps_update ==
+		DFPS_IMMEDIATE_MULTI_MODE_HFP_CALC_CLK) {
+
+		pr_debug("hfp=%d, hbp=%d, hpw=%d, clk=%d, fps=%d\n",
+			data->hfp, data->hbp, data->hpw,
+			data->clk_rate, data->fps);
+
+		pdata->panel_info.lcdc.h_front_porch = data->hfp;
+		pdata->panel_info.lcdc.h_back_porch  = data->hbp;
+		pdata->panel_info.lcdc.h_pulse_width = data->hpw;
+
+		pdata->panel_info.clk_rate = data->clk_rate;
+
+		dfps_update_fps(&pdata->panel_info, new_fps);
+		mdss_panel_update_clk_rate(&pdata->panel_info, new_fps);
 	} else {
-		pdata->panel_info.mipi.frame_rate = new_fps;
+		dfps_update_fps(&pdata->panel_info, new_fps);
+		mdss_panel_update_clk_rate(&pdata->panel_info, new_fps);
 	}
 }
 
 int mdss_mdp_dfps_update_params(struct msm_fb_data_type *mfd,
-	struct mdss_panel_data *pdata, int dfps)
+	struct mdss_panel_data *pdata, struct dynamic_fps_data *dfps_data)
 {
 	struct fb_var_screeninfo *var = &mfd->fbi->var;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	u32 dfps = dfps_data->fps;
 
 	mutex_lock(&mdp5_data->dfps_lock);
 
@@ -2789,9 +3545,9 @@ int mdss_mdp_dfps_update_params(struct msm_fb_data_type *mfd,
 		dfps = pdata->panel_info.max_fps;
 	}
 
-	dfps_update_panel_params(pdata, dfps);
+	dfps_update_panel_params(pdata, dfps_data);
 	if (pdata->next)
-		dfps_update_panel_params(pdata->next, dfps);
+		dfps_update_panel_params(pdata->next, dfps_data);
 
 	/*
 	 * Update the panel info in the upstream
@@ -2810,17 +3566,12 @@ int mdss_mdp_dfps_update_params(struct msm_fb_data_type *mfd,
 static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	int dfps, rc = 0;
+	int panel_fps, rc = 0;
 	struct mdss_panel_data *pdata;
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
-
-	rc = kstrtoint(buf, 10, &dfps);
-	if (rc) {
-		pr_err("%s: kstrtoint failed. rc=%d\n", __func__, rc);
-		return rc;
-	}
+	struct dynamic_fps_data data = {0};
 
 	if (!mdp5_data->ctl || !mdss_mdp_ctl_is_power_on(mdp5_data->ctl)) {
 		pr_debug("panel is off\n");
@@ -2839,13 +3590,34 @@ static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 		return -EINVAL;
 	}
 
-	if (dfps == pdata->panel_info.mipi.frame_rate) {
+	if (pdata->panel_info.dfps_update ==
+		DFPS_IMMEDIATE_MULTI_UPDATE_MODE_CLK_HFP ||
+		pdata->panel_info.dfps_update ==
+		DFPS_IMMEDIATE_MULTI_MODE_HFP_CALC_CLK) {
+		if (sscanf(buf, "%u %u %u %u %u",
+		    &data.hfp, &data.hbp, &data.hpw,
+		    &data.clk_rate, &data.fps) != 5) {
+			pr_err("could not read input\n");
+			return -EINVAL;
+		}
+	} else {
+		rc = kstrtoint(buf, 10, &data.fps);
+		if (rc) {
+			pr_err("%s: kstrtoint failed. rc=%d\n", __func__, rc);
+			return rc;
+		}
+	}
+
+	panel_fps = mdss_panel_get_framerate(&pdata->panel_info,
+			FPS_RESOLUTION_DEFAULT);
+
+	if (data.fps == panel_fps) {
 		pr_debug("%s: FPS is already %d\n",
-			__func__, dfps);
+			__func__, data.fps);
 		return count;
 	}
 
-	rc = mdss_mdp_dfps_update_params(mfd, pdata, dfps);
+	rc = mdss_mdp_dfps_update_params(mfd, pdata, &data);
 	if (rc) {
 		pr_err("failed to set dfps params\n");
 		return rc;
@@ -2886,6 +3658,82 @@ static ssize_t mdss_mdp_vsync_show_event(struct device *dev,
 	ret = scnprintf(buf, PAGE_SIZE, "VSYNC=%llu\n", vsync_ticks);
 
 	return ret;
+}
+
+static ssize_t mdss_mdp_lineptr_show_event(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	u64 lineptr_ticks;
+	int ret;
+
+	if (!mdp5_data->ctl ||
+		(!mdp5_data->ctl->panel_data->panel_info.cont_splash_enabled
+			&& !mdss_mdp_ctl_is_power_on(mdp5_data->ctl)))
+		return -EAGAIN;
+
+	lineptr_ticks = ktime_to_ns(mdp5_data->lineptr_time);
+
+	pr_debug("fb%d lineptr=%llu\n", mfd->index, lineptr_ticks);
+	ret = scnprintf(buf, PAGE_SIZE, "LINEPTR=%llu\n", lineptr_ticks);
+
+	return ret;
+}
+
+static ssize_t mdss_mdp_lineptr_show_value(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	int ret, lineptr_val;
+
+	if (!mdp5_data->ctl ||
+		(!mdp5_data->ctl->panel_data->panel_info.cont_splash_enabled
+			&& !mdss_mdp_ctl_is_power_on(mdp5_data->ctl)))
+		return -EAGAIN;
+
+	lineptr_val = mfd->panel_info->te.wr_ptr_irq;
+
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n", lineptr_val);
+
+	return ret;
+}
+
+static ssize_t mdss_mdp_lineptr_set_value(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = fbi->par;
+	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
+	struct mdss_mdp_ctl *ctl = mdp5_data->ctl;
+	int ret, lineptr_value;
+
+	if (!ctl || (!ctl->panel_data->panel_info.cont_splash_enabled
+		&& !mdss_mdp_ctl_is_power_on(ctl)))
+		return -EAGAIN;
+
+	ret = kstrtoint(buf, 10, &lineptr_value);
+	if (ret || (lineptr_value < 0)
+		|| (lineptr_value > mfd->panel_info->yres)) {
+		pr_err("Invalid input for lineptr\n");
+		return -EINVAL;
+	}
+
+	if (!mdss_mdp_is_lineptr_supported(ctl)) {
+		pr_err("lineptr not supported\n");
+		return -ENOTSUPP;
+	}
+
+	mutex_lock(&mdp5_data->ov_lock);
+	mfd->panel_info->te.wr_ptr_irq = lineptr_value;
+	if (ctl && ctl->ops.update_lineptr)
+		ctl->ops.update_lineptr(ctl, true);
+	mutex_unlock(&mdp5_data->ov_lock);
+
+	return count;
 }
 
 static ssize_t mdss_mdp_bl_show_event(struct device *dev,
@@ -3121,6 +3969,9 @@ static ssize_t mdss_mdp_cmd_autorefresh_store(struct device *dev,
 static DEVICE_ATTR(msm_cmd_autorefresh_en, S_IRUGO | S_IWUSR,
 	mdss_mdp_cmd_autorefresh_show, mdss_mdp_cmd_autorefresh_store);
 static DEVICE_ATTR(vsync_event, S_IRUGO, mdss_mdp_vsync_show_event, NULL);
+static DEVICE_ATTR(lineptr_event, S_IRUGO, mdss_mdp_lineptr_show_event, NULL);
+static DEVICE_ATTR(lineptr_value, S_IRUGO | S_IWUSR | S_IWGRP,
+		mdss_mdp_lineptr_show_value, mdss_mdp_lineptr_set_value);
 static DEVICE_ATTR(ad, S_IRUGO | S_IWUSR | S_IWGRP, mdss_mdp_ad_show,
 	mdss_mdp_ad_store);
 static DEVICE_ATTR(dyn_pu, S_IRUGO | S_IWUSR | S_IWGRP, mdss_mdp_dyn_pu_show,
@@ -3132,6 +3983,8 @@ static DEVICE_ATTR(ad_bl_event, S_IRUGO, mdss_mdp_ad_bl_show_event, NULL);
 
 static struct attribute *mdp_overlay_sysfs_attrs[] = {
 	&dev_attr_vsync_event.attr,
+	&dev_attr_lineptr_event.attr,
+	&dev_attr_lineptr_value.attr,
 	&dev_attr_ad.attr,
 	&dev_attr_dyn_pu.attr,
 	&dev_attr_msm_cmd_autorefresh_en.attr,
@@ -3939,7 +4792,8 @@ static int mdss_fb_get_metadata(struct msm_fb_data_type *mfd,
 	switch (metadata->op) {
 	case metadata_op_frame_rate:
 		metadata->data.panel_frame_rate =
-			mdss_panel_get_framerate(mfd->panel_info);
+			mdss_panel_get_framerate(mfd->panel_info,
+				FPS_RESOLUTION_DEFAULT);
 		pr_debug("current fps:%d\n", metadata->data.panel_frame_rate);
 		break;
 	case metadata_op_get_caps:
@@ -4482,6 +5336,13 @@ static struct mdss_mdp_ctl *__mdss_mdp_overlay_ctl_init(
 			mdss_mdp_recover_underrun_handler;
 	ctl->recover_underrun_handler.cmd_post_flush = false;
 
+	ctl->frc_vsync_handler.vsync_handler =
+			mdss_mdp_overlay_frc_handler;
+	ctl->frc_vsync_handler.cmd_post_flush = false;
+
+	ctl->lineptr_handler.lineptr_handler =
+					mdss_mdp_overlay_handle_lineptr;
+
 	INIT_WORK(&ctl->remove_underrun_handler,
 				remove_underrun_vsync_handler);
 
@@ -4653,9 +5514,9 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 {
 	int rc;
 	struct mdss_overlay_private *mdp5_data;
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
 	struct mdss_mdp_mixer *mixer;
 	int need_cleanup;
-	int retire_cnt;
 
 	if (!mfd)
 		return -ENODEV;
@@ -4668,18 +5529,6 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	if (!mdp5_data || !mdp5_data->ctl) {
 		pr_err("ctl not initialized\n");
 		return -ENODEV;
-	}
-
-	if (!mdss_mdp_ctl_is_power_on(mdp5_data->ctl)) {
-		if (mfd->panel_reconfig) {
-			if (mfd->panel_info->cont_splash_enabled)
-				mdss_mdp_handoff_cleanup_ctl(mfd);
-
-			mdp5_data->borderfill_enable = false;
-			mdss_mdp_ctl_destroy(mdp5_data->ctl);
-			mdp5_data->ctl = NULL;
-		}
-		return 0;
 	}
 
 	/*
@@ -4714,7 +5563,20 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 
 	if (need_cleanup) {
 		pr_debug("cleaning up pipes on fb%d\n", mfd->index);
+		if (mdata->handoff_pending)
+			mdp5_data->allow_kickoff = true;
+
 		mdss_mdp_overlay_kickoff(mfd, NULL);
+	} else if (!mdss_mdp_ctl_is_power_on(mdp5_data->ctl)) {
+		if (mfd->panel_reconfig) {
+			if (mfd->panel_info->cont_splash_enabled)
+				mdss_mdp_handoff_cleanup_ctl(mfd);
+
+			mdp5_data->borderfill_enable = false;
+			mdss_mdp_ctl_destroy(mdp5_data->ctl);
+			mdp5_data->ctl = NULL;
+		}
+		goto end;
 	}
 
 	/*
@@ -4722,18 +5584,14 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 	 * for retire fence to be updated.
 	 * As a last resort signal the timeline if vsync doesn't arrive.
 	 */
-	mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
-	retire_cnt = mdp5_data->retire_cnt;
-	mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
-	if (retire_cnt) {
-		u32 fps = mdss_panel_get_framerate(mfd->panel_info);
+	if (mdp5_data->retire_cnt) {
+		u32 fps = mdss_panel_get_framerate(mfd->panel_info,
+				FPS_RESOLUTION_HZ);
 		u32 vsync_time = 1000 / (fps ? : DEFAULT_FRAME_RATE);
 
 		msleep(vsync_time);
-		mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
-		retire_cnt = mdp5_data->retire_cnt;
-		mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
-		__vsync_retire_signal(mfd, retire_cnt);
+
+		__vsync_retire_signal(mfd, mdp5_data->retire_cnt);
 
 		/*
 		 * the retire work can still schedule after above retire_signal
@@ -4790,6 +5648,7 @@ ctl_stop:
 		mdp5_data->wfd = NULL;
 	}
 
+end:
 	/* Release the last reference to the runtime device */
 	rc = pm_runtime_put(&mfd->pdev->dev);
 	if (rc)
@@ -5018,13 +5877,9 @@ static int __vsync_set_vsync_handler(struct msm_fb_data_type *mfd)
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	struct mdss_mdp_ctl *ctl;
 	int rc;
-	int retire_cnt;
 
 	ctl = mdp5_data->ctl;
-	mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
-	retire_cnt = mdp5_data->retire_cnt;
-	mutex_unlock(&mfd->mdp_sync_pt_data.sync_mutex);
-	if (!retire_cnt ||
+	if (!mdp5_data->retire_cnt ||
 		mdp5_data->vsync_retire_handler.enabled)
 		return 0;
 
@@ -5162,6 +6017,14 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 		return -ENOMEM;
 	}
 
+	mdp5_data->frc_info
+		= kzalloc(sizeof(struct mdss_mdp_frc_info), GFP_KERNEL);
+	if (!mdp5_data->frc_info) {
+		rc = -ENOMEM;
+		pr_err("fail to allocate mdp5 frc info data structure\n");
+		goto init_fail1;
+	}
+
 	mdp5_data->mdata = dev_get_drvdata(mfd->pdev->dev.parent);
 	if (!mdp5_data->mdata) {
 		pr_err("unable to initialize overlay for fb%d\n", mfd->index);
@@ -5215,6 +6078,7 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 	mdp5_data->hw_refresh = true;
 	mdp5_data->cursor_ndx[CURSOR_PIPE_LEFT] = MSMFB_NEW_REQUEST;
 	mdp5_data->cursor_ndx[CURSOR_PIPE_RIGHT] = MSMFB_NEW_REQUEST;
+	mdp5_data->allow_kickoff = false;
 
 	mfd->mdp.private1 = mdp5_data;
 	mfd->wait_for_kickoff = true;
@@ -5247,6 +6111,14 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 						     "vsync_event");
 	if (!mdp5_data->vsync_event_sd) {
 		pr_err("vsync_event sysfs lookup failed\n");
+		rc = -ENODEV;
+		goto init_fail;
+	}
+
+	mdp5_data->lineptr_event_sd = sysfs_get_dirent(dev->kobj.sd,
+						     "lineptr_event");
+	if (!mdp5_data->lineptr_event_sd) {
+		pr_err("lineptr_event sysfs lookup failed\n");
 		rc = -ENODEV;
 		goto init_fail;
 	}
@@ -5293,7 +6165,8 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 	if (rc)
 		pr_warn("problem creating link to mdss_fb sysfs\n");
 
-	if (mfd->panel_info->type == MIPI_VIDEO_PANEL) {
+	if (mfd->panel_info->type == MIPI_VIDEO_PANEL ||
+	    mfd->panel_info->type == DTV_PANEL) {
 		rc = sysfs_create_group(&dev->kobj,
 			&dynamic_fps_fs_attrs_group);
 		if (rc) {
@@ -5320,8 +6193,8 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 
 	mdss_irq = mdss_intr_line();
 
-	mdp5_data->cpu_pm_hdl = add_event_timer(mdss_irq->irq, NULL,
-							(void *)mdp5_data);
+	mdp5_data->cpu_pm_hdl = add_event_timer(mdss_irq->irq,
+			mdss_mdp_ctl_event_timer, (void *)mdp5_data);
 	if (!mdp5_data->cpu_pm_hdl)
 		pr_warn("%s: unable to add event timer\n", __func__);
 
@@ -5345,6 +6218,8 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 		pr_warn("Failed to initialize pp overlay data.\n");
 	return rc;
 init_fail:
+	kfree(mdp5_data->frc_info);
+init_fail1:
 	kfree(mdp5_data);
 	return rc;
 }

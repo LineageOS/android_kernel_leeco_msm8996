@@ -1,16 +1,8 @@
 #ifndef __LINUX_MSM_CAM_SENSOR_H
 #define __LINUX_MSM_CAM_SENSOR_H
 
-#ifdef MSM_CAMERA_BIONIC
-#include <sys/types.h>
-#endif
+#include <uapi/media/msm_cam_sensor.h>
 
-#include <linux/v4l2-mediabus.h>
-#include <media/msm_camsensor_sdk.h>
-
-#include <linux/types.h>
-#include <linux/i2c.h>
-#ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
 
@@ -338,6 +330,7 @@ struct msm_eeprom_cfg_data {
 };
 
 #ifdef CONFIG_COMPAT
+
 struct msm_sensor_power_setting32 {
 	enum msm_sensor_power_seq_type_t seq_type;
 	uint16_t seq_val;
@@ -437,40 +430,6 @@ struct msm_camera_i2c_seq_reg_setting32 {
 	uint16_t size;
 	enum msm_camera_i2c_reg_addr_type addr_type;
 	uint16_t delay;
-};
-#endif
-
-enum msm_sensor_cfg_type_t {
-	CFG_SET_SLAVE_INFO,
-	CFG_SLAVE_READ_I2C,
-	CFG_WRITE_I2C_ARRAY,
-	CFG_SLAVE_WRITE_I2C_ARRAY,
-	CFG_WRITE_I2C_SEQ_ARRAY,
-	CFG_POWER_UP,
-	CFG_POWER_DOWN,
-	CFG_SET_STOP_STREAM_SETTING,
-	CFG_GET_SENSOR_INFO,
-	CFG_GET_SENSOR_INIT_PARAMS,
-	CFG_SET_INIT_SETTING,
-	CFG_SET_RESOLUTION,
-	CFG_SET_STOP_STREAM,
-	CFG_SET_START_STREAM,
-	CFG_SET_SATURATION,
-	CFG_SET_CONTRAST,
-	CFG_SET_SHARPNESS,
-	CFG_SET_ISO,
-	CFG_SET_EXPOSURE_COMPENSATION,
-	CFG_SET_ANTIBANDING,
-	CFG_SET_BESTSHOT_MODE,
-	CFG_SET_EFFECT,
-	CFG_SET_WHITE_BALANCE,
-	CFG_SET_AUTOFOCUS,
-	CFG_CANCEL_AUTOFOCUS,
-	CFG_SET_STREAM_TYPE,
-	CFG_SET_I2C_SYNC_PARAM,
-	CFG_WRITE_I2C_ARRAY_ASYNC,
-	CFG_WRITE_I2C_ARRAY_SYNC,
-	CFG_WRITE_I2C_ARRAY_SYNC_BLOCK,
 };
 
 enum msm_actuator_cfg_type_t {
@@ -875,4 +834,5 @@ struct msm_flash_cfg_data_t32 {
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 13, struct msm_flash_cfg_data_t32)
 #endif
 
-#endif /* __LINUX_MSM_CAM_SENSOR_H */
+#endif
+

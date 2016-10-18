@@ -538,6 +538,7 @@ static int msm_restart_probe(struct platform_device *pdev)
 	if (ret) {
 		pr_err("%s:Error in creation kobject_add\n", __func__);
 		kobject_put(&dload_kobj);
+		goto skip_sysfs_create;
 	}
 
 	ret = sysfs_create_group(&dload_kobj, &reset_attr_group);

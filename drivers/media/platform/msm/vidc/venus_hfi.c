@@ -1546,9 +1546,16 @@ static int venus_hfi_scale_clocks(void *dev, int load,
 	}
 
 	mutex_lock(&device->lock);
-	rc = __scale_clocks(device, load, data, instant_bitrate);
-	mutex_unlock(&device->lock);
 
+	if (__resume(device)) {
+		dprintk(VIDC_ERR, "Resume from power collapse failed\n");
+		rc = -ENODEV;
+		goto exit;
+	}
+
+	rc = __scale_clocks(device, load, data, instant_bitrate);
+exit:
+	mutex_unlock(&device->lock);
 	return rc;
 }
 
@@ -4292,6 +4299,9 @@ static inline int __resume(struct venus_hfi_device *device)
 	} else if (device->power_enabled) {
 		dprintk(VIDC_DBG, "Power is already enabled\n");
 		goto exit;
+	} else if (!__core_in_valid_state(device)) {
+		dprintk(VIDC_DBG, "venus_hfi_device in deinit state.");
+		return -EINVAL;
 	}
 
 	dprintk(VIDC_DBG, "Resuming from power collapse\n");
@@ -4464,7 +4474,7 @@ static int venus_hfi_get_fw_info(void *dev, struct hal_fw_info *fw_info)
 		goto fail_version_string;
 	}
 
-	for (i--; i < VENUS_VERSION_LENGTH && j < VENUS_VERSION_LENGTH; i++)
+	for (i--; i < VENUS_VERSION_LENGTH && j < VENUS_VERSION_LENGTH - 1; i++)
 		fw_info->version[j++] = version[i];
 	fw_info->version[j] = '\0';
 

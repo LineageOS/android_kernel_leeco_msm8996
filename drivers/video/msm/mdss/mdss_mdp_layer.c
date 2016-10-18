@@ -331,6 +331,28 @@ static int __layer_param_check(struct msm_fb_data_type *mfd,
 	return 0;
 }
 
+/* compare all reconfiguration parameter validation in this API */
+static int __validate_layer_reconfig(struct mdp_input_layer *layer,
+	struct mdss_mdp_pipe *pipe)
+{
+	int status = 0;
+	struct mdss_mdp_format_params *src_fmt;
+
+	/*
+	 * csc registers are not double buffered. It is not permitted
+	 * to change them on staged pipe with YUV layer.
+	 */
+	if (pipe->csc_coeff_set != layer->color_space) {
+		src_fmt = mdss_mdp_get_format_params(layer->buffer.format);
+		if (pipe->src_fmt->is_yuv && src_fmt && src_fmt->is_yuv) {
+			status = -EPERM;
+			pr_err("csc change is not permitted on used pipe\n");
+		}
+	}
+
+	return status;
+}
+
 static int __validate_single_layer(struct msm_fb_data_type *mfd,
 	struct mdp_input_layer *layer, u32 mixer_mux)
 {
@@ -499,6 +521,7 @@ static int __configure_pipe_params(struct msm_fb_data_type *mfd,
 	pipe->blend_op = layer->blend_op;
 	pipe->is_handed_off = false;
 	pipe->async_update = (layer->flags & MDP_LAYER_ASYNC) ? true : false;
+	pipe->csc_coeff_set = layer->color_space;
 
 	if (mixer->ctl) {
 		pipe->dst.x += mixer->ctl->border_x_off;
@@ -726,7 +749,6 @@ static struct sync_fence *__create_fence(struct msm_fb_data_type *mfd,
 		goto end;
 	}
 
-	sync_fence_install(sync_fence, *fence_fd);
 end:
 	return sync_fence;
 }
@@ -799,6 +821,9 @@ static int __handle_buffer_fences(struct msm_fb_data_type *mfd,
 		ret = PTR_ERR(retire_fence);
 		goto retire_fence_err;
 	}
+
+	sync_fence_install(release_fence, commit->release_fence);
+	sync_fence_install(retire_fence, commit->retire_fence);
 
 	mutex_unlock(&sync_pt_data->sync_mutex);
 	return ret;
@@ -906,6 +931,7 @@ static inline bool __compare_layer_config(struct mdp_input_layer *validate,
 		validate->horz_deci == layer->horz_deci &&
 		validate->vert_deci == layer->vert_deci &&
 		validate->alpha == layer->alpha &&
+		validate->color_space == layer->color_space &&
 		validate->z_order == (layer->z_order - MDSS_MDP_STAGE_0) &&
 		validate->transp_mask == layer->transp_mask &&
 		validate->bg_color == layer->bg_color &&
@@ -1290,6 +1316,21 @@ static int __validate_layers(struct msm_fb_data_type *mfd,
 			goto validate_exit;
 		}
 
+		if (pipe_q_type == LAYER_USES_USED_PIPE_Q) {
+			/*
+			 * reconfig is allowed on new/destroy pipes. Only used
+			 * pipe needs this extra validation.
+			 */
+			ret = __validate_layer_reconfig(layer, pipe);
+			if (ret) {
+				pr_err("layer reconfig validation failed=%d\n",
+					ret);
+				mdss_mdp_pipe_unmap(pipe);
+				layer->error_code = ret;
+				goto validate_exit;
+			}
+		}
+
 		ret = __configure_pipe_params(mfd, layer, pipe,
 			left_blend_pipe, is_single_layer, mixer_mux);
 		if (ret) {
@@ -1365,6 +1406,41 @@ end:
 	pr_debug("fb%d validated layers =%d\n", mfd->index, i);
 
 	return ret;
+}
+
+/*
+ * __parse_frc_info() - parse frc info from userspace
+ * @mdp5_data: mdss data per FB device
+ * @input_frc: frc info from user space
+ *
+ * This function fills the FRC info of current device which will be used
+ * during following kickoff.
+ */
+static void __parse_frc_info(struct mdss_overlay_private *mdp5_data,
+	struct mdp_frc_info *input_frc)
+{
+	struct mdss_mdp_ctl *ctl = mdp5_data->ctl;
+	struct mdss_mdp_frc_info *frc_info = mdp5_data->frc_info;
+
+	if (input_frc->flags & MDP_VIDEO_FRC_ENABLE) {
+		if (!frc_info->enable) {
+			/* init frc_info when first entry */
+			memset(frc_info, 0, sizeof(struct mdss_mdp_frc_info));
+			/* keep vsync on when FRC is enabled */
+			ctl->ops.add_vsync_handler(ctl,
+					&ctl->frc_vsync_handler);
+		}
+
+		frc_info->cur_frc.frame_cnt = input_frc->frame_cnt;
+		frc_info->cur_frc.timestamp = input_frc->timestamp;
+	} else if (frc_info->enable) {
+		/* remove vsync handler when FRC is disabled */
+		ctl->ops.remove_vsync_handler(ctl, &ctl->frc_vsync_handler);
+	}
+
+	frc_info->enable = input_frc->flags & MDP_VIDEO_FRC_ENABLE;
+
+	pr_debug("frc_enable=%d\n", frc_info->enable);
 }
 
 /*
@@ -1449,6 +1525,9 @@ int mdss_mdp_layer_pre_commit(struct msm_fb_data_type *mfd,
 		pr_err("unable to start overlay %d (%d)\n", mfd->index, ret);
 		goto map_err;
 	}
+
+	if (commit->frc_info)
+		__parse_frc_info(mdp5_data, commit->frc_info);
 
 	ret = __handle_buffer_fences(mfd, commit, layer_list);
 

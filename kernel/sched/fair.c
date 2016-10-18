@@ -3868,6 +3868,7 @@ static inline int migration_needed(struct task_struct *p, int cpu)
 {
 	int nice;
 	struct related_thread_group *grp;
+
 	if (!sched_enable_hmp || p->state != TASK_RUNNING)
 		return 0;
 
@@ -3881,16 +3882,18 @@ static inline int migration_needed(struct task_struct *p, int cpu)
 	nice = task_nice(p);
 	rcu_read_lock();
 	grp = task_related_thread_group(p);
-	if (!grp && (nice > sched_upmigrate_min_nice || 
-							upmigrate_discouraged(p)) && cpu_capacity(cpu) > min_capacity) {
+	if (!grp && (nice > sched_upmigrate_min_nice ||
+	       upmigrate_discouraged(p)) && cpu_capacity(cpu) > min_capacity) {
 		rcu_read_unlock();
 		return DOWN_MIGRATION;
 	}
-	if (!grp && !task_will_fit(p, cpu)){
-		rcu_read_unlock(); 
+
+	if (!grp && !task_will_fit(p, cpu)) {
+		rcu_read_unlock();
 		return UP_MIGRATION;
 	}
 	rcu_read_unlock();
+
 	return 0;
 }
 

@@ -971,6 +971,38 @@ void mdss_mdp_hw_rev_debug_caps_init(struct mdss_data_type *mdata)
 	}
 }
 
+void mdss_mdp_debug_mid(u32 mid)
+{
+	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
+	struct mdss_debug_data *mdd = mdata->debug_inf.debug_data;
+	struct range_dump_node *xlog_node;
+	struct mdss_debug_base *blk_base;
+	char *addr;
+	u32 len;
+
+	list_for_each_entry(blk_base, &mdd->base_list, head) {
+		list_for_each_entry(xlog_node, &blk_base->dump_list, head) {
+			if (xlog_node->xin_id != mid)
+				continue;
+
+			len = get_dump_range(&xlog_node->offset,
+				blk_base->max_offset);
+			addr = blk_base->base + xlog_node->offset.start;
+			pr_info("%s: mid:%d range_base=0x%p start=0x%x end=0x%x\n",
+				xlog_node->range_name, mid, addr,
+				xlog_node->offset.start, xlog_node->offset.end);
+
+			/*
+			 * Next instruction assumes that MDP clocks are ON
+			 * because it is called from interrupt context
+			 */
+			mdss_dump_reg((const char *)xlog_node->range_name,
+				MDSS_DBG_DUMP_IN_LOG, addr, len,
+				&xlog_node->reg_dump, true);
+		}
+	}
+}
+
 static void __print_time(char *buf, u32 size, u64 ts)
 {
 	unsigned long rem_ns = do_div(ts, NSEC_PER_SEC);
@@ -1105,7 +1137,7 @@ static void __dump_timings(struct seq_file *s, struct mdss_mdp_ctl *ctl)
 	pinfo = &ctl->panel_data->panel_info;
 	seq_printf(s, "Panel #%d %dx%dp%d\n",
 			pinfo->pdest, pinfo->xres, pinfo->yres,
-			mdss_panel_get_framerate(pinfo));
+			mdss_panel_get_framerate(pinfo, FPS_RESOLUTION_HZ));
 	seq_printf(s, "\tvbp=%d vfp=%d vpw=%d hbp=%d hfp=%d hpw=%d\n",
 			pinfo->lcdc.v_back_porch,
 			pinfo->lcdc.v_front_porch,
