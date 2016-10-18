@@ -60,6 +60,8 @@ struct intf_timing_params {
 	u32 v_front_porch;
 	u32 hsync_pulse_width;
 	u32 vsync_pulse_width;
+	u32 h_polarity;
+	u32 v_polarity;
 
 	u32 border_clr;
 	u32 underflow_clr;
@@ -478,13 +480,8 @@ static int mdss_mdp_video_timegen_setup(struct mdss_mdp_ctl *ctl,
 	display_hctl = (hsync_end_x << 16) | hsync_start_x;
 
 	den_polarity = 0;
-	if (MDSS_INTF_HDMI == ctx->intf_type) {
-		hsync_polarity = p->yres >= 720 ? 0 : 1;
-		vsync_polarity = p->yres >= 720 ? 0 : 1;
-	} else {
-		hsync_polarity = 0;
-		vsync_polarity = 0;
-	}
+	hsync_polarity = p->h_polarity;
+	vsync_polarity = p->v_polarity;
 	polarity_ctl = (den_polarity << 2)   | /*  DEN Polarity  */
 		       (vsync_polarity << 1) | /* VSYNC Polarity */
 		       (hsync_polarity << 0);  /* HSYNC Polarity */
@@ -1127,20 +1124,21 @@ static int mdss_mdp_video_hfp_fps_update(struct mdss_mdp_video_ctx *ctx,
 	u32 hsync_start_x, hsync_end_x, display_v_start, display_v_end;
 	u32 display_hctl, hsync_ctl;
 	struct mdss_panel_info *pinfo = &pdata->panel_info;
+	u32 div = (ctx->ctl->cdm && pinfo->out_format == MDP_Y_CBCR_H2V2) ? 1 : 0;
 
-	hsync_period = mdss_panel_get_htotal(pinfo, true);
+	hsync_period = mdss_panel_get_htotal(pinfo, true) >> div;
 	vsync_period = mdss_panel_get_vtotal(pinfo);
 
 	display_v_start = ((pinfo->lcdc.v_pulse_width +
 			pinfo->lcdc.v_back_porch) * hsync_period) +
-					pinfo->lcdc.hsync_skew;
+					(pinfo->lcdc.hsync_skew >> div);
 	display_v_end = ((vsync_period - pinfo->lcdc.v_front_porch) *
-				hsync_period) + pinfo->lcdc.hsync_skew - 1;
+				hsync_period) + (pinfo->lcdc.hsync_skew >> div) - 1;
 
-	hsync_start_x = pinfo->lcdc.h_back_porch + pinfo->lcdc.h_pulse_width;
-	hsync_end_x = hsync_period - pinfo->lcdc.h_front_porch - 1;
+	hsync_start_x = (pinfo->lcdc.h_back_porch + pinfo->lcdc.h_pulse_width) >> div;
+	hsync_end_x = hsync_period - (pinfo->lcdc.h_front_porch >> div) - 1;
 
-	hsync_ctl = (hsync_period << 16) | pinfo->lcdc.h_pulse_width;
+	hsync_ctl = (hsync_period << 16) | (pinfo->lcdc.h_pulse_width >> div);
 	display_hctl = (hsync_end_x << 16) | hsync_start_x;
 
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_HSYNC_CTL, hsync_ctl);
@@ -1861,7 +1859,8 @@ static int mdss_mdp_video_ctx_setup(struct mdss_mdp_ctl *ctl,
 		itp->width = dsc->pclk_per_line;
 		itp->xres = dsc->pclk_per_line;
 	}
-
+	itp->h_polarity = pinfo->lcdc.h_polarity;
+	itp->v_polarity = pinfo->lcdc.v_polarity;
 	itp->h_back_porch = pinfo->lcdc.h_back_porch;
 	itp->h_front_porch = pinfo->lcdc.h_front_porch;
 	itp->v_back_porch = pinfo->lcdc.v_back_porch;
