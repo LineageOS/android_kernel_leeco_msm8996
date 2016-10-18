@@ -1196,8 +1196,8 @@
 			};
 		};
 
-		spi_11 {
-			spi_11_active: spi_11_active {
+		spi_12 {
+			spi_12_active: spi_12_active {
 				mux {
 					pins = "gpio85", "gpio86", "gpio87",
 								"gpio88";
@@ -1212,7 +1212,7 @@
 				};
 			};
 
-			spi_11_sleep: spi_11_sleep {
+			spi_12_sleep: spi_12_sleep {
 				mux {
 					pins = "gpio85", "gpio86", "gpio87",
 								"gpio88";

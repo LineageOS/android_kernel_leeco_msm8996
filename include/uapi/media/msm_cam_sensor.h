@@ -34,6 +34,19 @@
 #define MAX_NUMBER_OF_STEPS 47
 #define MAX_REGULATOR 5
 
+
+#define MSM_OTP_FRONT_CAMERA_ID_BUFF_SIZE (36)
+#define MSM_OTP_FRONT_CAMERA_DATE_BUFF_SIZE (3)
+#define MSM_OTP_FRONT_CAMERA_MODULE_ID_BUFF_SIZE (4)
+#define MSM_OTP_REAR_CAMERA_ID_BUFF_SIZE (20)
+#define MSM_OTP_REAR_CAMERA_AF_BUFF_SIZE (8)
+#define MSM_OTP_REAR_CAMERA_OIS_BUFF_SIZE (36)
+#define MSM_OTP_REAR_CAMERA_DATE_BUFF_SIZE (3)
+#define MSM_OTP_REAR_CAMERA_CLAF_BUFF_SIZE (10)
+#define MSM_OTP_REAR_CAMERA_PDAF_BUFF_SIZE (100)
+#define MSM_OTP_REAR_CAMERA_MODULE_ID_BUFF_SIZE (4)
+
+
 #define MSM_V4L2_PIX_FMT_META v4l2_fourcc('M', 'E', 'T', 'A') /* META */
 #define MSM_V4L2_PIX_FMT_SBGGR14 v4l2_fourcc('B', 'G', '1', '4')
 	/* 14  BGBG.. GRGR.. */
@@ -59,6 +72,7 @@ enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_5,
 	MSM_SENSOR_RES_6,
 	MSM_SENSOR_RES_7,
+	MSM_SENSOR_RES_8,
 	MSM_SENSOR_INVALID_RES,
 };
 
@@ -168,6 +182,23 @@ enum cci_i2c_master_t {
 	MASTER_0,
 	MASTER_1,
 	MASTER_MAX,
+};
+
+enum msm_otp_flag {
+	OTP_FRONT_CAMERA_ID,
+	OTP_FRONT_CAMERA_AWB,
+	OTP_FRONT_CAMERA_DATE,
+	OTP_FRONT_CAMERA_MODULE_ID,
+	OTP_FRONT_CAMERA_ALL,
+	OTP_REAR_CAMERA_ID,
+	OTP_REAR_CAMERA_AWB,
+	OTP_REAR_CAMERA_AF,
+	OTP_REAR_CAMERA_OIS,
+	OTP_REAR_CAMERA_DATE,
+	OTP_REAR_CAMERA_CLAF,
+	OTP_REAR_CAMERA_PDAF,
+	OTP_REAR_CAMERA_MODULE_ID,
+	OTP_REAR_CAMERA_ALL
 };
 
 struct msm_camera_i2c_array_write_config {
@@ -350,6 +381,19 @@ enum msm_ois_cfg_type_t {
 	CFG_OIS_I2C_WRITE_SEQ_TABLE,
 };
 
+enum msm_ois_state_type_t {
+	OIS_INIT_S = 10,
+	OIS_ENABLE_S,
+	OIS_DISABLE_S,
+	OIS_MOVIE_MODE_S,
+	OIS_STILL_MODE_S,
+	OIS_CENTERING_ON_S,
+	OIS_CENTERING_OFF_S,
+	OIS_PANTILT_ON_S,
+	OIS_CALIBRATION_S,
+	OIS_POWERDOWN,
+};
+
 enum msm_ois_i2c_operation {
 	MSM_OIS_WRITE = 0,
 	MSM_OIS_POLL,
@@ -473,6 +517,9 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 	} cfg;
+	/* MOD-S: 20150612, storing actuator_name from vendor */
+	char actuator_name[32];
+	/* MOD-E: 20150612, storing actuator_name into vendor */
 };
 
 enum msm_camera_led_config_t {
