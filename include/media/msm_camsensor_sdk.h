@@ -1,7 +1,5 @@
-#ifndef __UAPI_LINUX_MSM_CAMSENSOR_SDK_H
-#define __UAPI_LINUX_MSM_CAMSENSOR_SDK_H
-
-#include <linux/videodev2.h>
+#ifndef __LINUX_MSM_CAMSENSOR_SDK_H
+#define __LINUX_MSM_CAMSENSOR_SDK_H
 
 #define KVERSION 0x1
 
@@ -385,5 +383,4 @@ struct msm_camera_i2c_reg_setting_array {
 	enum msm_camera_i2c_data_type data_type;
 	unsigned short delay;
 };
-
-#endif
+#endif /* __LINUX_MSM_CAM_SENSOR_H */
