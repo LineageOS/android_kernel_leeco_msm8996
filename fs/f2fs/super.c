@@ -1102,9 +1102,6 @@ static const struct export_operations f2fs_export_ops = {
 	.get_parent = f2fs_get_parent,
 };
 
-
-loff_t max_file_size(unsigned bits)
-
 static loff_t max_file_blocks(void)
 {
 	loff_t result = (DEF_ADDRS_PER_INODE - F2FS_INLINE_XATTR_ADDRS);
