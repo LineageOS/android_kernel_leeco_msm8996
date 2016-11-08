@@ -718,6 +718,21 @@ static struct synaptics_rmi4_fwu_handle *fwu;
 
 DECLARE_COMPLETION(fwu_remove_complete);
 
+/* Check offset + size <= bound.  true if in bounds, false otherwise. */
+static bool in_bounds(unsigned long offset, unsigned long size,
+		      unsigned long bound)
+{
+	if (offset > bound || size > bound) {
+		pr_err("%s: %lu or %lu > %lu\n", __func__, offset, size, bound);
+		return false;
+	}
+	if (offset > (bound - size)) {
+		pr_err("%s: %lu > %lu - %lu\n", __func__, offset, size, bound);
+		return false;
+	}
+	return true;
+}
+
 static unsigned int le_to_uint(const unsigned char *ptr)
 {
 	return (unsigned int)ptr[0] +
@@ -777,8 +792,10 @@ static void fwu_compare_partition_tables(void)
 	return;
 }
 
-static void fwu_parse_partition_table(const unsigned char *partition_table,
-		struct block_count *blkcount, struct physical_address *phyaddr)
+static int fwu_parse_partition_table(const unsigned char *partition_table,
+				     unsigned long len,
+				     struct block_count *blkcount,
+				     struct physical_address *phyaddr)
 {
 	unsigned char ii;
 	unsigned char index;
@@ -790,6 +807,11 @@ static void fwu_parse_partition_table(const unsigned char *partition_table,
 
 	for (ii = 0; ii < fwu->partitions; ii++) {
 		index = ii * 8 + 2;
+		if (!in_bounds(index, sizeof(*ptable), len)) {
+			pr_err("%s: %d/%d not in bounds\n", __func__, ii,
+			       fwu->partitions);
+			return -EINVAL;
+		}
 		ptable = (struct partition_table *)&partition_table[index];
 		partition_length = ptable->partition_length_15_8 << 8 |
 				ptable->partition_length_7_0;
@@ -798,7 +820,7 @@ static void fwu_parse_partition_table(const unsigned char *partition_table,
 		dev_dbg(rmi4_data->pdev->dev.parent,
 				"%s: Partition entry %d:\n",
 				__func__, ii);
-		for (offset = 0; offset < 8; offset++) {
+		for (offset = 0; offset < sizeof(*ptable); offset++) {
 			dev_dbg(rmi4_data->pdev->dev.parent,
 					"%s: 0x%02x\n",
 					__func__,
@@ -876,16 +898,17 @@ static void fwu_parse_partition_table(const unsigned char *partition_table,
 		};
 	}
 
-	return;
+	return 0;
 }
 
-static void fwu_parse_image_header_10_bl_container(const unsigned char *image)
+static int fwu_parse_image_header_10_bl_container(const unsigned char *image)
 {
 	unsigned char ii;
 	unsigned char num_of_containers;
 	unsigned int addr;
 	unsigned int container_id;
 	unsigned int length;
+	unsigned int content_offset;
 	const unsigned char *content;
 	struct container_descriptor *descriptor;
 
@@ -893,11 +916,16 @@ static void fwu_parse_image_header_10_bl_container(const unsigned char *image)
 
 	for (ii = 1; ii <= num_of_containers; ii++) {
 		addr = le_to_uint(fwu->img.bootloader.data + (ii * 4));
+		if (!in_bounds(addr, sizeof(*descriptor), fwu->image_size))
+			return -EINVAL;
 		descriptor = (struct container_descriptor *)(image + addr);
 		container_id = descriptor->container_id[0] |
 				descriptor->container_id[1] << 8;
-		content = image + le_to_uint(descriptor->content_address);
+		content_offset = le_to_uint(descriptor->content_address);
 		length = le_to_uint(descriptor->content_length);
+		if (!in_bounds(content_offset, length, fwu->image_size))
+			return -EINVAL;
+		content = image + content_offset;
 		switch (container_id) {
 		case BL_IMAGE_CONTAINER:
 			fwu->img.bl_image.data = content;
@@ -918,29 +946,36 @@ static void fwu_parse_image_header_10_bl_container(const unsigned char *image)
 		};
 	}
 
-	return;
+	return 0;
 }
 
-static void fwu_parse_image_header_10(void)
+static int fwu_parse_image_header_10(void)
 {
 	unsigned char ii;
 	unsigned char num_of_containers;
 	unsigned int addr;
 	unsigned int offset;
+	unsigned int content_offset;
 	unsigned int container_id;
 	unsigned int length;
+	unsigned int image_size;
 	const unsigned char *image;
 	const unsigned char *content;
 	struct container_descriptor *descriptor;
 	struct image_header_10 *header;
 
 	image = fwu->image;
+	image_size = fwu->image_size;
+	if (image_size < sizeof(*header))
+		return -EINVAL;
 	header = (struct image_header_10 *)image;
 
 	fwu->img.checksum = le_to_uint(header->checksum);
 
 	/* address of top level container */
 	offset = le_to_uint(header->top_level_container_start_addr);
+	if (!in_bounds(offset, sizeof(*descriptor), image_size))
+		return -EINVAL;
 	descriptor = (struct container_descriptor *)(image + offset);
 
 	/* address of top level container content */
@@ -948,13 +983,20 @@ static void fwu_parse_image_header_10(void)
 	num_of_containers = le_to_uint(descriptor->content_length) / 4;
 
 	for (ii = 0; ii < num_of_containers; ii++) {
+		if (!in_bounds(offset, 4, image_size))
+			return -EINVAL;
 		addr = le_to_uint(image + offset);
 		offset += 4;
+		if (!in_bounds(addr, sizeof(*descriptor), image_size))
+			return -EINVAL;
 		descriptor = (struct container_descriptor *)(image + addr);
 		container_id = descriptor->container_id[0] |
 				descriptor->container_id[1] << 8;
-		content = image + le_to_uint(descriptor->content_address);
+		content_offset = le_to_uint(descriptor->content_address);
 		length = le_to_uint(descriptor->content_length);
+		if (!in_bounds(content_offset, length, image_size))
+			return -EINVAL;
+		content = image + content_offset;
 		switch (container_id) {
 		case UI_CONTAINER:
 		case CORE_CODE_CONTAINER:
@@ -970,7 +1012,8 @@ static void fwu_parse_image_header_10(void)
 			fwu->img.bl_version = *content;
 			fwu->img.bootloader.data = content;
 			fwu->img.bootloader.size = length;
-			fwu_parse_image_header_10_bl_container(image);
+			if (fwu_parse_image_header_10_bl_container(image))
+				return -EINVAL;
 			break;
 		case GUEST_CODE_CONTAINER:
 			fwu->img.contains_guest_code = true;
@@ -995,6 +1038,8 @@ static void fwu_parse_image_header_10(void)
 			break;
 		case GENERAL_INFORMATION_CONTAINER:
 			fwu->img.contains_firmware_id = true;
+			if (length < 4 + 4)
+				return -EINVAL;
 			fwu->img.firmware_id = le_to_uint(content + 4);
 			break;
 		default:
@@ -1002,10 +1047,10 @@ static void fwu_parse_image_header_10(void)
 		}
 	}
 
-	return;
+	return 0;
 }
 
-static void fwu_parse_image_header_05_06(void)
+static int fwu_parse_image_header_05_06(void)
 {
 	int retval;
 	const unsigned char *image;
@@ -1013,6 +1058,8 @@ static void fwu_parse_image_header_05_06(void)
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
 	image = fwu->image;
+	if (fwu->image_size < sizeof(*header))
+		return -EINVAL;
 	header = (struct image_header_05_06 *)image;
 
 	fwu->img.checksum = le_to_uint(header->checksum);
@@ -1025,18 +1072,51 @@ static void fwu_parse_image_header_05_06(void)
 
 	fwu->img.ui_firmware.size = le_to_uint(header->firmware_size);
 	if (fwu->img.ui_firmware.size) {
-		fwu->img.ui_firmware.data = image + IMAGE_AREA_OFFSET;
-		if (fwu->img.contains_bootloader)
-			fwu->img.ui_firmware.data += fwu->img.bootloader_size;
+		unsigned int ui_firmware_offset = IMAGE_AREA_OFFSET;
+
+		if (fwu->img.contains_bootloader) {
+			if (!in_bounds(ui_firmware_offset,
+				       fwu->img.bootloader_size,
+				       fwu->image_size)) {
+				return -EINVAL;
+			}
+			ui_firmware_offset += fwu->img.bootloader_size;
+		}
+		if (!in_bounds(ui_firmware_offset,
+			       fwu->img.ui_firmware.size,
+			       fwu->image_size)) {
+			return -EINVAL;
+		}
+		fwu->img.ui_firmware.data = image + ui_firmware_offset;
 	}
 
-	if ((fwu->img.bl_version == BL_V6) && header->options_tddi)
+	if ((fwu->img.bl_version == BL_V6) && header->options_tddi) {
+		if (!in_bounds(IMAGE_AREA_OFFSET,
+			       fwu->img.ui_firmware.size,
+			       fwu->image_size)) {
+			return -EINVAL;
+		}
 		fwu->img.ui_firmware.data = image + IMAGE_AREA_OFFSET;
+	}
 
 	fwu->img.ui_config.size = le_to_uint(header->config_size);
 	if (fwu->img.ui_config.size) {
-		fwu->img.ui_config.data = fwu->img.ui_firmware.data +
+		unsigned int ui_firmware_end;
+
+		if (fwu->img.ui_firmware.data < image)
+			return -EINVAL;
+		if (!in_bounds(fwu->img.ui_firmware.data - image,
+			       fwu->img.ui_firmware.size,
+			       fwu->image_size)) {
+			return -EINVAL;
+		}
+		ui_firmware_end = fwu->img.ui_firmware.data - image +
 				fwu->img.ui_firmware.size;
+		if (!in_bounds(ui_firmware_end, fwu->img.ui_config.size,
+			       fwu->image_size)) {
+			return -EINVAL;
+		}
+		fwu->img.ui_config.data = image + ui_firmware_end;
 	}
 
 	if ((fwu->img.bl_version == BL_V5 && fwu->img.contains_bootloader) ||
@@ -1048,6 +1128,11 @@ static void fwu_parse_image_header_05_06(void)
 	if (fwu->img.contains_disp_config) {
 		fwu->img.disp_config_offset = le_to_uint(header->dsp_cfg_addr);
 		fwu->img.dp_config.size = le_to_uint(header->dsp_cfg_size);
+		if (!in_bounds(fwu->img.disp_config_offset,
+			       fwu->img.dp_config.size,
+			       fwu->image_size)) {
+			return -EINVAL;
+		}
 		fwu->img.dp_config.data = image + fwu->img.disp_config_offset;
 	} else {
 		retval = secure_memcpy(fwu->img.cstmr_product_id,
@@ -1079,33 +1164,50 @@ static void fwu_parse_image_header_05_06(void)
 	}
 	fwu->img.product_id[PRODUCT_ID_SIZE] = 0;
 
+	if (LOCKDOWN_SIZE > IMAGE_AREA_OFFSET)
+		return -EINVAL;
+	if (fwu->image_size < IMAGE_AREA_OFFSET)
+		return -EINVAL;
 	fwu->img.lockdown.size = LOCKDOWN_SIZE;
 	fwu->img.lockdown.data = image + IMAGE_AREA_OFFSET - LOCKDOWN_SIZE;
 
-	return;
+	return 0;
 }
 
 static int fwu_parse_image_info(void)
 {
+	int parse_retval;
 	struct image_header_10 *header;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
+	unsigned int image_size = 0;
 
 	header = (struct image_header_10 *)fwu->image;
-
+	if (!header)
+		return -EINVAL;
+	image_size = fwu->image_size;
+	if (image_size < sizeof(struct image_header_05_06) &&
+	    image_size < sizeof(struct image_header_10)) {
+		return -EINVAL;
+	}
+	/* This is clearing img, not image. */
 	memset(&fwu->img, 0x00, sizeof(fwu->img));
 
 	switch (header->major_header_version) {
 	case IMAGE_HEADER_VERSION_10:
-		fwu_parse_image_header_10();
+		parse_retval = fwu_parse_image_header_10();
 		break;
 	case IMAGE_HEADER_VERSION_05:
 	case IMAGE_HEADER_VERSION_06:
-		fwu_parse_image_header_05_06();
+		parse_retval = fwu_parse_image_header_05_06();
 		break;
 	default:
 		dev_err(rmi4_data->pdev->dev.parent,
 				"%s: Unsupported image file format (0x%02x)\n",
 				__func__, header->major_header_version);
+		return -EINVAL;
+	}
+
+	if (parse_retval != 0) {
 		return -EINVAL;
 	}
 
@@ -1117,8 +1219,12 @@ static int fwu_parse_image_info(void)
 			return -EINVAL;
 		}
 
-		fwu_parse_partition_table(fwu->img.fl_config.data,
-				&fwu->img.blkcount, &fwu->img.phyaddr);
+		if (fwu_parse_partition_table(fwu->img.fl_config.data,
+					      fwu->img.fl_config.size,
+					      &fwu->img.blkcount,
+					      &fwu->img.phyaddr)) {
+			return -EINVAL;
+		}
 
 		fwu_compare_partition_tables();
 	} else {
@@ -1692,7 +1798,11 @@ static int fwu_read_f34_v7_queries(void)
 		return retval;
 	}
 
-	fwu_parse_partition_table(ptable, &fwu->blkcount, &fwu->phyaddr);
+	if (fwu_parse_partition_table(ptable, fwu->partition_table_bytes,
+				      &fwu->blkcount, &fwu->phyaddr)) {
+		kfree(ptable);
+		return -EINVAL;
+	}
 
 	if (fwu->blkcount.dp_config)
 		fwu->flash_properties.has_disp_config = 1;
