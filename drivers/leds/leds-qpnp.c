@@ -2711,18 +2711,6 @@ static void led_blink(struct qpnp_led_data *led,
 	mutex_unlock(&led->lock);
 }
 
-static ssize_t blink_show(struct device *dev,
-	struct device_attribute *attr,	char *buf)
-{
-	struct qpnp_led_data *led;
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	led = container_of(led_cdev, struct qpnp_led_data, cdev);
-	return snprintf(buf,
-					LED_DEV_BUFF_SIZE,
-					"%d\n",
-					led->rgb_cfg->pwm_cfg->blinking);
-}
-
 static ssize_t blink_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
@@ -2934,17 +2922,11 @@ static DEVICE_ATTR(start_idx, 0664, NULL, start_idx_store);
 static DEVICE_ATTR(ramp_step_ms, 0664, ramp_step_ms_show, ramp_step_ms_store);
 static DEVICE_ATTR(lut_flags, 0664, NULL, lut_flags_store);
 static DEVICE_ATTR(duty_pcts, 0664, NULL, duty_pcts_store);
-<<<<<<< HEAD
-static DEVICE_ATTR(blink, 0664, blink_show, blink_store);
+static DEVICE_ATTR(blink, 0664, NULL, blink_store);
+static DEVICE_ATTR(rgb_blink, 0664, NULL, rgb_blink_store);
 #ifdef CONFIG_DEEP_SLEEP_LED_SWITCH
 static DEVICE_ATTR(sleep_sign, 0664, sleep_show, sleep_store);
 #endif
-
-
-=======
-static DEVICE_ATTR(blink, 0664, NULL, blink_store);
-static DEVICE_ATTR(rgb_blink, 0664, NULL, rgb_blink_store);
->>>>>>> f37d4a7... leds: leds-qpnp: add synchronized rgb control
 
 static struct attribute *led_attrs[] = {
 	&dev_attr_led_mode.attr,
