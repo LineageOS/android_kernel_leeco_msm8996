@@ -1118,11 +1118,11 @@ static int mdss_mdp_cmd_intf_recovery(void *data, int event)
 
 	if (!data) {
 		pr_err("%s: invalid ctx\n", __func__);
-		return -EINVAL;
+		return  -EINVAL;
 	}
 
 	if (!ctx->ctl)
-		return -EINVAL;
+		return  -EINVAL;
 
 	/*
 	 * Currently, only intf_fifo_underflow is

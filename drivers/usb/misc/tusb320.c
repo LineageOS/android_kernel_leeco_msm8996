@@ -529,6 +529,7 @@ static void tusb320_status_check(struct work_struct *work)
 		}
 		pi5usb_set_msm_usb_host_mode(false);/*if not simulate disconnect, open*/
 		cclogic_updata_port_state(0);/*"cc_state: none"*/
+		cclogic_updata_port_polarity(0); /* no typec usb connected*/
 		if (typec_set_cc_state) {
 			pr_info("%s: clear typec_set_cc_state!\n", __func__);
 			typec_set_cc_state = false;
@@ -908,6 +909,7 @@ static int tusb320_probe(struct i2c_client *client,
 	cclogic_set_audio_mode_register(tusb320_cclogic_set_audio_mode);
 	schedule_delayed_work(&tusb320_dev->check_work,1*HZ);
 	cclogic_updata_port_state(0);/*"cc_state: none"*/
+	cclogic_updata_port_polarity(0); /* no typec usb connected*/
 	msleep(50);
 	enable_irq(client->irq);
 #if defined(CONFIG_LETV_HW_DEV_DCT)

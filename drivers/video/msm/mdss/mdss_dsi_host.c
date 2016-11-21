@@ -750,7 +750,6 @@ static void mdss_dsi_ctl_phy_reset(struct mdss_dsi_ctrl_pdata *ctrl, u32 event)
 	struct mdss_dsi_ctrl_pdata *ctrl0, *ctrl1;
 	u32 ln0, ln1, ln_ctrl0, ln_ctrl1, i;
 	int rc = 0;
-
 	/*
 	 * Add 2 ms delay suggested by HW team.
 	 * Check clk lane stop state after every 200 us
@@ -1217,6 +1216,7 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 				ret = mdss_dsi_read_status(sctrl_pdata);
 		}
 	}
+
 #if 1
 		if(true == ctrl_pdata->enable_reg_check1)
 		{
@@ -1243,6 +1243,7 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			}
 		}
 #endif
+
 #if 1
 		if(true == ctrl_pdata->enable_reg_check2)
 		{
@@ -2409,7 +2410,9 @@ void mdss_dsi_wait4video_done(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	/* DSI_INTL_CTRL */
 	data = MIPI_INP((ctrl->ctrl_base) + 0x0110);
-	data &= DSI_INTR_TOTAL_MASK;
+	/*data &= DSI_INTR_TOTAL_MASK;*/
+	/* clear previous VIDEO_DONE interrupt as well */
+	data &= (DSI_INTR_TOTAL_MASK | DSI_INTR_VIDEO_DONE);
 	data |= DSI_INTR_VIDEO_DONE_MASK;
 
 	MIPI_OUTP((ctrl->ctrl_base) + 0x0110, data);
@@ -3072,6 +3075,16 @@ static bool mdss_dsi_fifo_status(struct mdss_dsi_ctrl_pdata *ctrl)
 		MIPI_OUTP(base + 0x000c, status);
 
 		pr_err("%s: status=%x\n", __func__, status);
+ 
+			/*
+                * if DSI FIFO overflow is masked,
+               * do not report overflow error
+                */
+		if (MIPI_INP(base + 0x10c) & 0xf0000)
+		{
+			status = status & 0xaaaaffff;
+			pr_debug("%s: overflow error status=%x\n", __func__, status);
+		}
  
 		if (status & 0x44440000) {/* DLNx_HS_FIFO_OVERFLOW */
 			dsi_send_events(ctrl, DSI_EV_DLNx_FIFO_OVERFLOW, 0);

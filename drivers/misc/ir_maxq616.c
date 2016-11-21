@@ -108,6 +108,7 @@ static int msm8994_ir_suspend(struct device *dev)
 			pinctrl_select_state(ir->ir_uart_pins, set_state);
 	}
 
+	gpio_set_value(irdata->en_gpio, 0);
 	dev_info(dev, "IR: msm8994 get into deep sleep\n");
 
 	return 0;
@@ -126,7 +127,7 @@ static int msm8994_ir_resume(struct device *dev)
 		else
 			pinctrl_select_state(ir->ir_uart_pins, set_state);
 	}
-
+	gpio_set_value(irdata->en_gpio, 1);
 	dev_info(dev, "IR: msm8994 get into active\n");
 
 	return 0;

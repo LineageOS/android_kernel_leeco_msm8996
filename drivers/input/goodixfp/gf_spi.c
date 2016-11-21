@@ -388,6 +388,13 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
             gf_power_off_8996(gf_dev);
         gf_dev->device_available = 0;
         break;
+	case GF_IOC_RELEASE_WAKELOCK:
+        if(wake_lock_active(&FP_wakelock))      
+        {
+                wake_unlock(&FP_wakelock);      
+                pr_info("szj:release fp_wakelock ok.\n");
+        }
+        break;
 	default:
 		gf_dbg("Unsupport cmd:0x%x\n", cmd);
 		break;
@@ -408,7 +415,7 @@ gf_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 static irqreturn_t gf_irq(int irq, void *handle)
 {
 	struct gf_dev *gf_dev = &gf;
-	wake_lock_timeout(&FP_wakelock,1*HZ);
+	wake_lock_timeout(&FP_wakelock,10*HZ);
 #ifdef GF_FASYNC
 	if (gf_dev->async)
 		kill_fasync(&gf_dev->async, SIGIO, POLL_IN);

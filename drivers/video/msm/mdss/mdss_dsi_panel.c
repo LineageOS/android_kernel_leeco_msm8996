@@ -1545,7 +1545,7 @@ void mdss_dsi_write_status2(struct mdss_dsi_ctrl_pdata *ctrl)
 static int mdss_dsi_gen_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int ret = 0;
-
+	static int esd_err_count = 0;
 	if(true == ctrl_pdata->enable_reg_check1)
 	{
 		if (!mdss_dsi_cmp_panel_reg(ctrl_pdata->status_buf1,
@@ -1562,8 +1562,21 @@ static int mdss_dsi_gen_read_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			ctrl_pdata->status_value2, 0)) {
 			pr_err("%s: Read status_buf2=%x,status_value2=%x value from panel is incorrect\n",
 								__func__,ctrl_pdata->status_buf2.data[0],ctrl_pdata->status_value2[0]);
+			if(!strcmp("mdss_dsi_ft8716_1080p_video",&ctrl_pdata->panel_data.panel_info.panel_name[0]))
+			{
+				esd_err_count++;
+				if(esd_err_count >= 3)
+				{
+					pr_err("%s: ft8716 esd 0xAC read error\n",__func__);
+					esd_err_count = 0;
+					return -EINVAL;
+				}			
+			}
+			else
+			{
 			 mdss_dsi_write_status2(ctrl_pdata);
 		}
+	}
 	}
 
 	if (!mdss_dsi_cmp_panel_reg(ctrl_pdata->status_buf,
