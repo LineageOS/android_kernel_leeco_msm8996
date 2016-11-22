@@ -49,9 +49,6 @@
 #include <asm/timex.h>
 #include <asm/io.h>
 
-#ifdef CONFIG_MSM_APP_SETTINGS
-#include <asm/app_api.h>
-#endif
 #include "tick-internal.h"
 
 #define CREATE_TRACE_POINTS
@@ -1496,9 +1493,6 @@ void update_process_times(int user_tick)
 static void run_timer_softirq(struct softirq_action *h)
 {
 	struct tvec_base *base = __this_cpu_read(tvec_bases);
-#ifdef CONFIG_MSM_APP_SETTINGS
-	set_app_setting_bit(APP_SETTING_BIT);
-#endif
 
 	hrtimer_run_pending();
 
@@ -1506,9 +1500,6 @@ static void run_timer_softirq(struct softirq_action *h)
 
 	if (time_after_eq(jiffies, base->timer_jiffies))
 		__run_timers(base);
-#ifdef CONFIG_MSM_APP_SETTINGS
-	clear_app_setting_bit(APP_SETTING_BIT);
-#endif
 }
 
 /*
