@@ -13,6 +13,7 @@ if INPUT_TOUCHSCREEN
 
 source "drivers/input/touchscreen/synaptics_dsx/Kconfig"
 source "drivers/input/touchscreen/synaptics_dsx_2.6/Kconfig"
+source "drivers/input/touchscreen/hideep_letv/Kconfig"
 
 config OF_TOUCHSCREEN
 	def_tristate INPUT
@@ -1125,6 +1126,29 @@ config TOUCHSCREEN_MAXIM_STI
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called maxim_sti.
+
+config TOUCHSCREEN_ATMEL_MXT_LETV
+	tristate "Atmel mXT I2C Touchscreen at letv platform"
+	depends on I2C
+	help
+	  Say Y here if you have Atmel mXT series I2C touchscreen,
+	  such as mXT640T, connected to your system.
+
+	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called atmel_mxt_ts_letv.
+
+config LETVS_CLASS
+       bool "letv class  for Mediatek package"
+       default n
+       help
+         Say Y here if you have letv class.
+
+         If unsure, say N.
+
+         To compile this dirver as a module, choose M here: the
+	 module will be called.
 
 source "drivers/input/touchscreen/gt9xx/Kconfig"
 
