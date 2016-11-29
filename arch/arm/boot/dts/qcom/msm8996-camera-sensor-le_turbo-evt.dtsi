@@ -1,0 +1,413 @@
+/*
+ * Copyright (c) 2015 The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+};
+
+&cci {		
+	led_flash0: qcom,camera-flash@0 {
+		cell-index = <0>;
+		qcom,slave-id = <0x63 0x0c 0x02>;
+		compatible = "qcom,camera-flash";
+		label = "leds-lm3643";
+		qcom,cci-master = <0>;
+		qcom,proj-name = "turbo";
+		gpios = <&tlmm 48 0>;
+		qcom,gpio-flash-en = <0>;
+		qcom,gpio-req-tbl-num = <0>;
+		qcom,gpio-req-tbl-flags = <0>;
+		qcom,gpio-req-tbl-label = "FLASH_EN";
+		qcom,max-current = <750>;
+		qcom,max-duration = <1600>;
+	};
+	eeprom0: qcom,eeprom@0 {
+		cell-index = <0>;
+		reg = <0x0>;
+		qcom,eeprom-name = "ov13870_letv";
+		compatible = "qcom,eeprom";
+		qcom,slave-addr = <0xa0>;
+		qcom,i2c-freq-mode = <1>;
+		qcom,cci-master = <0>;
+		qcom,proj-name = "turbo";
+		qcom,num-blocks = <1>;
+
+		qcom,page0 = <0 0 0 0 0 0>;
+		qcom,pageen0 = <0 0 0 0 0 0>;
+		qcom,poll0 = <0 0 0 0 0 0>;
+		qcom,saddr0  = <0xa0>;
+		qcom,mem0 = <4904 0x0000 2 0 1 0>;
+
+		cam_vdig-supply = <&twl80125_ldo1>;
+		cam_vio-supply = <&twl80125_ldo5>;
+		cam_vana-supply = <&twl80125_ldo3>;
+		cam_vaf-supply = <&twl80125_buck1>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana","cam_vaf";
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 3000000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 3000000>;
+		qcom,cam-vreg-op-mode = <0 0 0 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_active &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk0_suspend &cam_sensor_rear_suspend>;
+		
+		gpios = <&tlmm 13 0>,
+			    <&tlmm 30 0>;
+		
+		qcom,gpio-standby = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+					              "CAM_STANDBY0";
+
+		qcom,cam-power-seq-type = "sensor_vreg", "sensor_vreg", "sensor_vreg","sensor_vreg",
+			"sensor_gpio" , "sensor_clk";
+		qcom,cam-power-seq-val = "cam_vdig", "cam_vana", "cam_vio","cam_vaf",
+			 "sensor_gpio_standby","sensor_cam_mclk";
+		qcom,cam-power-seq-cfg-val = <1 1 1 1 1 24000000>;
+		qcom,cam-power-seq-delay = <1 1 30 30 30 5>;
+
+		clocks = <&clock_mmss clk_mclk0_clk_src>,
+						<&clock_mmss clk_camss_mclk0_clk>;
+				clock-names = "cam_src_clk", "cam_clk";
+
+	};
+
+
+  eeprom1: qcom,eeprom@1 {
+		cell-index = <1>;
+		reg = <0x1>;
+		qcom,eeprom-name = "ov13371_letv";
+		compatible = "qcom,eeprom";
+		qcom,slave-addr = <0xa0>;
+		qcom,i2c-freq-mode = <1>;
+		qcom,cci-master = <1>;
+		qcom,proj-name = "turbo";
+		qcom,num-blocks = <1>;
+
+		qcom,page0 = <0 0 0 0 0 0>;
+		qcom,pageen0 = <0 0 0 0 0 0>;
+		qcom,poll0 = <0 0 0 0 0 0>;
+		qcom,saddr0  = <0xa0>;
+		qcom,mem0 = <1841 0x0000 2 0 1 0>;
+
+
+		cam_vdig-supply = <&twl80125_ldo2>;
+		cam_vio-supply = <&twl80125_ldo5>;
+		cam_vana-supply = <&twl80125_ldo4>;
+		cam_vaf-supply = <&twl80125_buck2>;
+		cam_v_custom1-supply = <&pm8994_lvs1>;
+		cam_v_custom2-supply = <&pm8994_l29>;
+
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana","cam_vaf","cam_v_custom1","cam_v_custom2";
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 2800000 1800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 2800000 1800000 2800000>;
+		qcom,cam-vreg-op-mode = <0 0 0 0 0 0>;
+
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active &cam_sensor_aux_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend &cam_sensor_aux_suspend>;
+
+		gpios = <&tlmm 14 0>,
+				<&tlmm 63 0>;
+
+		qcom,gpio-standby = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
+								  "CAM_STANDBY1";
+
+
+		qcom,cam-power-seq-type = "sensor_vreg", "sensor_vreg", "sensor_vreg","sensor_vreg","sensor_vreg","sensor_vreg",
+			"sensor_gpio" , "sensor_clk";
+			qcom,cam-power-seq-val = "cam_vdig", "cam_vana", "cam_vio","cam_vaf","cam_v_custom1","cam_v_custom2",
+			"sensor_gpio_standby","sensor_cam_mclk";
+		qcom,cam-power-seq-cfg-val = <1 1 1 1 1 1 1 24000000>;
+		qcom,cam-power-seq-delay = <1 1 30 30 30 30 30 5>;
+
+		clocks = <&clock_mmss clk_mclk1_clk_src>,
+				 <&clock_mmss clk_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+		
+  eeprom2: qcom,eeprom@2 {
+        cell-index = <2>;
+        reg = <0x2>;
+        qcom,eeprom-name = "ov8865";
+        compatible = "qcom,eeprom";
+        qcom,slave-addr = <0x6D>;
+        qcom,i2c-freq-mode = <1>;
+        qcom,cci-master = <1>;
+        qcom,proj-name = "turbo";
+        qcom,num-blocks = <2>;
+
+        qcom,page0 = <0 0 0 0 0 0>;
+        qcom,poll0 = <0 0 0 0 0 0>;
+        qcom,mem0 = <292 0x7010 2 0 1 0>;
+
+        qcom,page1 = <0 0 0 0 0 0>;
+        qcom,poll1 = <0 0 0 0 0 0>;
+        qcom,mem1 = <16 0x7000 2 0 1 0>;
+
+        cam_vdig-supply = <&twl80125_ldo5>;
+        cam_vio-supply = <&pm8994_lvs1>;
+        cam_vana-supply = <&pm8994_l29>;
+        cam_vaf-supply = <&twl80125_buck2>;
+
+        cam_v_custom1-supply = <&twl80125_ldo2>;
+        cam_v_custom2-supply = <&twl80125_ldo4>;
+
+        qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana" , "cam_vaf", "cam_v_custom1" ,"cam_v_custom2";
+        qcom,cam-vreg-type = <0 0 0 0 0 0>;
+        qcom,cam-vreg-min-voltage = <1800000 1800000 2800000 2800000 1200000 2800000>;
+        qcom,cam-vreg-max-voltage = <1800000 1800000 2800000 2800000 1200000 2800000>;
+        qcom,cam-vreg-op-mode = <0 80000 80000 80000 80000 80000>;
+        qcom,gpio-no-mux = <0>;
+        pinctrl-names = "cam_default", "cam_suspend";
+        pinctrl-0 = <&cam_sensor_mclk2_active &cam_sensor_front_active>;
+        pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
+        gpios = <&tlmm 15 0>,
+                <&tlmm 23 0>;
+        qcom,gpio-reset = <1>;
+        qcom,gpio-req-tbl-num = <0 1>;
+        qcom,gpio-req-tbl-flags = <1 0>;
+        qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+                                  "CAM_RESET2";
+
+        qcom,cam-power-seq-type = "sensor_vreg", "sensor_vreg", "sensor_vreg","sensor_vreg","sensor_gpio","sensor_vreg",
+            "sensor_gpio" , "sensor_vreg", "sensor_clk";
+        qcom,cam-power-seq-val = "cam_vdig", "cam_vio", "cam_vana","cam_vaf","sensor_gpio_reset","cam_v_custom1",
+            "sensor_gpio_reset", "cam_v_custom2", "sensor_cam_mclk";
+        qcom,cam-power-seq-cfg-val = <1 1 1 1 0 1 1 1 24000000>;
+        qcom,cam-power-seq-delay = <1 1 30 30 30 30 30 30 5>;
+
+        status = "ok";
+        clocks = <&clock_mmss clk_mclk2_clk_src>,
+                 <&clock_mmss clk_camss_mclk2_clk>;
+        clock-names = "cam_src_clk", "cam_clk";
+
+    };
+    actuator0: qcom,actuator@0 {
+        cell-index = <0>;
+        reg = <0x0>;
+        compatible = "qcom,actuator";
+        qcom,cci-master = <0>;
+        qcom,proj-name = "turbo";
+        cam_vaf-supply = <&twl80125_buck1>;
+        qcom,cam-vreg-name = "cam_vaf";
+        qcom,cam-vreg-min-voltage = <3000000>;
+        qcom,cam-vreg-max-voltage = <3000000>;
+        qcom,cam-vreg-op-mode = <0>;
+    };
+
+    actuator1: qcom,actuator@1 {
+        cell-index = <1>;
+        reg = <0x1>;
+        compatible = "qcom,actuator";
+        qcom,cci-master = <1>;
+        qcom,proj-name = "turbo";
+        cam_vaf-supply = <&twl80125_buck2>;
+        qcom,cam-vreg-name = "cam_vaf";
+        qcom,cam-vreg-min-voltage = <2800000>;
+        qcom,cam-vreg-max-voltage = <2800000>;
+        qcom,cam-vreg-op-mode = <0>;
+    };
+      
+
+
+    qcom,camera@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera";
+		reg = <0x0>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <90>;
+		qcom,led-flash-src = <&led_flash0>;
+		qcom,actuator-src = <&actuator0>;
+		qcom,eeprom-src = <&eeprom0>;
+		cam_vdig-supply = <&twl80125_ldo1>;
+		cam_vio-supply = <&twl80125_ldo5>;
+		cam_vana-supply = <&twl80125_ldo3>;
+		cam_vaf-supply = <&twl80125_buck1>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana","cam_vaf";
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 3000000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 3000000>;
+		qcom,cam-vreg-op-mode = <0 0 0 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_active &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk0_suspend &cam_sensor_rear_suspend>;
+		
+		gpios = <&tlmm 13 0>,
+		    <&tlmm 30 0>,
+		    <&tlmm 48 0>;
+
+		qcom,gpio-standby = <1>;
+        qcom,gpio-flash-en = <2>;	
+		qcom,gpio-req-tbl-num = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+					  "CAM_STANDBY0",
+					  "CAM_FLASH0";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		qcom,proj-name = "turbo";
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk0_clk_src>,
+				<&clock_mmss clk_camss_mclk0_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+
+	  /*
+	  avdd===>  2.8V  LDO 4
+	  dvdd ===> 1.2  / LDO 2
+	  diodd   ===> 1.8 / LDO 5
+	  vaf  ==>  3.0 / BUCK 2
+	  */
+	 qcom,camera@1 {
+		cell-index = <1>;
+		compatible = "qcom,camera";
+		reg = <0x01>;
+		qcom,csiphy-sd-index = <2>;
+		qcom,csid-sd-index = <2>;
+		qcom,mount-angle = <270>;
+        qcom,eeprom-src = <&eeprom2>;
+		cam_vdig-supply = <&twl80125_ldo5>;
+		cam_vio-supply = <&pm8994_lvs1>;
+		cam_vana-supply = <&pm8994_l29>;
+		cam_vaf-supply = <&twl80125_buck2>;
+		
+		cam_v_custom1-supply = <&twl80125_ldo2>;
+		cam_v_custom2-supply = <&twl80125_ldo4>;
+		/*
+		Due to the camrea aux and front camera has the same I2C ,and the when implement the power up setting ,both  of two camera  should be power up together, otherwise it will probe failed
+		*/
+		
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana" , "cam_vaf", "cam_v_custom1" ,"cam_v_custom2";
+		qcom,cam-vreg-min-voltage = <1800000 1800000 2800000 2800000 1200000 2800000>;
+		qcom,cam-vreg-max-voltage = <1800000 1800000 2800000 2800000 1200000 2800000>;
+		qcom,cam-vreg-op-mode = <0 80000 80000 80000 80000 80000>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active &cam_sensor_front_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
+		gpios = <&tlmm 15 0>,
+			    <&tlmm 23 0>;
+		qcom,gpio-reset = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+					              "CAM_RESET2";
+				
+		qcom,sensor-position = <1>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		qcom,proj-name = "turbo";
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk2_clk_src>,
+			     <&clock_mmss clk_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+	qcom,camera@2 {
+		cell-index = <2>;
+		compatible = "qcom,camera";
+		reg = <0x2>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <90>;
+        qcom,actuator-src = <&actuator1>;
+		qcom,eeprom-src = <&eeprom1>;
+		cam_vdig-supply = <&twl80125_ldo2>;
+		cam_vio-supply = <&twl80125_ldo5>;
+		cam_vana-supply = <&twl80125_ldo4>;
+		cam_vaf-supply = <&twl80125_buck2>;
+
+		cam_v_custom1-supply = <&pm8994_lvs1>;
+		cam_v_custom2-supply = <&pm8994_l29>;
+
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana","cam_vaf","cam_v_custom1","cam_v_custom2";
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 2800000 1800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 2800000 1800000 2800000>;
+		qcom,cam-vreg-op-mode = <0 0 0 0 0 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active &cam_sensor_aux_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend &cam_sensor_aux_suspend>;
+		
+		gpios = <&tlmm 14 0>,
+		        <&tlmm 63 0>;
+		
+		qcom,gpio-standby = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
+					              "CAM_STANDBY1";
+
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		qcom,proj-name = "turbo";
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk1_clk_src>,
+				 <&clock_mmss clk_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+
+ 
+
+	qcom,camera@3 {
+		cell-index = <3>;
+		compatible = "qcom,camera";
+		reg = <0x3>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <90>;
+		qcom,actuator-src = <&actuator1>;
+		qcom,eeprom-src = <&eeprom1>;
+
+		cam_vdig-supply = <&twl80125_ldo2>;
+		cam_vio-supply = <&twl80125_ldo5>;
+		cam_vana-supply = <&twl80125_ldo4>;
+		cam_vaf-supply = <&twl80125_buck2>;
+		cam_v_custom1-supply = <&pm8994_lvs1>;
+		cam_v_custom2-supply = <&pm8994_l29>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana","cam_vaf","cam_v_custom1","cam_v_custom2";
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 2800000 1800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 2800000 1800000 2800000>;
+		qcom,cam-vreg-op-mode = <0 0 0 0 0 0>;
+
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active &cam_sensor_aux_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend &cam_sensor_aux_suspend>;
+		
+		gpios = <&tlmm 14 0>,
+				<&tlmm 63 0>;
+		
+		qcom,gpio-standby = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
+								  "CAM_STANDBY1";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		qcom,proj-name = "turbo";
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk1_clk_src>,
+				 <&clock_mmss clk_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+};
+

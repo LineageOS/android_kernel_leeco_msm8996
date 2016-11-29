@@ -11,7 +11,6 @@
  */
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/msm/pm.h>
 
 &soc {
 	qcom,spm@9A10000 {
@@ -22,7 +21,7 @@
 		qcom,name = "system-cbf"; /* CBF SAW */
 		qcom,saw2-ver-reg = <0xFD0>;
 		qcom,cpu-vctl-list = <&CPU0 &CPU1 &CPU2 &CPU3>;
-		qcom,vctl-timeout-us = <500>;
+		qcom,vctl-timeout-us = <50>;
 		qcom,vctl-port = <0x0>;
 		qcom,phase-port = <0x1>;
 		qcom,saw2-avs-ctl = <0x1100>;
@@ -64,7 +63,6 @@
 				qcom,energy-overhead = <69000>;
 				qcom,time-overhead = <150>;
 				qcom,min-child-idx = <1>;
-				qcom,reset-level = <LPM_RESET_LVL_RET>;
 			};
 			qcom,pm-cluster-level@2{ /* E4-M3 */
 				reg = <1>;
@@ -79,7 +77,6 @@
 				qcom,min-child-idx = <2>;
 				qcom,notify-rpm;
 				qcom,is-reset;
-				qcom,reset-level = <LPM_RESET_LVL_PC>;
 			};
 
 			qcom,pm-cluster@0{
@@ -112,7 +109,6 @@
 					qcom,energy-overhead = <89070>;
 					qcom,time-overhead = <180>;
 					qcom,min-child-idx = <2>;
-					qcom,reset-level = <LPM_RESET_LVL_GDHS>;
 				};
 
 				qcom,pm-cluster-level@2{ /* D4 */
@@ -125,7 +121,6 @@
 					qcom,time-overhead = <1000>;
 					qcom,min-child-idx = <2>;
 					qcom,is-reset;
-					qcom,reset-level = <LPM_RESET_LVL_PC>;
 				};
 
 				qcom,pm-cpu {
@@ -161,10 +156,8 @@
 						qcom,psci-cpu-mode = <4>;
 						qcom,latency-us = <80>;
 						qcom,ss-power = <196>;
-						qcom,energy-overhead = <62248>;
+						qcom,energy-overhead = <45300>;
 						qcom,time-overhead = <210>;
-						qcom,reset-level =
-							<LPM_RESET_LVL_PC>;
 					};
 				};
 			};
@@ -199,8 +192,6 @@
 					qcom,energy-overhead = <83500>;
 					qcom,time-overhead = <180>;
 					qcom,min-child-idx = <2>;
-					qcom,reset-level =
-						<LPM_RESET_LVL_GDHS>;
 				};
 
 				qcom,pm-cluster-level@2{ /* D4 */
@@ -213,8 +204,6 @@
 					qcom,time-overhead = <1000>;
 					qcom,min-child-idx = <2>;
 					qcom,is-reset;
-					qcom,reset-level =
-						<LPM_RESET_LVL_PC>;
 				};
 
 				qcom,pm-cpu {
@@ -250,10 +239,8 @@
 						qcom,psci-cpu-mode = <4>;
 						qcom,latency-us = <80>;
 						qcom,ss-power = <196>;
-						qcom,energy-overhead = <62248>;
+						qcom,energy-overhead = <45300>;
 						qcom,time-overhead = <210>;
-						qcom,reset-level =
-							<LPM_RESET_LVL_PC>;
 					};
 				};
 			};
@@ -276,8 +263,8 @@
 		qcom,gic-map = <2 216>, /* tsens_upper_lower_int */
 			<79 379>,   /* qusb2phy_dmse_hv_prim */
 			<80 384>,   /* qusb2phy_dmse_hv_sec */
-			<81 379>,   /* qusb2phy_dpse_hv_prim */
-			<82 384>,   /* qusb2phy_dpse_hv_sec */
+                        <81 379>,   /* qusb2phy_dpse_hv_prim */
+                        <82 384>,   /* qusb2phy_dpse_hv_sec */
 			<52 275>,   /* qmp_usb3_lfps_rxterm_irq */
 			<87 358>,   /* ee0_krait_hlos_spmi_periph_irq */
 			<0xff 16>,  /* APCj_qgicdrCpu0HwFaultIrptReq */
@@ -330,9 +317,13 @@
 			<0xff 132>, /* blsp1_qup_irq(5) */
 			<0xff 133>, /* blsp2_qup_irq(0) */
 			<0xff 134>, /* blsp2_qup_irq(1) */
+			<0xff 135>, /* temporary */
+			<0xff 136>, /* temporary */
+			<0xff 137>, /* temporary */
 			<0xff 138>, /* blsp2_qup_irq(5) */
 			<0xff 140>, /* blsp1_uart_irq(1) */
 			<0xff 146>, /* blsp2_uart_irq(1) */
+			<0xff 150>, /* temporary */
 			<0xff 155>, /* sdcc_irq[0] */
 			<0xff 157>, /* sdc2_irq[0] */
 			<0xff 163>, /* usb30_ee1_irq */
@@ -340,8 +331,8 @@
 			<0xff 165>, /* usb30_hs_phy_irq */
 			<0xff 166>, /* sdc1_pwr_cmd_irq */
 			<0xff 170>, /* sdcc_pwr_cmd_irq */
-			<0xff 171>, /* usb20_hs_phy_irq */
-			<0xff 172>, /* usb20_power_event_irq */
+                        <0xff 171>, /* usb20_hs_phy_irq */
+                        <0xff 172>, /* usb20_power_event_irq */
 			<0xff 173>, /* sdc1_irq[0] */
 			<0xff 174>, /* o_wcss_apss_smd_med */
 			<0xff 175>, /* o_wcss_apss_smd_low */
@@ -407,7 +398,6 @@
 			<0xff 330>, /* camss_irq4 */
 			<0xff 331>, /* camss_irq5 */
 			<0xff 332>, /* sps */
-			<0xff 341>, /* camss_irq6 */
 			<0xff 346>, /* camss_irq8 */
 			<0xff 347>, /* camss_irq9 */
 			<0xff 352>, /* mdss_mmu_cirpt[0] */
@@ -524,17 +514,6 @@
 			<69  145>;
 	};
 
-	rpm_msg_ram: memory@0x200000 {
-		compatible = "qcom,rpm-msg-ram";
-		reg = <0x200000 0x1000>,
-			<0x290000 0x1000>;
-	};
-
-	rpm_code_ram: rpm-memory@0x68000 {
-		compatible = "qcom,rpm-code-ram";
-		reg = <0x68000 0x5000>;
-	};
-
 	qcom,rpm-stats@200000 {
 		compatible = "qcom,rpm-stats";
 		reg = <0x200000 0x1000>,
@@ -544,13 +523,6 @@
 			    "offset_addr",
 			    "heap_phys_addrbase";
 		qcom,sleep-stats-version = <2>;
-	};
-
-	qcom,system-stats@68140 {
-		compatible = "qcom,system-stats";
-		qcom,rpm-msg-ram = <&rpm_msg_ram>;
-		qcom,rpm-code-ram = <&rpm_code_ram>;
-		qcom,masters = "APSS", "MPSS", "ADSP", "SLPI";
 	};
 
 	qcom,pm-snoc-client {

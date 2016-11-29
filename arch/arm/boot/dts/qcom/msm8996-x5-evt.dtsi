@@ -1,0 +1,265 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8996-mtp.dtsi"
+#include "msm8996-pinctrl-x5.dtsi"
+#include "letv-tp-synaptics-dsx-i2c.dtsi"
+#include "dsi-panel-truly-cmd.dtsi"
+#include "msm8996-camera-sensor-x5-evt.dtsi"
+&sdhc_2 {
+	status = "disabled";
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_truly_video>;
+	/delete-property/ vddio-supply;
+	qcom,platform-te-gpio = <&tlmm 97 0>;
+	qcom,platform-reset-gpio = <&tlmm 24 0>;
+	qcom,platform-bklight-en-gpio = <&pm8994_gpios 13 0>;
+};
+
+&mdss_dsi1 {
+	status = "disabled";
+};
+
+&lab_regulator {
+	qcom,qpnp-lab-init-lcd-voltage = <5900000>;
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-init-lcd-voltage = <5900000>;
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d800 {
+			qcom,fs-curr-ua = <20000>;
+			qcom,led-strings-list = [00 01];
+		};
+	};
+
+	qcom,pm8994@0 {
+		/* configure pm8994 MPP2 as back-light of touch key */
+		touch_key_led: qcom,leds@a100 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa100 0x100>;
+			status = "okay";
+
+			qcom,led_mpp_2 {
+				label = "mpp";
+				linux,name = "button-backlight";
+				linux,default-trigger = "none";
+				qcom,default-state = "off";
+				qcom,current-setting = <5>;
+				qcom,max-current = <40>;
+				qcom,id = <6>;
+				qcom,source-sel = <1>;
+				qcom,mode-ctrl = <0x60>; /* current sink mode */
+				qcom,mode = "manual";
+			};
+		};
+	};
+
+};
+
+&dsi_truly_video {
+	pwms = <&pm8994_pwm_2 0 0>;
+	pwm-names = "backlight";
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+	qcom,mdss-dsi-bl-pmic-bank-select = <0> ; //pm8996-bank#2
+	qcom,mdss-dsi-pwm-gpio = <&pm8994_gpios 5 0>;
+	qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <255>;
+	qcom,cont-splash-enabled;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+
+	qcom,mdss-dsi-panel-timings-8996 = [
+		23 1f 07 09 05 03 04 a0
+		23 1f 07 09 05 03 04 a0
+		23 1f 07 09 05 03 04 a0
+		23 1f 07 09 05 03 04 a0
+		23 19 07 08 05 03 04 a0];
+};
+
+&usb_otg_switch {
+	status = "disabled";
+};
+
+&pmi8994_gpios {
+	/delete-node/ gpio@c000; /* PMI8994 GPIO 1 */
+	/delete-node/ gpio@c100; /* PMI8994 GPIO 2 */
+	/delete-node/ gpio@c200; /* PMI8994 GPIO 3 */
+	/delete-node/ gpio@c300; /* PMI8994 GPIO 4 */
+	/delete-node/ gpio@c400; /* PMI8994 GPIO 5 */
+	/delete-node/ gpio@c600; /* PMI8994 GPIO 7 */
+	/delete-node/ gpio@c700; /* PMI8994 GPIO 8 */
+	/delete-node/ gpio@c900; /* PMI8994 GPIO 10 */
+
+	gpio@c800 { /* GPIO 9 */ /* cclogic reset enable gpio */
+		qcom,mode = <1>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+};
+
+&pm8994_gpios {
+	/delete-node/ gpio@c200; /* PM8996 GPIO 3 */
+	/delete-node/ gpio@c500; /* PM8996 GPIO 6 */
+	/delete-node/ gpio@c600; /* PM8996 GPIO 7 */
+	/delete-node/ gpio@c900; /* PM8996 GPIO 10 */
+	/delete-node/ gpio@ca00; /* PM8996 GPIO 11 */
+	/delete-node/ gpio@cb00; /* PM8996 GPIO 12 */
+	/delete-node/ gpio@cd00; /* PM8996 GPIO 14 */
+	gpio@c400 { /* GPIO 5 - lcd-pwm*/
+		qcom,mode = <1>;
+		qcom,invert = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+	gpio@cc00 { /* GPIO 13 - bl_en */
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,invert = <1>; 	/* output hight initially */
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		status = "disabled";
+	};
+
+	gpio@d500 { /* GPIO 22 */ /* cclogic cable interrupt gpio */
+		qcom,mode = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+		status = "okay";
+	};
+};
+
+&pm8994_pwm_2 {
+	qcom,supported-sizes = <6>, <9>;
+	qcom,ramp-index = <2>;
+	status = "okay";
+};
+&slim_msm {
+	/delete-node/ tomtom_codec;
+	/delete-node/ tasha_codec;
+};
+
+&soc {
+	i2c@75ba000 {
+		synaptics@20 {
+			status = "disabled";
+			synaptics,button-map = <158 139 102>;
+		};
+	};
+
+	/delete-node/ gen-vkeys;
+
+	gpio_keys {
+		/delete-node/ cam_focus;
+	};
+
+	/delete-node/ flash_led;
+
+	/delete-node/ sound-9335;
+};
+
+&i2c_6 {
+	usb_cclogic@28 {
+		compatible = "analogix,ohio";
+		reg = <0x28>;
+		avdd33-supply = <&pm8994_l21>;
+		dvdd_io-supply = <&pm8994_s4>;
+		interrupt-extended = <&tlmm 73 0x3>,<&spmi_bus 0x0 0xd5 0x0>;
+		p-on-gpio = <&tlmm 81 0x0>;
+		reset-gpio = <&pmi8994_gpios 9 0x0>;
+		cbl-det-gpio = <&pm8994_gpios 22 0x0>;
+		intr-comm-gpio = <&tlmm 73 0x0>;
+		uart-sw-gpio = <&tlmm 83 0x0>;
+		uart-sw2-gpio = <&tlmm 21 0x0>;
+		ad-sel-gpio = <&tlmm 25 0x0>;
+	};
+};
+
+&i2c_7 {
+	silabs4705@11 { /* SiLabs FM chip, slave id 0x11*/
+		status = "disabled";
+	};
+};
+
+&i2c_8 {
+	at24@51 {
+		compatible = "atmel,24c32";
+		reg = <0x51>;
+	};
+};
+
+&pm8994_mpps {
+	/* Remove pm8994 MPP2 reference function, because it is
+	configured as back-light of touch key */
+	/delete-node/ mpp@a100; /* MPP 2 */
+	/delete-node/ mpp@a700; /* MPP 8 */
+};
+
+/*haptics start*/
+&pmi8994_haptics {
+	status = "disabled";
+};
+
+&i2c_9 {
+	drv2604l@5a {
+		status = "ok";
+		compatible = "ti,drv2604l";
+		reg = <0x5a>;
+		input-mode = <1>;
+		loop-mode = <1>;
+		rtp-format = <0>;
+		actuator-type = <1>;
+		frequency = <204>;
+		vib-rated-mv = <2000>;
+		vib-overdrive-mv = <2500>;
+		enable-gpio = <&tlmm 38 0>;
+	};
+};
+/*haptics end*/
+
+/{
+	mtp_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <15>;
+		#include "batterydata-max-plus-3395mah.dtsi"
+	};
+};
+
+&qusb_phy0 {
+        qcom,qusb-phy-init-seq = <0x78 0x80
+                                0xAC 0x84
+                                0x94 0x88
+                                0xCF 0x8C
+                                0x30 0x08
+                                0x79 0x0C
+                                0x21 0x10
+                                0x14 0x9C
+                                0x80 0x04
+                                0x9F 0x1C
+                                0x00 0x18>;
+};

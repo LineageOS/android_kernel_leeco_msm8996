@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -9,8 +9,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
-#include <dt-bindings/msm/pm.h>
 
 &soc {
 	qcom,spm@b089000 {
@@ -24,26 +22,11 @@
 		qcom,saw2-cfg = <0x01>;
 		qcom,saw2-spm-dly= <0x3c102800>;
 		qcom,saw2-spm-ctl = <0xe>;
-		qcom,mode0 {
-			qcom,label = "qcom,saw2-spm-cmd-wfi";
-			qcom,sequence = [60 03 60 0b 0f];
-			qcom,spm_en;
-		};
-		qcom,mode1 {
-			qcom,label = "qcom,saw2-spm-cmd-spc";
-			qcom,sequence = [20 10 80 30 90 5b 60 03 60 76 76
-						0b 94 5b 80 10 26 30 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-		};
-		qcom,mode2 {
-			qcom,label = "qcom,saw2-spm-cmd-pc";
-			qcom,sequence = [20 10 80 30 90 5b 60 03 60 76 76
-						0b 94 5b 80 10 26 30 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-			qcom,slp_cmd_mode;
-		};
+		qcom,saw2-spm-cmd-wfi = [60 03 60 0b 0f];
+		qcom,saw2-spm-cmd-spc = [20 10 80 30 90 5b 60 03 60 76 76
+				0b 94 5b 80 10 26 30 0f];
+		qcom,saw2-spm-cmd-pc = [20 10 80 30 90 5b 60 03 60 76 76
+				0b 94 5b 80 10 26 30 0f];
 	};
 
 	qcom,spm@b099000 {
@@ -58,26 +41,11 @@
 		qcom,saw2-cfg = <0x01>;
 		qcom,saw2-spm-dly= <0x3c102800>;
 		qcom,saw2-spm-ctl = <0xe>;
-		qcom,mode0 {
-			qcom,label = "qcom,saw2-spm-cmd-wfi";
-			qcom,sequence = [60 03 60 0b 0f];
-			qcom,spm_en;
-		};
-		qcom,mode1 {
-			qcom,label = "qcom,saw2-spm-cmd-spc";
-			qcom,sequence = [20 10 80 30 90 5b 60 03 60 76 76
-						0b 94 5b 80 10 26 30 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-		};
-		qcom,mode2 {
-			qcom,label = "qcom,saw2-spm-cmd-pc";
-			qcom,sequence = [20 10 80 30 90 5b 60 03 60 76 76
-						0b 94 5b 80 10 26 30 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-			qcom,slp_cmd_mode;
-		};
+		qcom,saw2-spm-cmd-wfi = [60 03 60 0b 0f];
+		qcom,saw2-spm-cmd-spc = [20 10 80 30 90 5b 60 03 60 76 76
+				0b 94 5b 80 10 26 30 0f];
+		qcom,saw2-spm-cmd-pc = [20 10 80 30 90 5b 60 03 60 76 76
+				0b 94 5b 80 10 26 30 0f];
 	};
 
 	qcom,spm@b0a9000 {
@@ -92,26 +60,11 @@
 		qcom,saw2-cfg = <0x01>;
 		qcom,saw2-spm-dly= <0x3c102800>;
 		qcom,saw2-spm-ctl = <0xe>;
-		qcom,mode0 {
-			qcom,label = "qcom,saw2-spm-cmd-wfi";
-			qcom,sequence = [60 03 60 0b 0f];
-			qcom,spm_en;
-		};
-		qcom,mode1 {
-			qcom,label = "qcom,saw2-spm-cmd-spc";
-			qcom,sequence = [20 10 80 30 90 5b 60 03 60 76 76
-						0b 94 5b 80 10 26 30 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-		};
-		qcom,mode2 {
-			qcom,label = "qcom,saw2-spm-cmd-pc";
-			qcom,sequence = [20 10 80 30 90 5b 60 03 60 76 76
-						0b 94 5b 80 10 26 30 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-			qcom,slp_cmd_mode;
-		};
+		qcom,saw2-spm-cmd-wfi = [60 03 60 0b 0f];
+		qcom,saw2-spm-cmd-spc = [20 10 80 30 90 5b 60 03 60 76 76
+				0b 94 5b 80 10 26 30 0f];
+		qcom,saw2-spm-cmd-pc = [20 10 80 30 90 5b 60 03 60 76 76
+				0b 94 5b 80 10 26 30 0f];
 	};
 
 	qcom,spm@b0b9000 {
@@ -126,26 +79,11 @@
 		qcom,saw2-cfg = <0x01>;
 		qcom,saw2-spm-dly= <0x3c102800>;
 		qcom,saw2-spm-ctl = <0xe>;
-		qcom,mode0 {
-			qcom,label = "qcom,saw2-spm-cmd-wfi";
-			qcom,sequence = [60 03 60 0b 0f];
-			qcom,spm_en;
-		};
-		qcom,mode1 {
-			qcom,label = "qcom,saw2-spm-cmd-spc";
-			qcom,sequence = [20 10 80 30 90 5b 60 03 60 76 76
-						0b 94 5b 80 10 26 30 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-		};
-		qcom,mode2 {
-			qcom,label = "qcom,saw2-spm-cmd-pc";
-			qcom,sequence = [20 10 80 30 90 5b 60 03 60 76 76
-						0b 94 5b 80 10 26 30 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-			qcom,slp_cmd_mode;
-		};
+		qcom,saw2-spm-cmd-wfi = [60 03 60 0b 0f];
+		qcom,saw2-spm-cmd-spc = [20 10 80 30 90 5b 60 03 60 76 76
+				0b 94 5b 80 10 26 30 0f];
+		qcom,saw2-spm-cmd-pc = [20 10 80 30 90 5b 60 03 60 76 76
+				0b 94 5b 80 10 26 30 0f];
 	};
 
 	qcom,spm@0xb012000 {
@@ -158,27 +96,12 @@
 		qcom,saw2-cfg = <0x14>;
 		qcom,saw2-spm-dly= <0x3c102800>;
 		qcom,saw2-spm-ctl = <0xe>;
-		qcom,mode0 {
-			qcom,label = "qcom,saw2-spm-cmd-ret";
-			qcom,sequence = [00 03 00 0f];
-			qcom,spm_en;
-		};
-		qcom,mode1 {
-			qcom,label = "qcom,saw2-spm-cmd-gdhs";
-			qcom,sequence = [00 20 32 6b c0 e0 d0 42 03 50 4e
-					02 02 d0 e0 c0 22 6b 02 32 50 0f];
-			qcom,spm_en;
-			qcom,pc_mode;
-		};
-		qcom,mode2 {
-			qcom,label = "qcom,saw2-spm-cmd-pc";
-			qcom,sequence = [00 32 b0 10 e0 d0 6b c0 42 f0 07
-					b0 50 4e 02 02 c0 d0 12 e0 6b 02
-					32 50 f0 0f]; /*APC_L2RAM_OFF */
-			qcom,spm_en;
-			qcom,pc_mode;
-			qcom,slp_cmd_mode;
-		};
+		qcom,saw2-spm-cmd-ret = [00 03 00 0f];
+		qcom,saw2-spm-cmd-gdhs = [00 20 32 6b c0 e0 d0 42 03 50
+				4e 02 02 d0 e0 c0 22 6b 02 32 50 0f];
+		qcom,saw2-spm-cmd-pc = [00 32 b0 10 e0 d0 6b c0 42 f0
+				07 b0 50 4e 02 02 c0 d0 12 e0 6b 02 32
+				50 f0 0f]; /*APC_L2RAM_OFF */
 	};
 
 	qcom,lpm-levels {
@@ -213,7 +136,6 @@
 				qcom,energy-overhead = <431578>;
 				qcom,time-overhead = <900>;
 				qcom,min-child-idx = <1>;
-				qcom,reset-level = <LPM_RESET_LVL_GDHS>;
 			};
 
 			qcom,pm-cluster-level@2{
@@ -226,7 +148,6 @@
 				qcom,time-overhead = <1500>;
 				qcom,min-child-idx = <2>;
 				qcom,notify-rpm;
-				qcom,reset-level = <LPM_RESET_LVL_PC>;
 			};
 
 
@@ -251,8 +172,6 @@
 					qcom,energy-overhead = <202781>;
 					qcom,time-overhead = <420>;
 					qcom,use-broadcast-timer;
-					qcom,reset-level =
-						<LPM_RESET_LVL_PC>;
 				};
 
 				qcom,pm-cpu-level@2 {
@@ -263,8 +182,6 @@
 					qcom,energy-overhead = <250621>;
 					qcom,time-overhead = <500>;
 					qcom,use-broadcast-timer;
-					qcom,reset-level =
-						<LPM_RESET_LVL_PC>;
 				};
 			};
 		};
@@ -451,6 +368,7 @@
 			<43  107>,
 			<50  47>,
 			<51  48>;
+
 	};
 
 
@@ -469,8 +387,11 @@
 		qcom,tz-flushes-cache;
 	};
 
-	qcom,cpu-sleep-status {
+	qcom,cpu-sleep-status@b088008{
 		compatible = "qcom,cpu-sleep-status";
+		reg = <0xb088008 0x100>;
+		qcom,cpu-alias-addr = <0x10000>;
+		qcom,sleep-status-mask= <0x80000>;
 	};
 
 	qcom,rpm-log@29dc00 {

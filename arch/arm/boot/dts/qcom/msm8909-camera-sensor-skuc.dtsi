@@ -57,7 +57,6 @@
 		clocks = <&clock_gcc clk_mclk1_clk_src>,
 				<&clock_gcc clk_gcc_camss_mclk1_clk>;
 		clock-names = "cam_src_clk", "cam_clk";
-		qcom,clock-rates = <24000000 0>;
 	};
 
 	qcom,camera@0 {
@@ -96,7 +95,6 @@
 		clocks = <&clock_gcc clk_mclk0_clk_src>,
 				<&clock_gcc clk_gcc_camss_mclk0_clk>;
 		clock-names = "cam_src_clk", "cam_clk";
-		qcom,clock-rates = <24000000 0>;
 	};
 
 	qcom,camera@1 {
@@ -132,6 +130,5 @@
 		clocks = <&clock_gcc clk_mclk1_clk_src>,
 				<&clock_gcc clk_gcc_camss_mclk1_clk>;
 		clock-names = "cam_src_clk", "cam_clk";
-		qcom,clock-rates = <24000000 0>;
 	};
 };
