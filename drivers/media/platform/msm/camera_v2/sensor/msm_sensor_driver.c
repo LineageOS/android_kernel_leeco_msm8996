@@ -30,6 +30,15 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev);
 /* Static declaration */
 static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
 
+int msm_sensor_power_onoff(int onoff , int dev_id)
+{
+	if (onoff)
+		return msm_sensor_power_up_no_check_id(g_sctrl[dev_id]);
+	else
+		return msm_sensor_power_down(g_sctrl[dev_id]);
+}
+EXPORT_SYMBOL(msm_sensor_power_onoff);
+
 static int msm_sensor_platform_remove(struct platform_device *pdev)
 {
 	struct msm_sensor_ctrl_t  *s_ctrl;

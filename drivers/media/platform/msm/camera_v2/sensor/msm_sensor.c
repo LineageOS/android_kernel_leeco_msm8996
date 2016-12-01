@@ -189,6 +189,42 @@ int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	return rc;
 }
 
+int msm_sensor_power_up_no_check_id(struct msm_sensor_ctrl_t *s_ctrl)
+{
+       int rc;
+       struct msm_camera_power_ctrl_t *power_info;
+       struct msm_camera_i2c_client *sensor_i2c_client;
+       struct msm_camera_slave_info *slave_info;
+       const char *sensor_name;
+
+       if (!s_ctrl) {
+               pr_err("%s:%d failed: %p\n",
+                       __func__, __LINE__, s_ctrl);
+               return -EINVAL;
+       }
+
+       power_info = &s_ctrl->sensordata->power_info;
+       sensor_i2c_client = s_ctrl->sensor_i2c_client;
+       slave_info = s_ctrl->sensordata->slave_info;
+       sensor_name = s_ctrl->sensordata->sensor_name;
+
+       if (!power_info || !sensor_i2c_client || !slave_info ||
+               !sensor_name) {
+               pr_err("%s:%d failed: %p %p %p %p\n",
+                       __func__, __LINE__, power_info,
+                       sensor_i2c_client, slave_info, sensor_name);
+               return -EINVAL;
+       }
+
+       if (s_ctrl->set_mclk_23880000)
+               msm_sensor_adjust_mclk(power_info);
+
+       rc = msm_camera_power_up(power_info, s_ctrl->sensor_device_type,
+               sensor_i2c_client);
+
+       return rc;
+}
+
 static uint16_t msm_sensor_id_by_mask(struct msm_sensor_ctrl_t *s_ctrl,
 	uint16_t chipid)
 {
