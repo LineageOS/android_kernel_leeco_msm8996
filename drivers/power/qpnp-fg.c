@@ -36,6 +36,11 @@
 #include <linux/alarmtimer.h>
 #include <linux/qpnp/qpnp-revid.h>
 
+#ifdef CONFIG_PRODUCT_LE_ZL1
+#include <linux/reboot.h>
+static int empty_cn = 0;
+#endif
+
 /* Register offsets */
 
 /* Interrupt offsets */
@@ -6545,6 +6550,23 @@ static void check_empty_work(struct work_struct *work)
 		if (chip->power_supply_registered)
 			power_supply_changed(&chip->bms_psy);
 	}
+#ifdef CONFIG_PRODUCT_LE_ZL1
+	/*
+	 * 1.5s *40 ~ 60 s, shutdown device now
+	 */
+	if(empty_cn > 40) {
+		pr_err("low Voltage ,force shutdown now\n");
+		orderly_poweroff(true);
+	}
+
+	if(chip->soc_empty) {
+		empty_cn ++;
+		schedule_delayed_work(&chip->check_empty_work,
+			msecs_to_jiffies(FG_EMPTY_DEBOUNCE_MS));
+	}else {
+		empty_cn = 0;
+	}
+#endif
 
 out:
 	fg_relax(&chip->empty_check_wakeup_source);
