@@ -38,7 +38,7 @@
 #include <linux/delay.h>
 #include <linux/input.h>
 #include <linux/platform_device.h>
-#include <linux/input/synaptics_dsx_v2_6.h>
+#include <linux/input/synaptics_dsx_v26.h>
 #include "synaptics_dsx_core.h"
 
 #define GESTURE_PHYS_NAME "synaptics_dsx/gesture"
@@ -389,47 +389,47 @@ struct synaptics_rmi4_udg_handle {
 
 static struct device_attribute attrs[] = {
 	__ATTR(engine_enable, S_IWUGO,
-			NULL,
+			synaptics_rmi4_show_error,
 			udg_sysfs_engine_enable_store),
 	__ATTR(detection_enable, S_IWUGO,
-			NULL,
+			synaptics_rmi4_show_error,
 			udg_sysfs_detection_enable_store),
 	__ATTR(detection_score, S_IRUGO,
 			udg_sysfs_detection_score_show,
-			NULL),
+			synaptics_rmi4_store_error),
 	__ATTR(detection_index, S_IRUGO,
 			udg_sysfs_detection_index_show,
-			NULL),
+			synaptics_rmi4_store_error),
 	__ATTR(registration_enable, S_IWUGO,
-			NULL,
+			synaptics_rmi4_show_error,
 			udg_sysfs_registration_enable_store),
 	__ATTR(registration_begin, S_IWUGO,
-			NULL,
+			synaptics_rmi4_show_error,
 			udg_sysfs_registration_begin_store),
 	__ATTR(registration_status, S_IRUGO,
 			udg_sysfs_registration_status_show,
-			NULL),
+			synaptics_rmi4_store_error),
 	__ATTR(template_size, S_IRUGO,
 			udg_sysfs_template_size_show,
-			NULL),
+			synaptics_rmi4_store_error),
 	__ATTR(template_max_index, S_IRUGO,
 			udg_sysfs_template_max_index_show,
-			NULL),
+			synaptics_rmi4_store_error),
 	__ATTR(template_detection, S_IRUGO,
 			udg_sysfs_template_detection_show,
-			NULL),
+			synaptics_rmi4_store_error),
 	__ATTR(template_index, S_IWUGO,
-			NULL,
+			synaptics_rmi4_show_error,
 			udg_sysfs_template_index_store),
 	__ATTR(template_valid, (S_IRUGO | S_IWUGO),
 			udg_sysfs_template_valid_show,
 			udg_sysfs_template_valid_store),
 	__ATTR(template_clear, S_IWUGO,
-			NULL,
+			synaptics_rmi4_show_error,
 			udg_sysfs_template_clear_store),
 	__ATTR(trace_size, S_IRUGO,
 			udg_sysfs_trace_size_show,
-			NULL),
+			synaptics_rmi4_store_error),
 };
 
 static struct bin_attribute template_data = {
@@ -878,7 +878,7 @@ static ssize_t udg_sysfs_trace_data_show(struct file *data_file,
 	if (count < trace_data_size) {
 		dev_err(rmi4_data->pdev->dev.parent,
 				"%s: Not enough space (%d bytes) in buffer\n",
-				__func__, (unsigned int)count);
+				__func__, count);
 		return -EINVAL;
 	}
 
@@ -955,7 +955,7 @@ static ssize_t udg_sysfs_template_data_show(struct file *data_file,
 	if (count < udg->template_data_size) {
 		dev_err(rmi4_data->pdev->dev.parent,
 				"%s: Not enough space (%d bytes) in buffer\n",
-				__func__, (unsigned int)count);
+				__func__, count);
 		return -EINVAL;
 	}
 
@@ -1644,7 +1644,8 @@ static int udg_reg_init(void)
 
 	if (size_of_query < 4) {
 		dev_err(rmi4_data->pdev->dev.parent,
-				"%s: User defined gesture support unavailable (missing data registers)\n",
+				"%s: User defined gesture support unavailable "
+				"(missing data registers)\n",
 				__func__);
 		retval = -ENODEV;
 		return retval;
@@ -1689,7 +1690,8 @@ static int udg_reg_init(void)
 		udg->addr.template_flags = udg->addr.template_data + 1;
 	} else {
 		dev_err(rmi4_data->pdev->dev.parent,
-				"%s: User defined gesture support unavailable (missing data registers)\n",
+				"%s: User defined gesture support unavailable "
+				"(missing data registers)\n",
 				__func__);
 		retval = -ENODEV;
 		return retval;
@@ -1704,7 +1706,8 @@ static int udg_reg_init(void)
 
 	if (size_of_query < 7) {
 		dev_err(rmi4_data->pdev->dev.parent,
-				"%s: User defined gesture support unavailable (missing control registers)\n",
+				"%s: User defined gesture support unavailable "
+				"(missing control registers)\n",
 				__func__);
 		retval = -ENODEV;
 		return retval;

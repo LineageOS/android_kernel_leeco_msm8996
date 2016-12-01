@@ -42,7 +42,7 @@
 #include <linux/types.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-#include <linux/input/synaptics_dsx_v2_6.h>
+#include <linux/input/synaptics_dsx_v26.h>
 #include "synaptics_dsx_core.h"
 
 #define SYN_I2C_RETRY_TIMES 10
@@ -129,8 +129,7 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 	struct device_node *np = dev->of_node;
 
 	bdata->irq_gpio = of_get_named_gpio_flags(np,
-			"synaptics,irq-gpio", 0,
-			(enum of_gpio_flags *)&bdata->irq_flags);
+			"synaptics,irq-gpio", 0, NULL);
 
 	retval = of_property_read_u32(np, "synaptics,irq-on-state",
 			&value);
@@ -139,141 +138,117 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 	else
 		bdata->irq_on_state = value;
 
-	retval = of_property_read_string(np, "synaptics,pwr-reg-name", &name);
+	retval = of_property_read_u32(np, "synaptics,irq-flags", &value);
 	if (retval < 0)
+		return retval;
+	else
+		bdata->irq_flags = value;
+
+	retval = of_property_read_string(np, "synaptics,pwr-reg-name", &name);
+	if (retval == -EINVAL)
 		bdata->pwr_reg_name = NULL;
+	else if (retval < 0)
+		return retval;
 	else
 		bdata->pwr_reg_name = name;
 
 	retval = of_property_read_string(np, "synaptics,bus-reg-name", &name);
-	if (retval < 0)
+	if (retval == -EINVAL)
 		bdata->bus_reg_name = NULL;
+	else if (retval < 0)
+		return retval;
 	else
 		bdata->bus_reg_name = name;
 
-	prop = of_find_property(np, "synaptics,power-gpio", NULL);
-	if (prop && prop->length) {
+	if (of_property_read_bool(np, "synaptics,power-gpio")) {
 		bdata->power_gpio = of_get_named_gpio_flags(np,
 				"synaptics,power-gpio", 0, NULL);
 		retval = of_property_read_u32(np, "synaptics,power-on-state",
 				&value);
-		if (retval < 0) {
-			dev_err(dev, "%s: Unable to read synaptics,power-on-state property\n",
-					__func__);
+		if (retval < 0)
 			return retval;
-		} else {
+		else
 			bdata->power_on_state = value;
-		}
 	} else {
 		bdata->power_gpio = -1;
 	}
 
-	prop = of_find_property(np, "synaptics,power-delay-ms", NULL);
-	if (prop && prop->length) {
+	if (of_property_read_bool(np, "synaptics,power-delay-ms")) {
 		retval = of_property_read_u32(np, "synaptics,power-delay-ms",
 				&value);
-		if (retval < 0) {
-			dev_err(dev, "%s: Unable to read synaptics,power-delay-ms property\n",
-					__func__);
+		if (retval < 0)
 			return retval;
-		} else {
+		else
 			bdata->power_delay_ms = value;
-		}
 	} else {
 		bdata->power_delay_ms = 0;
 	}
 
-	prop = of_find_property(np, "synaptics,reset-gpio", NULL);
-	if (prop && prop->length) {
+	if (of_property_read_bool(np, "synaptics,reset-gpio")) {
 		bdata->reset_gpio = of_get_named_gpio_flags(np,
 				"synaptics,reset-gpio", 0, NULL);
 		retval = of_property_read_u32(np, "synaptics,reset-on-state",
 				&value);
-		if (retval < 0) {
-			dev_err(dev, "%s: Unable to read synaptics,reset-on-state property\n",
-					__func__);
+		if (retval < 0)
 			return retval;
-		} else {
+		else
 			bdata->reset_on_state = value;
-		}
 		retval = of_property_read_u32(np, "synaptics,reset-active-ms",
 				&value);
-		if (retval < 0) {
-			dev_err(dev, "%s: Unable to read synaptics,reset-active-ms property\n",
-					__func__);
+		if (retval < 0)
 			return retval;
-		} else {
+		else
 			bdata->reset_active_ms = value;
-		}
 	} else {
 		bdata->reset_gpio = -1;
 	}
 
-	prop = of_find_property(np, "synaptics,reset-delay-ms", NULL);
-	if (prop && prop->length) {
+	if (of_property_read_bool(np, "synaptics,reset-delay-ms")) {
 		retval = of_property_read_u32(np, "synaptics,reset-delay-ms",
 				&value);
-		if (retval < 0) {
-			dev_err(dev, "%s: Unable to read synaptics,reset-delay-ms property\n",
-					__func__);
+		if (retval < 0)
 			return retval;
-		} else {
+		else
 			bdata->reset_delay_ms = value;
-		}
 	} else {
 		bdata->reset_delay_ms = 0;
 	}
 
-	prop = of_find_property(np, "synaptics,dev-dscrptr-addr", NULL);
-	if (prop && prop->length) {
+	if (of_property_read_bool(np, "synaptics,dev-dscrptr-addr")) {
 		retval = of_property_read_u32(np, "synaptics,dev-dscrptr-addr",
 				&value);
-		if (retval < 0) {
-			dev_err(dev, "%s: Unable to read synaptics,dev-dscrptr-addr property\n",
-					__func__);
+		if (retval < 0)
 			return retval;
-		} else {
+		else
 			bdata->device_descriptor_addr = (unsigned short)value;
-		}
 	} else {
 		bdata->device_descriptor_addr = 0;
 	}
 
-	prop = of_find_property(np, "synaptics,max-y-for-2d", NULL);
-	if (prop && prop->length) {
+	if (of_property_read_bool(np, "synaptics,max-y-for-2d")) {
 		retval = of_property_read_u32(np, "synaptics,max-y-for-2d",
 				&value);
-		if (retval < 0) {
-			dev_err(dev, "%s: Unable to read synaptics,max-y-for-2d property\n",
-					__func__);
+		if (retval < 0)
 			return retval;
-		} else {
+		else
 			bdata->max_y_for_2d = value;
-		}
 	} else {
 		bdata->max_y_for_2d = -1;
 	}
 
-	prop = of_find_property(np, "synaptics,swap-axes", NULL);
-	bdata->swap_axes = prop > 0 ? true : false;
+	bdata->swap_axes = of_property_read_bool(np, "synaptics,swap-axes");
 
-	prop = of_find_property(np, "synaptics,x-flip", NULL);
-	bdata->x_flip = prop > 0 ? true : false;
+	bdata->x_flip = of_property_read_bool(np, "synaptics,x-flip");
 
-	prop = of_find_property(np, "synaptics,y-flip", NULL);
-	bdata->y_flip = prop > 0 ? true : false;
+	bdata->y_flip = of_property_read_bool(np, "synaptics,y-flip");
 
-	prop = of_find_property(np, "synaptics,ub-i2c-addr", NULL);
-	if (prop && prop->length) {
+	if (of_property_read_bool(np, "synaptics,ub-i2c-addr")) {
 		retval = of_property_read_u32(np, "synaptics,ub-i2c-addr",
 				&value);
-		if (retval < 0) {
-			dev_err(dev, "%s: Unable to read synaptics,ub-i2c-addr property\n",
-					__func__);
+		if (retval < 0)
 			return retval;
-		} else {
+		else
 			bdata->ub_i2c_addr = (unsigned short)value;
-		}
 	} else {
 		bdata->ub_i2c_addr = -1;
 	}
@@ -987,19 +962,19 @@ static struct i2c_driver synaptics_rmi4_i2c_driver = {
 	.id_table = synaptics_rmi4_id_table,
 };
 
-int synaptics_rmi4_bus_init_v26(void)
+int synaptics_rmi4_bus_init(void)
 {
 	return i2c_add_driver(&synaptics_rmi4_i2c_driver);
 }
-EXPORT_SYMBOL(synaptics_rmi4_bus_init_v26);
+EXPORT_SYMBOL(synaptics_rmi4_bus_init);
 
-void synaptics_rmi4_bus_exit_v26(void)
+void synaptics_rmi4_bus_exit(void)
 {
 	i2c_del_driver(&synaptics_rmi4_i2c_driver);
 
 	return;
 }
-EXPORT_SYMBOL(synaptics_rmi4_bus_exit_v26);
+EXPORT_SYMBOL(synaptics_rmi4_bus_exit);
 
 MODULE_AUTHOR("Synaptics, Inc.");
 MODULE_DESCRIPTION("Synaptics DSX I2C Bus Support Module");

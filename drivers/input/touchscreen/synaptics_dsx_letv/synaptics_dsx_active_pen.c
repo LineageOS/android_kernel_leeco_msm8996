@@ -38,7 +38,7 @@
 #include <linux/delay.h>
 #include <linux/input.h>
 #include <linux/platform_device.h>
-#include <linux/input/synaptics_dsx_v2_6.h>
+#include <linux/input/synaptics_dsx_v26.h>
 #include "synaptics_dsx_core.h"
 
 #define APEN_PHYS_NAME "synaptics_dsx/active_pen"
@@ -227,7 +227,13 @@ static void apen_report(void)
 	input_sync(apen->apen_dev);
 
 	dev_dbg(rmi4_data->pdev->dev.parent,
-			"%s: Active pen: status = %d, invert = %d, barrel = %d, x = %d, y = %d, pressure = %d\n",
+			"%s: Active pen: "
+			"status = %d, "
+			"invert = %d, "
+			"barrel = %d, "
+			"x = %d, "
+			"y = %d, "
+			"pressure = %d\n",
 			__func__,
 			apen->apen_data->status_pen,
 			apen->apen_data->status_invert,

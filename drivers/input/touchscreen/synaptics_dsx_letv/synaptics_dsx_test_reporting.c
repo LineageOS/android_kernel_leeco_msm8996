@@ -40,13 +40,14 @@
 #include <linux/ctype.h>
 #include <linux/hrtimer.h>
 #include <linux/platform_device.h>
-#include <linux/input/synaptics_dsx_v2_6.h>
+#include <linux/input/synaptics_dsx_v26.h>
 #include "synaptics_dsx_core.h"
+#include <asm/uaccess.h>
 
 #define SYSFS_FOLDER_NAME "f54"
 
 #define GET_REPORT_TIMEOUT_S 3
-#define CALIBRATION_TIMEOUT_S 10
+#define CALIBRATION_TIMEOUT_S 30
 #define COMMAND_TIMEOUT_100MS 20
 
 #define NO_SLEEP_OFF (0 << 2)
@@ -181,6 +182,7 @@
 #define CONTROL_149_SIZE 1
 #define CONTROL_163_SIZE 1
 #define CONTROL_165_SIZE 1
+#define CONTROL_166_SIZE 1
 #define CONTROL_167_SIZE 1
 #define CONTROL_176_SIZE 1
 #define CONTROL_179_SIZE 1
@@ -189,6 +191,7 @@
 #define HIGH_RESISTANCE_DATA_SIZE 6
 #define FULL_RAW_CAP_MIN_MAX_DATA_SIZE 4
 #define TRX_OPEN_SHORT_DATA_SIZE 7
+#define CALIBRATION_DATA_SIZE 3624
 
 #define concat(a, b) a##b
 
@@ -198,13 +201,23 @@
 static ssize_t concat(test_sysfs, _##propname##_show)(\
 		struct device *dev,\
 		struct device_attribute *attr,\
-		char *buf);
+		char *buf);\
+\
+static struct device_attribute dev_attr_##propname =\
+		__ATTR(propname, S_IRUGO,\
+		concat(test_sysfs, _##propname##_show),\
+		synaptics_rmi4_store_error);
 
 #define store_prototype(propname)\
 static ssize_t concat(test_sysfs, _##propname##_store)(\
 		struct device *dev,\
 		struct device_attribute *attr,\
-		const char *buf, size_t count);
+		const char *buf, size_t count);\
+\
+static struct device_attribute dev_attr_##propname =\
+		__ATTR(propname, S_IWUGO,\
+		synaptics_rmi4_show_error,\
+		concat(test_sysfs, _##propname##_store));
 
 #define show_store_prototype(propname)\
 static ssize_t concat(test_sysfs, _##propname##_show)(\
@@ -274,6 +287,7 @@ enum f54_report_types {
 	F54_ABS_HYBRID_RAW_CAP = 63,
 	F54_AMP_FULL_RAW_CAP = 78,
 	F54_AMP_RAW_ADC = 83,
+	F54_CALIBRATION = 84,
 	INVALID_REPORT_TYPE = -1,
 };
 
@@ -1043,11 +1057,20 @@ store_prototype(do_preparation)
 store_prototype(force_cal)
 store_prototype(get_report)
 store_prototype(resume_touch)
-store_prototype(do_afe_calibration)
+show_prototype(short_circuit_test)
+show_prototype(open_circuit_test)
+show_prototype(raw_cap_data)
+show_store_prototype(do_afe_calibration)
+show_prototype(calibration_data_test)
 show_store_prototype(report_type)
 show_store_prototype(fifoindex)
 show_store_prototype(no_auto_cal)
 show_store_prototype(read_report)
+
+ssize_t (*synaptics_raw_cap_data_show)(struct device *dev, struct device_attribute *attr, char *buf) = test_sysfs_raw_cap_data_show;
+ssize_t (*synaptics_open_circuit_test_show)(struct device *dev, struct device_attribute *attr, char *buf) =  test_sysfs_open_circuit_test_show;
+ssize_t (*synaptics_do_afe_calibration_store)(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count) = test_sysfs_do_afe_calibration_store;
 
 static struct attribute *attrs[] = {
 	attrify(num_of_mapped_tx),
@@ -1061,7 +1084,11 @@ static struct attribute *attrs[] = {
 	attrify(get_report),
 	attrify(resume_touch),
 	attrify(do_afe_calibration),
+	attrify(short_circuit_test),
 	attrify(report_type),
+	attrify(open_circuit_test),
+	attrify(raw_cap_data),
+	attrify(calibration_data_test),
 	attrify(fifoindex),
 	attrify(no_auto_cal),
 	attrify(read_report),
@@ -1119,6 +1146,7 @@ static bool test_report_type_valid(enum f54_report_types report_type)
 	case F54_ABS_HYBRID_RAW_CAP:
 	case F54_AMP_FULL_RAW_CAP:
 	case F54_AMP_RAW_ADC:
+	case F54_CALIBRATION:
 		return true;
 		break;
 	default:
@@ -1204,6 +1232,9 @@ static void test_set_report_size(void)
 	case F54_ABS_HYBRID_DELTA_CAP:
 	case F54_ABS_HYBRID_RAW_CAP:
 		f54->report_size = 4 * (tx + rx);
+		break;
+	case F54_CALIBRATION:
+		f54->report_size = CALIBRATION_DATA_SIZE;
 		break;
 	default:
 		f54->report_size = 0;
@@ -1389,6 +1420,7 @@ static int test_do_preparation(void)
 	case F54_ABS_DELTA_CAP:
 	case F54_ABS_HYBRID_DELTA_CAP:
 	case F54_ABS_HYBRID_RAW_CAP:
+	case F54_CALIBRATION:
 		break;
 	case F54_AMP_RAW_ADC:
 		if (f54->query_49.has_ctrl188) {
@@ -1780,6 +1812,153 @@ exit:
 	return retval;
 }
 
+
+static void checkCMD(void)
+{
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	struct i2c_client *client = to_i2c_client(rmi4_data->pdev->dev.parent);
+	int ret = 0;
+
+	do {
+		mdelay(5);
+		ret = i2c_smbus_read_byte_data(client,
+			f54->command_base_addr);
+	}while(ret > 0x00);
+}
+
+
+/****************************************************
+Function:
+    this func get tp raw capacitance and detect this
+    value
+Input:
+    NA
+Output:
+    1:auto test sucess, -1:auto test fail
+****************************************************/
+static int tp_capacitance_auto_test(void)
+{
+	int ret = 0;
+	int x,y;
+	int16_t baseline_data = 0;
+	uint8_t tmp_old = 0,tmp_new = 0;
+	uint8_t tmp_l = 0,tmp_h = 0;
+	uint16_t count = 0;
+	int min_value, max_value;
+
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	const struct synaptics_dsx_board_data *bdata = rmi4_data->hw_if->board_data;
+	struct i2c_client *client = to_i2c_client(rmi4_data->pdev->dev.parent);
+
+	if (bdata->driver_line_num <= 0 || bdata->sense_line_num <= 0) {
+		dev_err(&client->dev, "%s: not support capacitance auto test.\n", __func__);
+		return -1;
+	}
+
+	mutex_lock(&f54->status_mutex);
+	i2c_smbus_write_byte_data(client, 0xff, 1); /* select page 1 */
+	printk("step 1:select report type 0x03\n");
+	/* step 1:check raw capacitance */
+	ret = i2c_smbus_write_byte_data(client,
+				f54->data_base_addr,0x03); /* select report type 0x03 */
+	if (ret < 0)
+	{
+		printk("read_baseline: i2c_smbus_write_byte_data failed \n");
+	}
+
+	ret = i2c_smbus_read_byte_data(client,
+				f54->control_base_addr+7);
+	tmp_old = ret&0xff;
+	tmp_new = tmp_old & 0xef;
+	printk("ret = %x ,tmp_old =%x ,tmp_new = %x\n",ret,tmp_old,tmp_new);
+
+	ret = i2c_smbus_write_byte_data(client,
+				f54->control_base_addr+7,tmp_new);
+	ret = i2c_smbus_write_word_data(client,
+				f54->command_base_addr,0x04);
+	checkCMD();
+
+	printk("forbid CBC oK\n");
+	ret = i2c_smbus_write_byte_data(client,
+				f54->control_base_addr + 21,0X01);	/* Forbid NoiseMitigation F54_ANALOG_CTRL41 */
+	ret = i2c_smbus_write_byte_data(client,
+				f54->command_base_addr,0X04); /* force F54_ANALOG_CMD00 */
+	checkCMD();
+	printk("forbid NoiseMitigation oK\n");
+	ret = i2c_smbus_write_byte_data(client,
+				f54->command_base_addr,0X02); /* Force Cal, F54_ANALOG_CMD00 */
+	checkCMD();
+	printk("Force Cal oK, 0x%x\n", f54->command_base_addr);
+
+	ret = i2c_smbus_write_word_data(client,
+				f54->data_base_addr+1,0x00); /* set fifo 00 */
+	ret = i2c_smbus_write_byte_data(client,
+				f54->command_base_addr,0X01); /* get report */
+	checkCMD();
+
+	for(x = 0;x < bdata->driver_line_num; x++)
+	{
+		for(y = 0; y < bdata->sense_line_num; y++)
+		{
+			ret = i2c_smbus_read_byte_data(client, f54->data_base_addr+3);
+			tmp_l = ret&0xff;
+			ret = i2c_smbus_read_byte_data(client, f54->data_base_addr+3);
+			tmp_h = ret&0xff;
+			baseline_data = (tmp_h<<8)|tmp_l;
+
+			min_value = (bdata->cap_min_value[count] == 0) ? -8000 : bdata->cap_min_value[count];
+			max_value = bdata->cap_max_value[count];
+			if(!(baseline_data > min_value && baseline_data < max_value))
+			{
+				pr_err("%s: find (tx, rx) = (%d, %d); invalid value %d\n", __func__,
+						x, y, baseline_data);
+				ret = -1;
+				goto end;
+			}
+			else
+			{
+				ret = 1;
+			}
+			count++;
+		}
+	}
+
+end:
+	i2c_smbus_write_byte_data(client, 0xff, 0); /* select page 0 */
+	rmi4_data->reset_device(rmi4_data, false);
+	mutex_unlock(&f54->status_mutex);
+
+	return ret;
+}
+
+ssize_t synaptics_tp_status_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+			rmi4_data->tp_status);
+}
+
+
+ssize_t synaptics_tp_auto_test_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	const struct synaptics_dsx_board_data *bdata = rmi4_data->hw_if->board_data;
+	int retval;
+	int count = 0;
+
+	if (bdata->driver_line_num <= 0 || bdata->sense_line_num <= 0) {
+		count = scnprintf(buf, PAGE_SIZE, "No Support\n");
+		return count;
+	}
+
+	retval = tp_capacitance_auto_test();
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n",retval);
+}
+
 static ssize_t test_sysfs_force_cal_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -1944,6 +2123,7 @@ static ssize_t test_sysfs_resume_touch_store(struct device *dev,
 	case F54_ABS_DELTA_CAP:
 	case F54_ABS_HYBRID_DELTA_CAP:
 	case F54_ABS_HYBRID_RAW_CAP:
+	case F54_CALIBRATION:
 		break;
 	case F54_AMP_RAW_ADC:
 		if (f54->query_49.has_ctrl188) {
@@ -2390,9 +2570,19 @@ static ssize_t test_sysfs_read_report_store(struct device *dev,
 	if (retval < 0)
 		goto exit;
 
+	switch (f54->report_type) {
+	case F54_16BIT_IMAGE:
+	case F54_RAW_16BIT_IMAGE:
+	case F54_SENSOR_SPEED:
+	case F54_ADC_RANGE:
+	case F54_CALIBRATION:
+		break;
+	default:
 	retval = test_sysfs_do_preparation_store(dev, attr, cmd, 1);
 	if (retval < 0)
 		goto exit;
+		break;
+	}
 
 	retval = test_sysfs_get_report_store(dev, attr, cmd, 1);
 	if (retval < 0)
@@ -2414,10 +2604,21 @@ static ssize_t test_sysfs_read_report_store(struct device *dev,
 		goto exit;
 	}
 
+	switch (f54->report_type) {
+	case F54_16BIT_IMAGE:
+	case F54_RAW_16BIT_IMAGE:
+	case F54_SENSOR_SPEED:
+	case F54_ADC_RANGE:
+	case F54_CALIBRATION:
+	case F54_FULL_RAW_CAP_NO_RX_COUPLING:
 	retval = test_sysfs_resume_touch_store(dev, attr, cmd, 1);
 	if (retval < 0)
 		goto exit;
-
+		break;
+	default:
+		rmi4_data->reset_device(rmi4_data, false);
+		break;
+	}
 	return count;
 
 exit:
@@ -2425,7 +2626,462 @@ exit:
 
 	return retval;
 }
+static ssize_t test_sysfs_short_circuit_test_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	char report_type[10] = {0};
+	int retval;
+	int ii;
 
+	if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-02") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-02-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-03-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-02-01"))
+		sprintf(report_type, "%d", F54_TX_TO_TX_SHORTS);
+	else
+		return snprintf(buf, 4* PAGE_SIZE, "Invalid product id:%s\n",
+				f54->rmi4_data->rmi4_mod_info.product_id_string);
+
+	retval = test_sysfs_read_report_store(dev, attr, report_type, sizeof(report_type));
+	if(retval < 0)
+	{
+		return snprintf(buf, PAGE_SIZE, "Do not have read report data\n");
+	}
+	for (ii = 0; ii < f54->report_size; ii++) {
+		if(f54->report_data[ii]){
+			return snprintf(buf, PAGE_SIZE, "TP Short Circuit Detected,\nType-5, %03d: 0x%02x\n",
+					ii, f54->report_data[ii]);
+		}
+	}
+
+	sprintf(report_type, "%d", F54_TRX_SHORTS);
+	retval = test_sysfs_read_report_store(dev, attr, report_type, sizeof(report_type));
+	if(retval < 0)
+	{
+		return snprintf(buf, PAGE_SIZE, "Do not have read report data\n");
+	}
+	for (ii = 0; ii < f54->report_size; ii++) {
+		if(f54->report_data[ii]){
+			return snprintf(buf, PAGE_SIZE, "TP Short Circuit Detected,\nType-26,%03d: 0x%02x\n",
+					ii, f54->report_data[ii]);
+		}
+	}
+	return snprintf(buf, PAGE_SIZE, "Pass\n");
+}
+static short open_circuit_threshold_truly[32][21] = {
+{2489,2465,2274,2260,2245,2236,2225,2226,2223,2222,2227,2229,2239,2254,2267,2288,2480,2523,0,0,0},
+{2485,2464,2273,2258,2244,2234,2223,2224,2222,2221,2225,2227,2237,2252,2266,2287,2479,2519,0,0,0},
+{2511,2492,2300,2286,2272,2262,2251,2252,2249,2249,2252,2254,2265,2280,2294,2315,2508,2545,0,0,0},
+{2495,2475,2284,2270,2257,2246,2236,2237,2235,2235,2238,2240,2250,2264,2278,2299,2490,2530,0,0,0},
+{2518,2499,2309,2294,2281,2271,2260,2262,2259,2259,2262,2264,2274,2288,2302,2323,2515,2552,0,0,0},
+{2500,2481,2291,2277,2264,2255,2244,2246,2243,2243,2245,2247,2257,2271,2284,2304,2495,2534,0,0,0},
+{2522,2504,2313,2300,2286,2277,2266,2268,2266,2265,2268,2270,2280,2294,2306,2327,2518,2555,0,0,0},
+{2520,2502,2312,2298,2285,2276,2265,2267,2265,2265,2267,2269,2279,2293,2305,2326,2517,2554,0,0,0},
+{2497,2479,2289,2275,2263,2254,2243,2245,2243,2243,2245,2247,2256,2270,2283,2303,2493,2531,0,0,0},
+{2516,2498,2308,2294,2282,2273,2262,2264,2262,2261,2264,2265,2276,2289,2301,2321,2512,2549,0,0,0},
+{2512,2494,2304,2291,2278,2269,2259,2260,2258,2258,2260,2262,2271,2285,2297,2317,2508,2545,0,0,0},
+{2487,2469,2279,2266,2254,2245,2235,2237,2234,2234,2236,2238,2247,2261,2272,2291,2482,2520,0,0,0},
+{2503,2485,2295,2282,2270,2261,2251,2253,2250,2251,2253,2254,2263,2277,2289,2308,2498,2536,0,0,0},
+{2475,2456,2267,2254,2242,2234,2223,2225,2223,2223,2225,2226,2235,2249,2260,2280,2470,2509,0,0,0},
+{2489,2471,2282,2270,2257,2249,2238,2241,2238,2238,2241,2241,2250,2264,2275,2295,2485,2523,0,0,0},
+{2461,2441,2252,2240,2228,2219,2209,2211,2209,2209,2211,2212,2221,2234,2246,2265,2455,2494,0,0,0},
+{2471,2452,2262,2249,2238,2229,2219,2221,2219,2219,2221,2222,2231,2245,2256,2275,2465,2505,0,0,0},
+{2439,2419,2230,2217,2206,2197,2187,2190,2187,2187,2190,2190,2199,2213,2224,2243,2432,2472,0,0,0},
+{2447,2428,2239,2226,2214,2206,2196,2199,2196,2196,2199,2199,2208,2221,2232,2251,2441,2481,0,0,0},
+{2414,2393,2204,2191,2180,2172,2162,2164,2162,2163,2164,2165,2174,2187,2198,2217,2406,2447,0,0,0},
+{2421,2401,2212,2199,2188,2180,2170,2172,2170,2170,2172,2173,2182,2195,2205,2225,2414,2455,0,0,0},
+{2407,2386,2197,2185,2173,2165,2156,2158,2156,2156,2158,2159,2168,2181,2191,2210,2400,2440,0,0,0},
+{2373,2350,2162,2150,2139,2130,2121,2124,2121,2122,2124,2124,2133,2146,2156,2174,2364,2406,0,0,0},
+{2378,2356,2168,2156,2144,2137,2127,2130,2127,2128,2130,2130,2139,2152,2162,2181,2370,2413,0,0,0},
+{2363,2341,2153,2140,2130,2122,2112,2115,2113,2113,2115,2116,2124,2136,2147,2166,2355,2397,0,0,0},
+{2327,2303,2115,2103,2092,2085,2075,2078,2076,2077,2078,2078,2087,2099,2110,2128,2317,2360,0,0,0},
+{2331,2308,2120,2108,2097,2090,2081,2083,2081,2083,2083,2084,2092,2104,2115,2133,2321,2365,0,0,0},
+{2294,2269,2082,2071,2060,2053,2044,2047,2045,2046,2047,2047,2055,2067,2077,2094,2282,2327,0,0,0},
+{2298,2274,2087,2077,2067,2060,2050,2054,2051,2053,2054,2054,2061,2074,2083,2100,2288,2332,0,0,0},
+{2261,2237,2050,2040,2031,2024,2015,2019,2017,2018,2020,2019,2026,2038,2047,2063,2251,2295,0,0,0},
+{2319,2288,2100,2090,2079,2072,2064,2068,2087,2087,2068,2068,2075,2085,2094,2111,2302,2353,0,0,0},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1978,2161,1973},
+};
+static short open_circuit_threshold_oflim_x2[32][21] = {
+{2452,2421,2236,2216,2213,2194,2184,2184,2183,2182,2186,2187,2198,2226,2232,2240,2437,2467,0,0,0},
+{2450,2424,2237,2217,2214,2195,2185,2185,2184,2184,2187,2188,2199,2227,2233,2242,2438,2465,0,0,0},
+{2476,2452,2265,2245,2243,2223,2213,2213,2212,2212,2215,2216,2227,2255,2261,2271,2466,2492,0,0,0},
+{2461,2436,2250,2230,2228,2208,2199,2199,2198,2199,2202,2202,2213,2240,2246,2255,2450,2476,0,0,0},
+{2483,2459,2273,2253,2251,2232,2223,2223,2222,2222,2225,2225,2236,2264,2269,2278,2473,2498,0,0,0},
+{2463,2439,2254,2235,2233,2214,2205,2206,2204,2205,2207,2208,2218,2245,2249,2258,2453,2478,0,0,0},
+{2484,2461,2276,2257,2255,2236,2227,2228,2227,2227,2229,2229,2240,2267,2271,2280,2475,2499,0,0,0},
+{2482,2459,2274,2255,2254,2235,2226,2227,2226,2226,2229,2228,2239,2266,2270,2279,2474,2498,0,0,0},
+{2461,2437,2253,2234,2233,2214,2205,2206,2205,2205,2208,2208,2218,2245,2249,2257,2451,2476,0,0,0},
+{2481,2458,2273,2254,2253,2234,2225,2226,2225,2226,2228,2228,2238,2265,2269,2277,2472,2496,0,0,0},
+{2478,2455,2270,2251,2250,2231,2222,2223,2222,2223,2225,2225,2235,2262,2266,2274,2468,2493,0,0,0},
+{2453,2429,2244,2226,2225,2207,2198,2199,2198,2199,2201,2201,2210,2237,2240,2248,2442,2467,0,0,0},
+{2468,2445,2261,2242,2242,2223,2214,2216,2215,2215,2217,2217,2226,2253,2256,2265,2458,2483,0,0,0},
+{2441,2416,2232,2214,2214,2195,2187,2188,2187,2187,2189,2189,2198,2225,2228,2236,2429,2455,0,0,0},
+{2454,2432,2247,2228,2228,2210,2201,2202,2201,2201,2203,2203,2212,2239,2242,2250,2444,2468,0,0,0},
+{2426,2401,2217,2199,2199,2180,2172,2173,2172,2172,2174,2174,2183,2209,2212,2220,2414,2440,0,0,0},
+{2437,2412,2228,2209,2209,2191,2182,2183,2182,2183,2185,2184,2194,2220,2223,2231,2425,2451,0,0,0},
+{2405,2380,2196,2177,2177,2159,2151,2152,2151,2152,2153,2153,2162,2189,2192,2199,2393,2419,0,0,0},
+{2413,2389,2205,2187,2187,2168,2160,2161,2160,2160,2162,2162,2171,2198,2201,2209,2402,2428,0,0,0},
+{2381,2355,2171,2153,2153,2135,2127,2128,2127,2127,2130,2129,2138,2164,2167,2174,2368,2396,0,0,0},
+{2389,2362,2178,2160,2160,2142,2134,2135,2134,2135,2137,2136,2145,2172,2175,2182,2376,2403,0,0,0},
+{2374,2348,2164,2146,2146,2128,2119,2121,2120,2121,2123,2122,2131,2157,2160,2168,2361,2389,0,0,0},
+{2339,2312,2128,2110,2111,2093,2085,2086,2085,2086,2088,2088,2096,2123,2125,2132,2325,2355,0,0,0},
+{2345,2318,2134,2116,2117,2099,2091,2092,2091,2092,2094,2093,2102,2129,2131,2139,2332,2361,0,0,0},
+{2331,2302,2119,2101,2102,2084,2076,2078,2077,2078,2080,2079,2088,2114,2116,2123,2316,2346,0,0,0},
+{2295,2266,2082,2065,2065,2048,2040,2041,2040,2041,2043,2042,2051,2077,2079,2086,2279,2310,0,0,0},
+{2300,2271,2088,2071,2071,2053,2045,2047,2046,2047,2048,2047,2056,2082,2084,2091,2284,2314,0,0,0},
+{2262,2232,2050,2033,2034,2016,2008,2010,2009,2010,2012,2010,2019,2045,2047,2053,2245,2276,0,0,0},
+{2265,2236,2054,2038,2038,2021,2013,2015,2014,2015,2017,2016,2024,2050,2051,2057,2249,2280,0,0,0},
+{2228,2200,2016,2001,2002,1985,1978,1980,1980,1981,1982,1981,1989,2013,2015,2020,2211,2244,0,0,0},
+{2286,2250,2064,2049,2048,2031,2025,2027,2047,2047,2029,2027,2035,2059,2060,2066,2259,2301,0,0,0},
+{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2415,2595,2479},
+};
+static ssize_t test_sysfs_open_circuit_test_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	char report_type[10] = {0};
+	int ii, jj;
+	int retval;
+	int cnt = 0;
+	int tx_num = f54->tx_assigned;
+	int rx_num = f54->rx_assigned;
+	short *report_data_16;
+	if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "S332U") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01"))	//truly S332U(S332U,X2-03-01),boe S332U(S332U,X2-05-01,X10-05-01)
+	{
+		if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01"))
+			tx_num = f54->tx_assigned + 1;
+		sprintf(report_type, "%d", F54_AMP_RAW_ADC);
+	}
+	else if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-02") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-02-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-03-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-02-01"))	//truly S3320(X2-03-02,X10-03-01),ofilm S3320(X2-02-01,X10-02-01)
+	{
+		sprintf(report_type, "%d", F54_FULL_RAW_CAP_NO_RX_COUPLING);
+	}
+	else
+	{
+		return snprintf(buf, PAGE_SIZE, "Invalid product id:%s\n", f54->rmi4_data->rmi4_mod_info.product_id_string);
+	}
+	retval = test_sysfs_read_report_store(dev, attr, report_type, sizeof(report_type));
+	if(retval < 0)
+	{
+		return snprintf(buf, PAGE_SIZE, "Do not have read report data\n");
+	}
+	report_data_16 = (short *)f54->report_data;
+	for (ii = 0; ii < tx_num; ii++) {
+		for (jj = 0; jj < rx_num; jj++) {
+			if(*report_data_16 > 0){
+				if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "S332U") ||
+						!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-01") ||
+						!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+						!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01"))	//truly S332U(S332U,X2-03-01),boe S332U(S332U,X2-05-01,X10-05-01)
+				{
+					if(*report_data_16 > 385 || *report_data_16 < 205)
+						cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "TP Open Circuit Detected,\nTx:%d Rx:%d Raw:%d,Spec:205~385\n",
+								ii, jj, *report_data_16);
+				}
+				else if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-02") ||
+						!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-03-01"))	//truly S3320(X2-03-02,X10-03-01)
+				{
+					if( *report_data_16 > open_circuit_threshold_truly[ii][jj]*(100+25)/100 ||
+                                *report_data_16 < open_circuit_threshold_truly[ii][jj]*(100-25)/100 )
+						cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "TP Open Circuit Detected,\nTx:%d,Rx:%d,raw:%d,threshold:%d\n",
+								ii, jj, *report_data_16, open_circuit_threshold_truly[ii][jj]);
+				}
+				else if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-02-01") ||
+						!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-02-01"))	//ofilm S3320(X2-02-01,X10-02-01)
+				{
+					if( *report_data_16 > open_circuit_threshold_oflim_x2[ii][jj]*(100+25)/100 ||
+                                *report_data_16 < open_circuit_threshold_oflim_x2[ii][jj]*(100-25)/100 )
+						cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "TP Open Circuit Detected,\nTx:%d,Rx:%d,raw:%d,threshold:%d\n",
+								ii, jj, *report_data_16, open_circuit_threshold_oflim_x2[ii][jj]);
+				}
+			}
+			report_data_16++;
+		}
+	}
+	if(!cnt)
+		cnt += snprintf(buf + cnt, PAGE_SIZE -cnt, "Pass\n");
+	return cnt;
+}
+
+static ssize_t test_sysfs_raw_cap_data_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	char report_type[10] = {0};
+	char ii, jj;
+	int retval;
+	int cnt = 0;
+	int count = 0;
+	int tx_num = f54->tx_assigned;
+	int rx_num = f54->rx_assigned;
+	short *report_data_16;
+	long sum = 0;
+	short max = 0;
+	short min = 9999;
+	if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "S332U") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01"))	//truly S332U(S332U,X2-03-01),boe S332U(S332U,X2-05-01,X10-05-01)
+	{
+		if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01")){
+			tx_num = f54->tx_assigned + 1;
+		}
+		sprintf(report_type, "%d", F54_AMP_RAW_ADC);
+	}
+	else if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-02") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-02-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-03-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-02-01"))	//truly S3320(X2-03-02,X10-03-01),ofilm S3320(X2-02-01,X10-02-01)
+	{
+		sprintf(report_type, "%d", F54_FULL_RAW_CAP_NO_RX_COUPLING);
+	}
+	else
+	{
+		return snprintf(buf, PAGE_SIZE, "Invalid product id:%s\n", f54->rmi4_data->rmi4_mod_info.product_id_string);
+	}
+	retval = test_sysfs_read_report_store(dev, attr, report_type, sizeof(report_type));
+	if(retval < 0)
+	{
+		return snprintf(buf, PAGE_SIZE, "Do not have read report data\n");
+	}
+	report_data_16 = (short *)f54->report_data;
+
+	for (ii = 0; ii < tx_num; ii++)
+	{
+		for (jj = 0; jj < rx_num; jj++)
+		{
+			if(*report_data_16 > 0){
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "%-4d ",
+						*report_data_16);
+				sum += *report_data_16;
+				if(max < *report_data_16)
+					max = *report_data_16;
+				if( *report_data_16 < min)
+				{
+					if(*report_data_16 > 0)
+						min = *report_data_16;
+				}
+				count++;
+			}
+			report_data_16++;
+		}
+		cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "\n");
+	}
+	cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "\n");
+	cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "tx = %d\trx = %d\n", tx_num, rx_num);
+	cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "product_id:%s\n", f54->rmi4_data->rmi4_mod_info.product_id_string);
+	cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "max = %d, min = %d, average = %ld\n", max, min, sum/count);
+	return cnt;
+}
+static ssize_t test_sysfs_calibration_data_test_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	char report_type[10] = {0};
+	char ii, jj;
+	int retval;
+	int cnt = 0;
+	int tx_num = f54->rx_assigned;
+	int rx_num = f54->tx_assigned;
+	unsigned char *report_data_8;
+	unsigned char *head;
+	if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "S332U") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01"))
+	{
+		if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01"))
+			tx_num = f54->tx_assigned + 1;
+		sprintf(report_type, "%d", F54_CALIBRATION);
+	}
+	else
+		return snprintf(buf, 4* PAGE_SIZE, "Invalid product id:%s\n",
+				f54->rmi4_data->rmi4_mod_info.product_id_string);
+	retval = test_sysfs_read_report_store(dev, attr, report_type, sizeof(report_type));
+	if(retval < 0)
+		return snprintf(buf, 4*PAGE_SIZE, "Report data not available\n");
+	/*	freq0 test	start */
+	head = (unsigned char*)f54->report_data;
+	report_data_8 = head;
+	report_data_8++;	//point to second byte of F54 report data
+	for (ii = 0; ii < rx_num; ii++)
+	{
+		for (jj = 0; jj < tx_num; jj++)
+		{
+			if(*report_data_8  > 0x06 ||*report_data_8 < 0x03)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq0 image Tx:%d Rx:%d data:%x,Spec:0x03~0x06\n",
+						ii, jj, *report_data_8);
+			report_data_8 +=2;
+		}
+	}
+	report_data_8 = (unsigned char*)f54->report_data;
+	report_data_8 += (tx_num * rx_num *2 + 1);
+	for (ii = 0; ii < rx_num * 2; ii++)
+	{
+		if(*report_data_8  > 0x09 ||*report_data_8 < 0x06)
+			cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq0 noise Rx:%d data:%x,Spec:0x06~0x09\n",
+					ii,*report_data_8);
+		report_data_8 +=2;
+	}
+	report_data_8 = (unsigned char*)f54->report_data;
+	report_data_8 += (tx_num * rx_num *2 + rx_num *4 + 1);
+	for (ii = 0; ii < 4; ii++)
+	{
+		if(ii == 0 || ii == 1){
+			if(*report_data_8  > 0x26 ||*report_data_8 < 0x21)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq0 button Rx:%d data:%x,Spec:0x21~0x26\n",ii,*report_data_8);
+		}
+		if(ii == 2){
+			if(*report_data_8  > 0x16 ||*report_data_8 < 0x14)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq0 button Rx:%d data:%x,Spec:0x14~0x16\n",ii,*report_data_8);
+		}
+		if(ii == 3){
+			if(*report_data_8  > 0x90 ||*report_data_8 < 0x60)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq0 button Rx:%d data:%x,Spec:0x60~0x90\n",ii,*report_data_8);
+		}
+		report_data_8 +=2;
+	}
+	/*	freq0 test	end */
+
+	/*	freq1 test	start */
+	head = (unsigned char*)f54->report_data
+		+ tx_num * rx_num * 2	/* shift 2D */
+		+ rx_num * 2 * 2	/* shift noise */
+		+ 4 * 2;		/* shift 0D */
+
+	report_data_8 = head;
+	report_data_8++;	//point to second byte of F54 report data
+	for (ii = 0; ii < rx_num; ii++)
+	{
+		for (jj = 0; jj < tx_num; jj++)
+		{
+			if(*report_data_8  > 0x06 ||*report_data_8 < 0x03)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq1 image Tx:%d Rx:%d data:%x,Spec:0x03~0x06\n",
+						ii, jj, *report_data_8);
+			report_data_8 +=2;
+		}
+	}
+
+	report_data_8 = head;
+	report_data_8 += (tx_num * rx_num *2 + 1);
+	for (ii = 0; ii < rx_num * 2; ii++)
+	{
+		if(*report_data_8  > 0x09 ||*report_data_8 < 0x06)
+			cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq1 noise Rx:%d data:%x,Spec:0x06~0x09\n",
+					ii,*report_data_8);
+		report_data_8 +=2;
+	}
+
+	report_data_8 = head;
+	report_data_8 += (tx_num * rx_num *2 + rx_num *4 + 1);
+	for (ii = 0; ii < 4; ii++)
+	{
+		if(ii == 0 || ii == 1){
+			if(*report_data_8  > 0x26 ||*report_data_8 < 0x21)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq1 button Rx:%d data:%x,Spec:0x21~0x26\n",ii,*report_data_8);
+		}
+		if(ii == 2){
+			if(*report_data_8  > 0x16 ||*report_data_8 < 0x14)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq1 button Rx:%d data:%x,Spec:0x14~0x16\n",ii,*report_data_8);
+		}
+		if(ii == 3){
+			if(*report_data_8  > 0x90 ||*report_data_8 < 0x60)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq1 button Rx:%d data:%x,Spec:0x60~0x90\n",ii,*report_data_8);
+		}
+		report_data_8 +=2;
+	}
+	/*	freq1 test	end */
+
+	/*	freq2 test	start */
+	head = (unsigned char*)f54->report_data
+		+ (tx_num * rx_num * 2	/* 2D */
+				+ rx_num * 2 * 2	/* noise */
+				+ 4 * 2) * 2;		/* 0D */
+
+	report_data_8 = head;
+	report_data_8++;	//point to second byte of F54 report data
+	for (ii = 0; ii < rx_num; ii++)
+	{
+		for (jj = 0; jj < tx_num; jj++)
+		{
+			if(*report_data_8  > 0x06 ||*report_data_8 < 0x03)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq2 image Tx:%d Rx:%d data:%x,Spec:0x03~0x06\n",
+						ii, jj, *report_data_8);
+			report_data_8 +=2;
+		}
+	}
+
+	report_data_8 = head;
+	report_data_8 += (tx_num * rx_num *2 + 1);
+	for (ii = 0; ii < rx_num * 2; ii++)
+	{
+		if(*report_data_8  > 0x09 ||*report_data_8 < 0x06)
+			cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq2 noise Rx:%d data:%x,Spec:0x06~0x09\n",
+					ii,*report_data_8);
+		report_data_8 +=2;
+	}
+	report_data_8 = head;
+	report_data_8 += (tx_num * rx_num *2 + rx_num *4 + 1);
+	for (ii = 0; ii < 4; ii++)
+	{
+		if(ii == 0 || ii == 1){
+			if(*report_data_8  > 0x26 ||*report_data_8 < 0x21)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq2 button Rx:%d data:%x,Spec:0x21~0x26\n",ii,*report_data_8);
+		}
+		if(ii == 2){
+			if(*report_data_8  > 0x16 ||*report_data_8 < 0x14)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq2 button Rx:%d data:%x,Spec:0x14~0x16\n",ii,*report_data_8);
+		}
+		if(ii == 3){
+			if(*report_data_8  > 0x90 ||*report_data_8 < 0x60)
+				cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "freq2 button Rx:%d data:%x,Spec:0x60~0x90\n",ii,*report_data_8);
+		}
+		report_data_8 +=2;
+	}
+	/*	freq2 test	end */
+	if(!cnt)
+		cnt += snprintf(buf + cnt, PAGE_SIZE -cnt, "Pass\n");
+	return cnt;
+}
+static ssize_t test_sysfs_do_afe_calibration_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int retval;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "S332U") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01"))
+	{
+		retval = test_do_afe_calibration(F54_AFE_CAL);
+		if(retval < 0)
+		{
+			return snprintf(buf, PAGE_SIZE, "Failed\n");
+		}
+		retval = test_do_afe_calibration(F54_AFE_IS_CAL);
+		msleep(500);
+		rmi4_data->reset_device(rmi4_data,false);
+		if(retval < 0)
+		{
+			return snprintf(buf, PAGE_SIZE, "Failed\n");
+		}
+		else
+		{
+			return snprintf(buf, PAGE_SIZE, "Pass\n");
+		}
+	}
+	else
+	{
+		return snprintf(buf, PAGE_SIZE, "Invalid product id:%s\n", f54->rmi4_data->rmi4_mod_info.product_id_string);
+	}
+}
 static ssize_t test_sysfs_data_read(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
 		char *buf, loff_t pos, size_t count)
@@ -2451,7 +3107,7 @@ static ssize_t test_sysfs_data_read(struct file *data_file,
 	if ((f54->data_pos + count) > f54->report_size)
 		read_size = f54->report_size - f54->data_pos;
 	else
-		read_size = min_t(unsigned int, count, f54->report_size);
+		read_size = min((unsigned int)count, f54->report_size);
 
 	retval = secure_memcpy(buf, count, f54->report_data + f54->data_pos,
 			f54->data_buffer_size - f54->data_pos, read_size);
@@ -2528,10 +3184,24 @@ static void test_report_work(struct work_struct *work)
 		goto exit;
 	}
 
-	retval = synaptics_rmi4_reg_read(rmi4_data,
+	if(!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "S332U") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-03-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X2-05-01") ||
+			!strcmp(f54->rmi4_data->rmi4_mod_info.product_id_string, "X10-05-01"))	//truly S332U(S332U,X2-03-01),boe S332U(S332U,X2-05-01,X10-05-01)
+	{
+		retval = synaptics_rmi4_reg_read(rmi4_data,
+			f54->data_base_addr + REPORT_DATA_OFFSET,
+			f54->report_data,
+			f54->report_size + 8);
+	}
+	else
+	{
+		retval = synaptics_rmi4_reg_read(rmi4_data,
 			f54->data_base_addr + REPORT_DATA_OFFSET,
 			f54->report_data,
 			f54->report_size);
+	}
+
 	if (retval < 0) {
 		dev_err(rmi4_data->pdev->dev.parent,
 				"%s: Failed to read report data\n",
@@ -3246,7 +3916,7 @@ static int test_set_controls(void)
 		reg_addr += CONTROL_165_SIZE;
 
 	/* control 166 reserved */
-
+	reg_addr += CONTROL_166_SIZE;
 	/* control 167 */
 	if (f54->query_40.has_ctrl167)
 		reg_addr += CONTROL_167_SIZE;
@@ -3969,9 +4639,6 @@ static int synaptics_rmi4_test_init(struct synaptics_rmi4_data *rmi4_data)
 	if (f55)
 		test_f55_init(rmi4_data);
 
-	if (rmi4_data->external_afe_buttons)
-		f54->tx_assigned++;
-
 	retval = test_set_sysfs();
 	if (retval < 0) {
 		dev_err(rmi4_data->pdev->dev.parent,
@@ -4093,9 +4760,6 @@ static void synaptics_rmi4_test_reset(struct synaptics_rmi4_data *rmi4_data)
 
 	if (f55)
 		test_f55_init(rmi4_data);
-
-	if (rmi4_data->external_afe_buttons)
-		f54->tx_assigned++;
 
 	f54->status = STATUS_IDLE;
 
