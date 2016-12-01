@@ -222,6 +222,7 @@ extern void cnss_dump_stack(struct task_struct *task);
 extern u8 *cnss_common_get_wlan_mac_address(struct device *dev, uint32_t *num);
 extern void cnss_init_work(struct work_struct *work, work_func_t func);
 extern void cnss_flush_delayed_work(void *dwork);
+extern void cnss_init_work(struct work_struct *work, work_func_t func);
 extern void cnss_flush_work(void *work);
 extern void cnss_pm_wake_lock_timeout(struct wakeup_source *ws, ulong msec);
 extern void cnss_pm_wake_lock_release(struct wakeup_source *ws);
