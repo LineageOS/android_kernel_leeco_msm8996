@@ -245,10 +245,21 @@ void update_cpu_capacity_request(int cpu, bool request)
 
 	scr = &per_cpu(cpu_sched_capacity_reqs, cpu);
 
-	new_capacity = scr->cfs + scr->rt;
+	if (!walt_disabled && sysctl_sched_use_walt_cpu_util) {
+		/*
+		 * Same WALT signal is set at different places, take the max
+		 * reported utilization
+		 */
+		new_capacity = max(scr->cfs, scr->rt);
+		new_capacity = max(new_capacity, scr->dl);
+	} else {
+		/*
+		 * For PELT, utilization is aggregated
+		 */
+		new_capacity = scr->cfs + scr->rt + scr->dl;
+	}
 	new_capacity = new_capacity * capacity_margin
 		/ SCHED_CAPACITY_SCALE;
-	new_capacity += scr->dl;
 
 	if (new_capacity == scr->total)
 		return;

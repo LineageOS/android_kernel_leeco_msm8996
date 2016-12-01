@@ -1722,14 +1722,34 @@ static void check_preempt_curr_rt(struct rq *rq, struct task_struct *p, int flag
 }
 
 #ifdef CONFIG_SMP
-static void sched_rt_update_capacity_req(struct rq *rq)
+
+static void sched_rt_update_capacity_req(struct rq *rq, bool tick)
 {
 	u64 total, used, age_stamp, avg;
 	s64 delta;
+	int cpu = cpu_of(rq);
 
 	if (!sched_freq())
 		return;
 
+#ifdef CONFIG_SCHED_WALT
+	if (!walt_disabled && sysctl_sched_use_walt_cpu_util) {
+		unsigned long cpu_utilization = boosted_cpu_util(cpu);
+		unsigned long capacity_curr = capacity_curr_of(cpu);
+		int req = 1;
+
+		/*
+		 * During a tick, we don't throttle frequency down, just update
+		 * the rt utilization.
+		 */
+		if (tick && cpu_utilization <= capacity_curr)
+			req = 0;
+
+		set_rt_cpu_capacity(cpu, req, cpu_utilization);
+
+		return;
+	}
+#endif
 	sched_avg_update(rq);
 	/*
 	 * Since we're reading these variables without serialization make sure
@@ -1748,10 +1768,10 @@ static void sched_rt_update_capacity_req(struct rq *rq)
 	if (unlikely(used > SCHED_CAPACITY_SCALE))
 		used = SCHED_CAPACITY_SCALE;
 
-	set_rt_cpu_capacity(rq->cpu, 1, (unsigned long)(used));
+	set_rt_cpu_capacity(cpu, 1, (unsigned long)(used));
 }
 #else
-static inline void sched_rt_update_capacity_req(struct rq *rq)
+static inline void sched_rt_update_capacity_req(struct rq *rq, bool tick)
 { }
 
 #endif
@@ -1824,7 +1844,7 @@ pick_next_task_rt(struct rq *rq, struct task_struct *prev)
 		 * This value will be the used as an estimation of the next
 		 * activity.
 		 */
-		sched_rt_update_capacity_req(rq);
+		sched_rt_update_capacity_req(rq, false);
 		return NULL;
 	}
 
@@ -2592,7 +2612,7 @@ static void task_tick_rt(struct rq *rq, struct task_struct *p, int queued)
 	update_curr_rt(rq);
 
 	if (rq->rt.rt_nr_running)
-		sched_rt_update_capacity_req(rq);
+		sched_rt_update_capacity_req(rq, true);
 
 	watchdog(rq, p);
 
