@@ -110,6 +110,13 @@ enum {
 };
 
 enum {
+       MDSS_PANEL_BLANK_BLANK = 0,
+       MDSS_PANEL_BLANK_UNBLANK,
+       MDSS_PANEL_BLANK_LOW_POWER,
+};
+
+
+enum {
 	MODE_GPIO_NOT_VALID = 0,
 	MODE_GPIO_HIGH,
 	MODE_GPIO_LOW,
@@ -643,6 +650,7 @@ struct mdss_panel_info {
 	/* current fps, once is programmed in hw */
 	int current_fps;
 
+	bool rst_timing_compatible;
 	int panel_max_fps;
 	int panel_max_vtotal;
 	u32 mode_gpio_state;
