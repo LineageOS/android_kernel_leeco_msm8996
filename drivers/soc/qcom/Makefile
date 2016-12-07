@@ -85,6 +85,7 @@ ifdef CONFIG_MSM_SUBSYSTEM_RESTART
 	obj-y += subsystem_notif.o
 	obj-y += subsystem_restart.o
 	obj-y += ramdump.o
+	obj-y += ssr_monitor.o
 endif
 
 obj-$(CONFIG_MSM_SERVICE_NOTIFIER) += service-notifier.o
