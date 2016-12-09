@@ -72,6 +72,22 @@ struct msm_pinctrl {
 	void __iomem *regs;
 };
 
+static bool skip(const char* p_name){
+#ifdef CONFIG_PRODUCT_LE_ZL1
+	char skip_string[16][8] = {"gpio0", "gpio1", "gpio2", "gpio3", "gpio81", "gpio82" , "gpio83", "gpio84", "gpio130", "gpio131"};
+	int i = 0;
+	if(NULL != p_name){
+		for(i = 0 ; i < 10 ; ){
+			if(!strcmp(p_name, skip_string[i])){
+				return true;
+			}
+			i++;
+		}
+	}
+#endif
+	return false;
+}
+
 static struct msm_pinctrl *msm_pinctrl_data;
 
 static inline struct msm_pinctrl *to_msm_pinctrl(struct gpio_chip *gc)
@@ -152,6 +168,12 @@ static int msm_pinmux_set_mux(struct pinctrl_dev *pctldev,
 	int i;
 
 	g = &pctrl->soc->groups[group];
+
+	if(true == skip(g->name)){
+		pr_info("%s: skip %-8s due to TZ limitation by FP\n",__func__, g->name);
+		WARN_ON(true);
+		return 0;
+	}
 
 	for (i = 0; i < g->nfuncs; i++) {
 		if (g->funcs[i] == function)
@@ -251,6 +273,13 @@ static int msm_config_group_get(struct pinctrl_dev *pctldev,
 
 	g = &pctrl->soc->groups[group];
 
+	if(true == skip(g->name)){
+		pr_info("%s: skip %-8s due to TZ limitation by FP\n",__func__, g->name);
+		WARN_ON(true);
+		return 0;
+	}
+
+
 	ret = msm_config_reg(pctrl, g, param, &mask, &bit);
 	if (ret < 0)
 		return ret;
@@ -317,6 +346,12 @@ static int msm_config_group_set(struct pinctrl_dev *pctldev,
 	int i;
 
 	g = &pctrl->soc->groups[group];
+
+	if(true == skip(g->name)){
+		pr_info("%s: skip %-8s due to TZ limitation by FP\n",__func__, g->name);
+		WARN_ON(true);
+		return 0;
+	}
 
 	for (i = 0; i < num_configs; i++) {
 		param = pinconf_to_config_param(configs[i]);
@@ -411,6 +446,12 @@ static int msm_gpio_direction_input(struct gpio_chip *chip, unsigned offset)
 
 	g = &pctrl->soc->groups[offset];
 
+	if(true == skip(g->name)){
+		pr_info("%s: skip %-8s due to TZ limitation by FP\n",__func__, g->name);
+		WARN_ON(true);
+		return 0;
+	}
+
 	spin_lock_irqsave(&pctrl->lock, flags);
 
 	val = readl(pctrl->regs + g->ctl_reg);
@@ -430,6 +471,12 @@ static int msm_gpio_direction_output(struct gpio_chip *chip, unsigned offset, in
 	u32 val;
 
 	g = &pctrl->soc->groups[offset];
+
+	if(true == skip(g->name)){
+		pr_info("%s: skip %-8s due to TZ limitation by FP\n",__func__, g->name);
+		WARN_ON(true);
+		return 0;
+	}
 
 	spin_lock_irqsave(&pctrl->lock, flags);
 
@@ -457,6 +504,12 @@ static int msm_gpio_get(struct gpio_chip *chip, unsigned offset)
 
 	g = &pctrl->soc->groups[offset];
 
+	if(true == skip(g->name)){
+		pr_info("%s: skip %-8s due to TZ limitation by FP\n",__func__, g->name);
+		WARN_ON(true);
+		return 0;
+	}
+
 	val = readl(pctrl->regs + g->io_reg);
 	return !!(val & BIT(g->in_bit));
 }
@@ -469,6 +522,12 @@ static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 	u32 val;
 
 	g = &pctrl->soc->groups[offset];
+
+	if(true == skip(g->name)){
+		pr_info("%s: skip %-8s due to TZ limitation by FP\n",__func__, g->name);
+		WARN_ON(true);
+		return;
+	}
 
 	spin_lock_irqsave(&pctrl->lock, flags);
 
@@ -519,6 +578,12 @@ static void msm_gpio_dbg_show_one(struct seq_file *s,
 	};
 
 	g = &pctrl->soc->groups[offset];
+
+	if(true == skip(g->name)){
+		seq_printf(s, " %-8s: skiped", g->name);
+		return;
+	}
+
 	ctl_reg = readl(pctrl->regs + g->ctl_reg);
 
 	is_out = !!(ctl_reg & BIT(g->oe_bit));

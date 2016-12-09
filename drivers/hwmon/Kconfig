@@ -1455,6 +1455,16 @@ config SENSORS_THMC50
 	  This driver can also be built as a module.  If so, the module
 	  will be called thmc50.
 
+config SENSORS_TI_LMU
+	tristate "Texas Instruments LMU Hardware Fault Monitoring Driver"
+	depends on MFD_TI_LMU
+	help
+	  Say Y here to include support for the TI LMU opened and shorted
+	  circuit fault detection.
+
+	  This driver can also be built as a module. If so the module
+	  will be called ti-lmu-hwmon.
+
 config SENSORS_TMP102
 	tristate "Texas Instruments TMP102"
 	depends on I2C
