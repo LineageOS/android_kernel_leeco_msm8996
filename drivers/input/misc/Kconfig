@@ -756,4 +756,14 @@ config INPUT_DRV2667_HAPTICS
 	  To compile this driver as a module, choose M here: the
 	  module will be called drv260x-haptics.
 
+config INPUT_VL53L0
+        tristate "VL53L0 support"
+        help
+          Letv addon
+
+config INPUT_NXU810
+        tristate "NXU810 support"
+        help
+          Letv addon
+
 endif
