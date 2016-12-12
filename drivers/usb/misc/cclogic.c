@@ -296,7 +296,7 @@ static ssize_t cclogic_state_show(struct device *pdev,
 			typec_port_state_string[le_cc->port_state]);
 }
 
-static DEVICE_ATTR(cc_state, 0444, cclogic_state_show, NULL);
+static DEVICE_ATTR(cc_state, S_IRUGO, cclogic_state_show, NULL);
 
 void cclogic_updata_port_polarity(typec_port_polarity polarity)
 {
@@ -317,7 +317,7 @@ static ssize_t cclogic_polarity_show(struct device *pdev,
 			typec_port_polarity_string[le_cc->port_polarity]);
 }
 
-static DEVICE_ATTR(cc_polarity, 0444, cclogic_polarity_show, NULL);
+static DEVICE_ATTR(cc_polarity, S_IRUGO, cclogic_polarity_show, NULL);
 
 
 static ssize_t letv_supported_dev_show(struct device *pdev,
@@ -327,7 +327,7 @@ static ssize_t letv_supported_dev_show(struct device *pdev,
 			letv_audio_mode_supported(NULL));
 }
 
-static DEVICE_ATTR(supported_dev, 0444, letv_supported_dev_show,
+static DEVICE_ATTR(supported_dev, S_IRUGO, letv_supported_dev_show,
 			 NULL);
 
 static int __init cclocic_init(void)

@@ -157,6 +157,7 @@ config USB_APPLEDISPLAY
 	  Displays over USB. This driver provides a sysfs interface.
 
 source "drivers/usb/misc/sisusbvga/Kconfig"
+source "drivers/usb/misc/anx7418/Kconfig"
 
 config USB_LD
 	tristate "USB LD driver"
