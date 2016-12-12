@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright © 2015, STMicroelectronics International N.V.
+ * Copyright © 2015, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /**
  * @struct  VL53L0_Dev_t
- * @brief    Generic PAL device type that does link between API and platform abstraction layer
+ * @brief    Generic PAL device type that does link between API and platform
+ *           abstraction layer
  *
  */
 typedef struct stmvl53l0_data *VL53L0_DEV;
@@ -86,7 +87,8 @@ typedef struct stmvl53l0_data *VL53L0_DEV;
  */
 
 /**
- * Lock comms interface to serialize all commands to a shared I2C interface for a specific device
+ * Lock comms interface to serialize all commands to a shared I2C interface
+ *  for a specific device
  * @param   Dev       Device Handle
  * @return  VL53L0_ERROR_NONE        Success
  * @return  "Other error code"    See ::VL53L0_Error
@@ -94,7 +96,8 @@ typedef struct stmvl53l0_data *VL53L0_DEV;
 VL53L0_Error VL53L0_LockSequenceAccess(VL53L0_DEV Dev);
 
 /**
- * Unlock comms interface to serialize all commands to a shared I2C interface for a specific device
+ * Unlock comms interface to serialize all commands to a shared I2C interface
+ * for a specific device
  * @param   Dev       Device Handle
  * @return  VL53L0_ERROR_NONE        Success
  * @return  "Other error code"    See ::VL53L0_Error
@@ -106,7 +109,7 @@ VL53L0_Error VL53L0_UnlockSequenceAccess(VL53L0_DEV Dev);
  * Writes the supplied byte buffer to the device
  * @param   Dev       Device Handle
  * @param   index     The register index
- * @param   pdata     Pointer to uint8_t buffer containing the data to be written
+ * @param   pdata    Pointer to uint8_t buffer containing the data to be written
  * @param   count     Number of bytes in the supplied byte buffer
  * @return  VL53L0_ERROR_NONE        Success
  * @return  "Other error code"    See ::VL53L0_Error

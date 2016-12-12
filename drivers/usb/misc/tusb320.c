@@ -454,7 +454,7 @@ static ssize_t tusb320_store(struct device *dev,
 }
 
 static struct device_attribute tusb320_dev_attr =
-	__ATTR(tusb320_debug, S_IRUGO | S_IWUGO, tusb320_show, tusb320_store);
+	__ATTR(tusb320_debug, 0664, tusb320_show, tusb320_store);
 #endif
 
 #ifdef CONFIG_PM_SLEEP

@@ -1,5 +1,5 @@
 /*******************************************************************************
- Copyright © 2015, STMicroelectronics International N.V.
+ * Copyright © 2016, STMicroelectronics International N.V.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -42,96 +42,97 @@
 #endif
 
 /*
-//////////////////////////////////////////////////////
-////       DEFAULT TUNING SETTINGS                ////
-//////////////////////////////////////////////////////
-*/
+ * //////////////////////////////////////////////////////
+ * ////       DEFAULT TUNING SETTINGS                ////
+ * //////////////////////////////////////////////////////
+ */
 VL53L0_Error VL53L010_load_tuning_settings(VL53L0_DEV Dev)
 {
-    VL53L0_Error Status = VL53L0_ERROR_NONE;
-    LOG_FUNCTION_START("");
+	VL53L0_Error Status = VL53L0_ERROR_NONE;
 
-	/* update 17_06_15_v10 */
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x00, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x91, 0x3C);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x54, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x33, 0x05);
-    Status |= VL53L0_WrByte(Dev, 0x32, 0x03);
-    Status |= VL53L0_WrByte(Dev, 0x30, 0x05);
-    Status |= VL53L0_WrByte(Dev, 0x50, 0x05);
-    Status |= VL53L0_WrByte(Dev, 0x60, 0x04);
-    Status |= VL53L0_WrByte(Dev, 0x70, 0x06);
+	LOG_FUNCTION_START("");
 
-    Status |= VL53L0_WrByte(Dev, 0x46, 0x1a);
-    Status |= VL53L0_WrWord(Dev, 0x51, 0x01a3);
-    Status |= VL53L0_WrWord(Dev, 0x61, 0x01c4);
-    Status |= VL53L0_WrWord(Dev, 0x71, 0x018c);
+	/* update 14_12_15_v11 */
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x00, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x91, 0x3C);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x54, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x33, 0x05);
+	Status |= VL53L0_WrByte(Dev, 0x32, 0x03);
+	Status |= VL53L0_WrByte(Dev, 0x30, 0x05);
+	Status |= VL53L0_WrByte(Dev, 0x50, 0x05);
+	Status |= VL53L0_WrByte(Dev, 0x60, 0x04);
+	Status |= VL53L0_WrByte(Dev, 0x70, 0x06);
 
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x31, 0x0f);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x66, 0x38);
+	Status |= VL53L0_WrByte(Dev, 0x46, 0x1a);
+	Status |= VL53L0_WrWord(Dev, 0x51, 0x01a3);
+	Status |= VL53L0_WrWord(Dev, 0x61, 0x01c4);
+	Status |= VL53L0_WrWord(Dev, 0x71, 0x018c);
 
-    Status |= VL53L0_WrByte(Dev, 0x47, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x48, 0xff);
-    Status |= VL53L0_WrByte(Dev, 0x57, 0x4c);
-    Status |= VL53L0_WrByte(Dev, 0x67, 0x3c);
-    Status |= VL53L0_WrByte(Dev, 0x77, 0x5c);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x31, 0x0f);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x66, 0x38);
 
-    Status |= VL53L0_WrWord(Dev, 0x44, 0x0000);
+	Status |= VL53L0_WrByte(Dev, 0x47, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x48, 0xff);
+	Status |= VL53L0_WrByte(Dev, 0x57, 0x4c);
+	Status |= VL53L0_WrByte(Dev, 0x67, 0x3c);
+	Status |= VL53L0_WrByte(Dev, 0x77, 0x5c);
 
-    Status |= VL53L0_WrByte(Dev, 0x27, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x55, 0x00);
+	Status |= VL53L0_WrWord(Dev, 0x44, 0x0000);
 
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x30, 0x28);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x27, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x55, 0x00);
 
-    Status |= VL53L0_WrByte(Dev, 0x10, 0x0f);
-    Status |= VL53L0_WrByte(Dev, 0x11, 0xff);
-    Status |= VL53L0_WrByte(Dev, 0x41, 0xff);
-    Status |= VL53L0_WrByte(Dev, 0x42, 0x07);
-    Status |= VL53L0_WrByte(Dev, 0x43, 0x12);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x30, 0x28);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
 
-    Status |= VL53L0_WrByte(Dev, 0x20, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x21, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x10, 0x0f);
+	Status |= VL53L0_WrByte(Dev, 0x11, 0xff);
+	Status |= VL53L0_WrByte(Dev, 0x40, 0x82);
+	Status |= VL53L0_WrByte(Dev, 0x41, 0xff);
+	Status |= VL53L0_WrByte(Dev, 0x42, 0x07);
+	Status |= VL53L0_WrByte(Dev, 0x43, 0x12);
 
-    Status |= VL53L0_WrByte(Dev, 0x28, 0x06);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x48, 0x28);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x20, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x21, 0x00);
 
-    Status |= VL53L0_WrByte(Dev, 0x7a, 0x0a);
-    Status |= VL53L0_WrByte(Dev, 0x7b, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x78, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x44, 0xff);
-    Status |= VL53L0_WrByte(Dev, 0x45, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x46, 0x10);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x28, 0x06);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x48, 0x28);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
 
-    Status |= VL53L0_WrByte(Dev, 0x04, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x05, 0x04);
-    Status |= VL53L0_WrByte(Dev, 0x06, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x07, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x7a, 0x0a);
+	Status |= VL53L0_WrByte(Dev, 0x7b, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x78, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x44, 0xff);
+	Status |= VL53L0_WrByte(Dev, 0x45, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x46, 0x10);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
 
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x0d, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
-    Status |= VL53L0_WrByte(Dev, 0x80, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x01, 0xF8);
+	Status |= VL53L0_WrByte(Dev, 0x04, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x05, 0x04);
+	Status |= VL53L0_WrByte(Dev, 0x06, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x07, 0x00);
 
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x8e, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0x00, 0x01);
-    Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x0d, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
+	Status |= VL53L0_WrByte(Dev, 0x80, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x01, 0xF8);
 
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x8e, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0x00, 0x01);
+	Status |= VL53L0_WrByte(Dev, 0xFF, 0x00);
 
-    if (Status != 0)
-        Status = VL53L0_ERROR_CONTROL_INTERFACE;
+	if (Status != 0)
+		Status = VL53L0_ERROR_CONTROL_INTERFACE;
 
-    LOG_FUNCTION_END(Status);
-    return Status;
+	LOG_FUNCTION_END(Status);
+	return Status;
 }

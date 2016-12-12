@@ -75,15 +75,18 @@
     #define VL53L0_GetLocalBuffer(Dev, n_byte)  LocBuffer
 #elif I2C_BUFFER_CONFIG == 2
     /* user define buffer type declare DECL_I2C_BUFFER  as access  via
-	VL53L0_GetLocalBuffer */
+     * VL53L0_GetLocalBuffer
+     */
     #define DECL_I2C_BUFFER
 #else
 #error "invalid I2C_BUFFER_CONFIG "
 #endif
 
 
-#define VL53L0_I2C_USER_VAR         /* none but could be for a flag var to
-		get/pass to mutex interruptible  return flags and try again */
+/* none but could be for a flag var to
+ * get/pass to mutex interruptible  return flags and try again
+ */
+#define VL53L0_I2C_USER_VAR
 #define VL53L0_GetI2CAccess(Dev)    /* todo mutex acquire */
 #define VL53L0_DoneI2CAcces(Dev)    /* todo mutex release */
 

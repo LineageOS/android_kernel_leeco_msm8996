@@ -1,7 +1,7 @@
 /*
  *  stmvl53l0-cci.h - Linux kernel modules for STM VL53L0 FlightSense TOF sensor
  *
- *  Copyright (C) 2015 STMicroelectronics Imaging Division
+ *  Copyright (C) 2016 STMicroelectronics Imaging Division
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -48,6 +48,10 @@ struct cci_data {
 	char subdev_initialized;
 	uint32_t subdev_id;
 	uint8_t power_up;
+	struct msm_camera_gpio_conf *gconf;
+	struct msm_pinctrl_info pinctrl_info;
+	uint8_t cam_pinctrl_status;
+
 };
 int stmvl53l0_init_cci(void);
 void stmvl53l0_exit_cci(void *);

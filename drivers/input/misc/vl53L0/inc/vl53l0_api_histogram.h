@@ -26,44 +26,45 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *******************************************************************************/
 
-#ifndef VL53L0_TYPES_H_
-#define VL53L0_TYPES_H_
+#ifndef _VL53L0_API_HISTOGRAM_H_
+#define _VL53L0_API_HISTOGRAM_H_
 
-#include <linux/types.h>
+#include "vl53l0_def.h"
+#include "vl53l0_platform.h"
 
-#ifndef NULL
-#error "TODO review  NULL definition or add required include "
-#define NULL 0
+
+#ifdef __cplusplus
+extern "C" {
 #endif
-/** use where fractional values are expected
- *
- * Given a floating point value f it's .16 bit point is (int)(f*(1<<16))
- */
-typedef unsigned int FixPoint1616_t;
-
-#if !defined(STDINT_H) &&  !defined(_GCC_STDINT_H) \
-	&& !defined(_STDINT_H) && !defined(_LINUX_TYPES_H)
-
-#pragma message("Please review type definition of STDINT define for your" \
-"platform and add to list above ")
-
-/*
-*  target platform do not provide stdint or use a different #define than above
-*  to avoid seeing the message below addapt the #define list above or implement
-*  all type and delete these pragma
-*/
-
-typedef unsigned int uint32_t;
-typedef int int32_t;
-
-typedef unsigned short uint16_t;
-typedef short int16_t;
-
-typedef unsigned char uint8_t;
-
-typedef signed char int8_t;
 
 
-#endif /* VL53L0_TYPES_H_ */
+VL53L0_Error VL53L0_confirm_measurement_start(VL53L0_DEV Dev);
 
-#endif /* VL6180x_TYPES_H_ */
+VL53L0_Error VL53L0_set_histogram_mode(VL53L0_DEV Dev,
+	VL53L0_HistogramModes HistogramMode);
+
+VL53L0_Error VL53L0_get_histogram_mode(VL53L0_DEV Dev,
+	VL53L0_HistogramModes *pHistogramMode);
+
+VL53L0_Error VL53L0_start_histogram_measurement(VL53L0_DEV Dev,
+	VL53L0_HistogramModes histoMode,
+	uint32_t count);
+
+VL53L0_Error VL53L0_perform_single_histogram_measurement(VL53L0_DEV Dev,
+	VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
+
+VL53L0_Error VL53L0_get_histogram_measurement_data(VL53L0_DEV Dev,
+	VL53L0_HistogramMeasurementData_t *pHistogramMeasurementData);
+
+VL53L0_Error VL53L0_read_histo_measurement(VL53L0_DEV Dev,
+	uint32_t *histoData, uint32_t offset, VL53L0_HistogramModes histoMode);
+
+VL53L0_Error VL53L0_perform_xtalk_measurement(VL53L0_DEV dev,
+	uint32_t timeout_ms, FixPoint1616_t *pxtalk_per_spad,
+	uint8_t *pambient_too_high);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _VL53L0_API_HISTOGRAM_H_ */

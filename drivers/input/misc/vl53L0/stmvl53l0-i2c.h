@@ -1,7 +1,7 @@
 /*
  *  stmvl53l0-i2c.h - Linux kernel modules for STM VL53L0 FlightSense TOF sensor
  *
- *  Copyright (C) 2015 STMicroelectronics Imaging Division
+ *  Copyright (C) 2016 STMicroelectronics Imaging Division
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
