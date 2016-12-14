@@ -125,6 +125,8 @@ void early_printk(const char *s, ...) { }
 #endif
 
 #ifdef CONFIG_PRINTK
+void do_prk_utc_cali(u64 utc_in_sec);
+
 asmlinkage __printf(5, 0)
 int vprintk_emit(int facility, int level,
 		 const char *dict, size_t dictlen,

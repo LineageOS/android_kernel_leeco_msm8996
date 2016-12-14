@@ -325,7 +325,7 @@ static ssize_t pi5usb_enable_store(struct device *dev,
 	return -EINVAL;
 }
 
-static DEVICE_ATTR(pi5usb_enable, 0444 | 0644,
+static DEVICE_ATTR(pi5usb_enable, S_IRUGO | S_IWUSR,
 		pi5usb_enable_show, pi5usb_enable_store);
 
 static void pi5usb30216a_irq_handler(struct work_struct *w)

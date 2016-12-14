@@ -73,6 +73,7 @@ struct msm_camera_sensor_slave_info32 {
 	struct msm_sensor_power_setting_array32 power_setting_array;
 	uint8_t  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
+	uint8_t is_flash_supported;
 	enum msm_sensor_output_format_t output_format;
 };
 
@@ -219,6 +220,9 @@ struct msm_actuator_cfg_data32 {
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 	} cfg;
+	/* MOD-S: 20150612, storing actuator_name from vendor */
+	char actuator_name[32];
+	/* MOD-E: 20150612, storing actuator_name from vendor */
 };
 
 struct csiphy_cfg_data32 {

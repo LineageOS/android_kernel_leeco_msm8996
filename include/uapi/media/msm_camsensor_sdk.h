@@ -43,6 +43,7 @@
 #define MAX_ACTUATOR_INIT_SET     120
 #define MAX_I2C_REG_SET           12
 
+#define MAX_NAME_SIZE             32
 #define MAX_LED_TRIGGERS          3
 
 #define MSM_EEPROM_MEMORY_MAP_MAX_SIZE  80

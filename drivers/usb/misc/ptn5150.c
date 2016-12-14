@@ -382,7 +382,7 @@ static ssize_t ptn5150_store(struct device *dev,
 }
 
 static struct device_attribute ptn5150_dev_attr =
-	__ATTR(ptn5150_debug, 0444 | 0644, ptn5150_show, ptn5150_store);
+	__ATTR(ptn5150_debug, S_IRUGO | S_IWUGO, ptn5150_show, ptn5150_store);
 #endif
 
 #ifdef CONFIG_PM_SLEEP

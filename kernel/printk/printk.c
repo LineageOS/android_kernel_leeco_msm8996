@@ -420,6 +420,41 @@ static u32 truncate_msg(u16 *text_len, u16 *trunc_msg_len,
 	return msg_used_size(*text_len + *trunc_msg_len, 0, pad_len);
 }
 
+/* cpu time is not running when kernel is sleep while UTC
+* time is running. So when kernel wakes up from sleep,
+* time calibration is needed.
+*
+* prk_utc_cali is to save calibration data.
+* when exit from sleep,  prk_utc_cali = utc_time -cpu_time;
+*
+* when enter sleep, prk_utc_cali = 0 to stop calibration for
+* the UTC time between sleep and wakeup is not correct.
+*
+* when phone has not enter first sleep,
+* the prk_utc_cali=utc_time set in do_settimeofday(). Because
+* app will call calibrate system time by call do_settimeofday().
+*/
+static unsigned long prk_utc_cali;
+void do_prk_utc_cali(u64 utc_in_sec)
+{
+	u64 local_in_nsec;
+
+	if (utc_in_sec == 0) {
+		prk_utc_cali = 0;
+		return;
+	}
+
+	local_in_nsec = local_clock();
+	do_div(local_in_nsec, 1000000000);
+
+	if (utc_in_sec > local_in_nsec)
+		prk_utc_cali = utc_in_sec - local_in_nsec;
+	else
+		prk_utc_cali = 0;
+
+	return;
+}
+
 /* insert record into the buffer, discard old ones, update heads */
 static int log_store(int facility, int level,
 		     enum log_flags flags, u64 ts_nsec,

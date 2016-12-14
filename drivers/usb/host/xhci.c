@@ -113,19 +113,18 @@ int xhci_halt(struct xhci_hcd *xhci)
 
 	ret = xhci_handshake(xhci, &xhci->op_regs->status,
 			STS_HALT, STS_HALT, XHCI_MAX_HALT_USEC);
-	if (!ret) {
-		xhci->xhc_state |= XHCI_STATE_HALTED;
-		xhci->cmd_ring_state = CMD_RING_STATE_STOPPED;
+        if (!ret) {
+           xhci->xhc_state |= XHCI_STATE_HALTED;
+        }else
+           xhci_warn(xhci, "Host not halted after %u microseconds.\n",
+           XHCI_MAX_HALT_USEC);
+           xhci->cmd_ring_state = CMD_RING_STATE_STOPPED;
 
-		if (timer_pending(&xhci->cmd_timer)) {
-			xhci_dbg_trace(xhci, trace_xhci_dbg_init,
-					"Cleanup command queue");
-			del_timer(&xhci->cmd_timer);
-			xhci_cleanup_command_queue(xhci);
-		}
-	} else
-		xhci_warn(xhci, "Host not halted after %u microseconds.\n",
-				XHCI_MAX_HALT_USEC);
+       if (timer_pending(&xhci->cmd_timer)) {
+           xhci_dbg_trace(xhci, trace_xhci_dbg_init,"Cleanup command queue");
+           del_timer(&xhci->cmd_timer);
+           xhci_cleanup_command_queue(xhci);
+        }
 	return ret;
 }
 
@@ -1697,7 +1696,8 @@ int xhci_drop_endpoint(struct usb_hcd *hcd, struct usb_device *udev,
 	if (ret <= 0)
 		return ret;
 	xhci = hcd_to_xhci(hcd);
-	if (xhci->xhc_state & XHCI_STATE_DYING)
+	if ((xhci->xhc_state & XHCI_STATE_DYING)||
+        (xhci->xhc_state & XHCI_STATE_REMOVING))
 		return -ENODEV;
 
 	xhci_dbg(xhci, "%s called for udev %p\n", __func__, udev);
