@@ -51,6 +51,19 @@ enum flash_type {
 	GPIO_FLASH
 };
 
+enum msm_ois_state_type_t {
+	OIS_INIT_S = 10,
+	OIS_ENABLE_S,
+	OIS_DISABLE_S,
+	OIS_MOVIE_MODE_S,
+	OIS_STILL_MODE_S,
+	OIS_CENTERING_ON_S,
+	OIS_CENTERING_OFF_S,
+	OIS_PANTILT_ON_S,
+	OIS_CALIBRATION_S,
+	OIS_POWERDOWN,
+};
+
 enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_FULL,
 	MSM_SENSOR_RES_QTR,

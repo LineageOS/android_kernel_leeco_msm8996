@@ -1331,6 +1331,11 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
 			buff_mgr_info.stream_id = (iden & 0xFFFF);
 			buff_mgr_info.frame_id = processed_frame->frame_id;
 			buff_mgr_info.timestamp = processed_frame->timestamp;
+			/*
+			 * Update the reserved field (cds information) to buffer
+			 * manager structure so it is propogated back to HAL
+			 */
+			buff_mgr_info.reserved = processed_frame->reserved;
 			if (processed_frame->batch_info.batch_mode ==
 				BATCH_MODE_VIDEO ||
 				(IS_BATCH_BUFFER_ON_PREVIEW(
@@ -1378,6 +1383,11 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
 			buff_mgr_info.timestamp = processed_frame->timestamp;
 			buff_mgr_info.index =
 				processed_frame->duplicate_buffer_info.index;
+			/*
+			 * Update the reserved field (cds information) to buffer
+			 * manager structure so it is propogated back to HAL
+			 */
+			buff_mgr_info.reserved = processed_frame->reserved;
 			if (put_buf) {
 				rc = msm_cpp_buffer_ops(cpp_dev,
 					VIDIOC_MSM_BUF_MNGR_PUT_BUF,
@@ -2245,7 +2255,7 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 	struct msm_buf_mngr_info buff_mgr_info, dup_buff_mgr_info;
 	int32_t in_fd;
 	int32_t num_output_bufs = 1;
-	uint32_t stripe_base = 0;
+	int32_t stripe_base = 0;
 	uint32_t stripe_size;
 	uint8_t tnr_enabled;
 	enum msm_camera_buf_mngr_buf_type buf_type =
@@ -2274,26 +2284,21 @@ static int msm_cpp_cfg_frame(struct cpp_device *cpp_dev,
 		return -EINVAL;
 	}
 
-	if (cpp_frame_msg[new_frame->msg_len - 1] !=
-		MSM_CPP_MSG_ID_TRAILER) {
-		pr_err("Invalid frame message\n");
-		return -EINVAL;
-	}
+	if (!new_frame->partial_frame_indicator) {
+		if (cpp_frame_msg[new_frame->msg_len - 1] !=
+			MSM_CPP_MSG_ID_TRAILER) {
+			pr_err("Invalid frame message\n");
+			return -EINVAL;
+		}
 
-	if (stripe_base == UINT_MAX || new_frame->num_strips >
-		(UINT_MAX - 1 - stripe_base) / stripe_size) {
-		pr_err("Invalid frame message,num_strips %d is large\n",
-			new_frame->num_strips);
-		return -EINVAL;
-	}
-
-	if ((stripe_base + new_frame->num_strips * stripe_size + 1) !=
-		new_frame->msg_len) {
-		pr_err("Invalid frame message,len=%d,expected=%d\n",
-			new_frame->msg_len,
-			(stripe_base +
-			new_frame->num_strips * stripe_size + 1));
-		return -EINVAL;
+		if ((stripe_base + new_frame->num_strips * stripe_size + 1) !=
+			new_frame->msg_len) {
+			pr_err("Invalid frame message,len=%d,expected=%d\n",
+				new_frame->msg_len,
+				(stripe_base +
+				new_frame->num_strips * stripe_size + 1));
+			return -EINVAL;
+		}
 	}
 
 	if (cpp_dev->iommu_state != CPP_IOMMU_STATE_ATTACHED) {
@@ -2683,14 +2688,14 @@ static int msm_cpp_validate_input(unsigned int cmd, void *arg,
 		break;
 	default: {
 		if (ioctl_ptr == NULL) {
-			pr_err("Wrong ioctl_ptr for cmd %u\n", cmd);
+			pr_err("Wrong ioctl_ptr %pK\n", ioctl_ptr);
 			return -EINVAL;
 		}
 
 		*ioctl_ptr = arg;
 		if ((*ioctl_ptr == NULL) ||
-			(*ioctl_ptr)->ioctl_ptr == NULL) {
-			pr_err("Error invalid ioctl argument cmd %u", cmd);
+			((*ioctl_ptr)->ioctl_ptr == NULL)) {
+			pr_err("Wrong arg %pK\n", arg);
 			return -EINVAL;
 		}
 		break;
@@ -2715,12 +2720,6 @@ long msm_cpp_subdev_ioctl(struct v4l2_subdev *sd,
 		pr_err("cpp_dev is null\n");
 		return -EINVAL;
 	}
-
-	if (_IOC_DIR(cmd) == _IOC_NONE) {
-		pr_err("Invalid ioctl/subdev cmd %u", cmd);
-		return -EINVAL;
-	}
-
 	rc = msm_cpp_validate_input(cmd, arg, &ioctl_ptr);
 	if (rc != 0) {
 		pr_err("input validation failed\n");
@@ -3402,6 +3401,7 @@ static struct msm_cpp_frame_info_t *get_64bit_cpp_frame_from_compat(
 	new_frame->we_disable = new_frame32->we_disable;
 	new_frame->duplicate_identity = new_frame32->duplicate_identity;
 	new_frame->feature_mask = new_frame32->feature_mask;
+	new_frame->reserved = new_frame32->reserved;
 	new_frame->partial_frame_indicator =
 		new_frame32->partial_frame_indicator;
 	new_frame->first_payload = new_frame32->first_payload;
@@ -3501,6 +3501,7 @@ static void get_compat_frame_from_64bit(struct msm_cpp_frame_info_t *frame,
 	k32_frame->we_disable = frame->we_disable;
 	k32_frame->duplicate_identity = frame->duplicate_identity;
 	k32_frame->feature_mask = frame->feature_mask;
+	k32_frame->reserved = frame->reserved;
 	k32_frame->cookie = ptr_to_compat(frame->cookie);
 	k32_frame->partial_frame_indicator = frame->partial_frame_indicator;
 	k32_frame->first_payload = frame->first_payload;
@@ -3801,6 +3802,13 @@ static long msm_cpp_subdev_fops_compat_ioctl(struct file *file,
 		get_user(k_queue_buf.buff_mgr_info.timestamp.tv_usec,
 			&u32_queue_buf->buff_mgr_info.timestamp.tv_usec);
 
+		/*
+		 * Update the reserved field (cds information) to buffer
+		 * manager structure so that it is propogated back to HAL
+		 */
+		get_user(k_queue_buf.buff_mgr_info.reserved,
+			&u32_queue_buf->buff_mgr_info.reserved);
+
 		kp_ioctl.ioctl_ptr = (void *)&k_queue_buf;
 		kp_ioctl.len = sizeof(struct msm_pproc_queue_buf_info);
 		cmd = VIDIOC_MSM_CPP_QUEUE_BUF;
@@ -4090,7 +4098,7 @@ static int cpp_probe(struct platform_device *pdev)
 	if (cpp_dev->bus_master_flag)
 		rc = msm_cpp_init_bandwidth_mgr(cpp_dev);
 	else
-		rc = msm_isp_init_bandwidth_mgr(NULL, ISP_CPP);
+		rc = msm_isp_init_bandwidth_mgr(ISP_CPP);
 	if (rc < 0) {
 		pr_err("%s: Bandwidth registration Failed!\n", __func__);
 		goto cpp_probe_init_error;

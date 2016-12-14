@@ -119,6 +119,11 @@
 		qcom,mdss-dsi-panel-status-on-command1 = [23 01 00 00 00 00 02 1C 02];
 		qcom,mdss-dsi-status-on-command-state1 = "dsi_lp_mode";
 
+		qcom,mdss-dsi-panel-status-command2 = [06 01 00 01 05 00 01 AC];
+		qcom,mdss-dsi-panel-status-check-command-mode2 = "dsi_lp_mode";
+		qcom,mdss-dsi-panel-status-check-mode2 = "reg_read";
+		qcom,mdss-dsi-panel-status-read-length2 = <1>;
+		qcom,mdss-dsi-panel-status-value2 = <0x00>;
 		qcom,esd-check-enabled;
 		/*qcom,mdss-dsi-rx-eot-ignore;*/
 		/*qcom,mdss-dsi-tx-eot-append;*/

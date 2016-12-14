@@ -30,6 +30,11 @@ enum msm_camera_flash_state_t {
 	MSM_CAMERA_FLASH_RELEASE,
 };
 
+enum msm_camera_power_state_t {
+	MSM_CAMERA_POWER_INIT,
+	MSM_CAMERA_POWER_RELEASE,
+};
+
 struct msm_flash_ctrl_t;
 
 struct msm_flash_func_t {
@@ -95,6 +100,9 @@ struct msm_flash_ctrl_t {
 
 	/* flash state */
 	enum msm_camera_flash_state_t flash_state;
+
+	/* power state */
+	enum msm_camera_power_state_t power_state;
 };
 
 int msm_flash_i2c_probe(struct i2c_client *client,
@@ -117,4 +125,6 @@ int msm_flash_led_release(struct msm_flash_ctrl_t *fctrl);
 int msm_flash_led_off(struct msm_flash_ctrl_t *fctrl);
 int msm_flash_led_low(struct msm_flash_ctrl_t *fctrl);
 int msm_flash_led_high(struct msm_flash_ctrl_t *fctrl);
+
+extern int msm_sensor_power_onoff(int, int);
 #endif

@@ -73,24 +73,13 @@ int32_t msm_camera_qup_i2c_read(struct msm_camera_i2c_client *client,
 	enum msm_camera_i2c_data_type data_type)
 {
 	int32_t rc = -EFAULT;
-	unsigned char *buf = NULL;
+	unsigned char buf[client->addr_type+data_type];
 
 	if ((client->addr_type != MSM_CAMERA_I2C_BYTE_ADDR
 		&& client->addr_type != MSM_CAMERA_I2C_WORD_ADDR)
 		|| (data_type != MSM_CAMERA_I2C_BYTE_DATA
 		&& data_type != MSM_CAMERA_I2C_WORD_DATA))
 		return rc;
-
-	if (client->addr_type > UINT_MAX - data_type) {
-			pr_err("%s: integer overflow prevented\n", __func__);
-			return rc;
-	}
-
-	buf = kzalloc(client->addr_type+data_type, GFP_KERNEL);
-	if (!buf) {
-			pr_err("%s:%d no memory\n", __func__, __LINE__);
-			return -ENOMEM;
-	}
 
 	if (client->addr_type == MSM_CAMERA_I2C_BYTE_ADDR) {
 		buf[0] = addr;
@@ -101,8 +90,6 @@ int32_t msm_camera_qup_i2c_read(struct msm_camera_i2c_client *client,
 	rc = msm_camera_qup_i2c_rxdata(client, buf, data_type);
 	if (rc < 0) {
 		S_I2C_DBG("%s fail\n", __func__);
-		kfree(buf);
-		buf = NULL;
 		return rc;
 	}
 
@@ -112,8 +99,6 @@ int32_t msm_camera_qup_i2c_read(struct msm_camera_i2c_client *client,
 		*data = buf[0] << 8 | buf[1];
 
 	S_I2C_DBG("%s addr = 0x%x data: 0x%x\n", __func__, addr, *data);
-	kfree(buf);
-	buf = NULL;
 	return rc;
 }
 
@@ -121,29 +106,13 @@ int32_t msm_camera_qup_i2c_read_seq(struct msm_camera_i2c_client *client,
 	uint32_t addr, uint8_t *data, uint32_t num_byte)
 {
 	int32_t rc = -EFAULT;
-	unsigned char *buf = NULL;
+	unsigned char buf[client->addr_type+num_byte];
 	int i;
 
 	if ((client->addr_type != MSM_CAMERA_I2C_BYTE_ADDR
 		&& client->addr_type != MSM_CAMERA_I2C_WORD_ADDR)
 		|| num_byte == 0)
 		return rc;
-
-	if (num_byte > I2C_REG_DATA_MAX) {
-			pr_err("%s: Error num_byte:0x%x exceeds 8K max supported:0x%x\n",
-					__func__, num_byte, I2C_REG_DATA_MAX);
-			return rc;
-	}
-	if (client->addr_type > UINT_MAX - num_byte) {
-			pr_err("%s: integer overflow prevented\n", __func__);
-			return rc;
-	}
-
-	buf = kzalloc(client->addr_type+num_byte, GFP_KERNEL);
-	if (!buf) {
-			pr_err("%s:%d no memory\n", __func__, __LINE__);
-			return -ENOMEM;
-	}
 
 	if (client->addr_type == MSM_CAMERA_I2C_BYTE_ADDR) {
 		buf[0] = addr;
@@ -154,8 +123,6 @@ int32_t msm_camera_qup_i2c_read_seq(struct msm_camera_i2c_client *client,
 	rc = msm_camera_qup_i2c_rxdata(client, buf, num_byte);
 	if (rc < 0) {
 		S_I2C_DBG("%s fail\n", __func__);
-		kfree(buf);
-		buf = NULL;
 		return rc;
 	}
 
@@ -165,8 +132,6 @@ int32_t msm_camera_qup_i2c_read_seq(struct msm_camera_i2c_client *client,
 		S_I2C_DBG("Byte %d: 0x%x\n", i, buf[i]);
 		S_I2C_DBG("Data: 0x%x\n", data[i]);
 	}
-	kfree(buf);
-	buf = NULL;
 	return rc;
 }
 
@@ -208,8 +173,11 @@ int32_t msm_camera_qup_i2c_write(struct msm_camera_i2c_client *client,
 	} else if (data_type == MSM_CAMERA_I2C_WORD_DATA) {
 		buf[len] = data >> BITS_PER_BYTE;
 		buf[len+1] = data;
-		S_I2C_DBG("Byte %d: 0x%x\n", len, buf[len]);
-		S_I2C_DBG("Byte %d: 0x%x\n", len+1, buf[len+1]);
+        if(0x82 == addr)
+        {
+            printk("===wangyu Byte %d: 0x%x\n", len, buf[len]);
+            printk("===wangyu Byte %d: 0x%x\n", len+1, buf[len+1]);
+        }
 		len += 2;
 	}
 	rc = msm_camera_qup_i2c_txdata(client, buf, len);
@@ -325,12 +293,6 @@ int32_t msm_camera_qup_i2c_write_seq_table(struct msm_camera_i2c_client *client,
 	client_addr_type = client->addr_type;
 	client->addr_type = write_setting->addr_type;
 
-	if (reg_setting->reg_data_size > I2C_SEQ_REG_DATA_MAX) {
-		pr_err("%s: number of bytes %u exceeding the max supported %d\n",
-		__func__, reg_setting->reg_data_size, I2C_SEQ_REG_DATA_MAX);
-		return rc;
-	}
-
 	for (i = 0; i < write_setting->size; i++) {
 		rc = msm_camera_qup_i2c_write_seq(client, reg_setting->reg_addr,
 			reg_setting->reg_data, reg_setting->reg_data_size);
@@ -439,7 +401,7 @@ int32_t msm_camera_qup_i2c_poll(struct msm_camera_i2c_client *client,
 	uint32_t addr, uint16_t data,
 	enum msm_camera_i2c_data_type data_type, uint32_t delay_ms)
 {
-	int32_t rc = 0;
+	int32_t rc;
 	int i;
 	S_I2C_DBG("%s: addr: 0x%x data: 0x%x dt: %d\n",
 		__func__, addr, data, data_type);

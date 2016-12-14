@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,8 +27,127 @@
 static struct v4l2_file_operations msm_sensor_v4l2_subdev_fops;
 static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev);
 
+static uint8_t g_front_camera_lot_id[MSM_OTP_FRONT_CAMERA_ID_BUFF_SIZE];
+static uint8_t g_rear_camera_lot_id[MSM_OTP_REAR_CAMERA_ID_BUFF_SIZE];
+int g_rear_camera_ois;
+
+extern int msm_get_otp_data(uint8_t*, uint32_t, uint16_t);
+
+static ssize_t fcid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, 33, "%s", g_front_camera_lot_id);
+}
+
+static ssize_t bcid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, 17, "%s", g_rear_camera_lot_id);
+}
+
+int msm_get_ois_flag(void)
+{
+	return g_rear_camera_ois;
+}
+
+static ssize_t bois_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", g_rear_camera_ois);
+}
+
+static ssize_t bois_store(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	ssize_t status;
+	long value;
+	status = kstrtol(buf, 0, &value);
+	if (status == 0) {
+		g_rear_camera_ois = (int) value;
+		status = size;
+	}
+	return status;
+}
+
+static char reg_data_dump[PAGE_SIZE] = {0};
+
+static ssize_t reg_debug_show(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct msm_sensor_ctrl_t *s_ctrl = (struct msm_sensor_ctrl_t *)dev->driver_data;
+
+	CDBG("%s: dev name: %s\n", __func__, s_ctrl->pdev->name);
+	memcpy(buf, reg_data_dump, sizeof(reg_data_dump));
+
+	return PAGE_SIZE;
+}
+
+static ssize_t reg_debug_store(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t size)
+{
+	ssize_t status = 0;
+	uint32_t addr;
+	uint32_t len = 0;
+	struct msm_sensor_ctrl_t *s_ctrl = (struct msm_sensor_ctrl_t *)dev->driver_data;
+	enum msm_camera_i2c_reg_addr_type save_addr_type;
+	uint8_t value[0xFF] = {0};
+	char buffer[7] = {0};
+	int i = 0;
+
+	if (s_ctrl == NULL && s_ctrl->sensor_i2c_client == NULL)
+		return status;
+	memset(reg_data_dump, 0, PAGE_SIZE);
+	sscanf(buf, "%4x", &addr);
+	sscanf(buf, "%*x%u", &len);
+	if (0 == len)
+		len = 1;
+
+	if (s_ctrl != NULL && s_ctrl->sensor_i2c_client != NULL
+		&& s_ctrl->sensor_i2c_client->i2c_func_tbl != NULL) {
+		mutex_lock(s_ctrl->msm_sensor_mutex);
+		save_addr_type = s_ctrl->sensor_i2c_client->addr_type;
+		if (addr <= 0xFF)
+			s_ctrl->sensor_i2c_client->addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+		else
+			s_ctrl->sensor_i2c_client->addr_type = MSM_CAMERA_I2C_WORD_ADDR;
+
+		status = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_read_seq(
+			s_ctrl->sensor_i2c_client, addr,
+			value, len);
+		s_ctrl->sensor_i2c_client->addr_type = save_addr_type;
+		mutex_unlock(s_ctrl->msm_sensor_mutex);
+	}
+	CDBG("%s: 0x%x  len: %u status: %lu, size: %lu\n", __func__, addr, len, status, size);
+	if (status == 0) {
+		for (; i < len; i++) {
+			snprintf(buffer, sizeof(buffer), "0x%04X", addr++);
+			strlcat(reg_data_dump, buffer, sizeof(reg_data_dump));
+			strlcat(reg_data_dump, " ", sizeof(reg_data_dump));
+			snprintf(buffer, sizeof(buffer), "0x%02X", value[i]);
+			strlcat(reg_data_dump, buffer, sizeof(reg_data_dump));
+			strlcat(reg_data_dump, "\r\n", sizeof(reg_data_dump));
+		}
+		CDBG("%s: register values: %s \n", __func__, reg_data_dump);
+	}
+
+	status = size;
+	return status;
+}
+
+static DEVICE_ATTR(fcid, S_IRUGO, fcid_show, NULL);
+static DEVICE_ATTR(bcid, S_IRUGO, bcid_show, NULL);
+static DEVICE_ATTR(bois, 0644, bois_show, bois_store);
+static DEVICE_ATTR(sensor_register_debug, 0644, reg_debug_show, reg_debug_store);
+
 /* Static declaration */
 static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
+/* Get camerainfo struct */
+struct msm_camera_sensor_slave_info *msm_get_camera_slave_info(enum msm_sensor_camera_id_t cam_id)
+{
+	if (g_sctrl[cam_id] == NULL) {
+		pr_err("%s: g_sctrl[%d] is NULL\n", __func__, cam_id);
+		return NULL;
+	}
+	return g_sctrl[cam_id]->sensordata->cam_slave_info;
+}
 
 int msm_sensor_power_onoff(int onoff , int dev_id)
 {
@@ -641,6 +760,8 @@ static void msm_sensor_fill_sensor_info(struct msm_sensor_ctrl_t *s_ctrl,
 
 	strlcpy(entity_name, s_ctrl->msm_sd.sd.entity.name, MAX_SENSOR_NAME);
 }
+/* camerainfo struct */
+extern struct msm_camera_sensor_slave_info *camera_slave_info[MAX_CAMERAS];
 
 /* static function definition */
 int32_t msm_sensor_driver_probe(void *setting,
@@ -682,7 +803,6 @@ int32_t msm_sensor_driver_probe(void *setting,
 				kfree(slave_info32);
 				goto free_slave_info;
 			}
-
 		strlcpy(slave_info->actuator_name, slave_info32->actuator_name,
 			sizeof(slave_info->actuator_name));
 
@@ -734,20 +854,30 @@ int32_t msm_sensor_driver_probe(void *setting,
 	}
 
 	/* Print slave info */
-	CDBG("camera id %d Slave addr 0x%X addr_type %d\n",
+	pr_err("camera id %d Slave addr 0x%X addr_type %d\n",
 		slave_info->camera_id, slave_info->slave_addr,
 		slave_info->addr_type);
-	CDBG("sensor_id_reg_addr 0x%X sensor_id 0x%X sensor id mask %d",
+	pr_err("sensor_id_reg_addr 0x%X sensor_id 0x%X sensor id mask %d",
 		slave_info->sensor_id_info.sensor_id_reg_addr,
 		slave_info->sensor_id_info.sensor_id,
 		slave_info->sensor_id_info.sensor_id_mask);
-	CDBG("power up size %d power down size %d\n",
+	pr_err("power up size %d power down size %d\n",
 		slave_info->power_setting_array.size,
 		slave_info->power_setting_array.size_down);
 	CDBG("position %d",
 		slave_info->sensor_init_params.position);
 	CDBG("mount %d",
 		slave_info->sensor_init_params.sensor_mount_angle);
+#ifndef LETV_SINGLE_MODULE_VENDOR
+	pr_err("%s print: module_id 0x%x", __func__, slave_info->sensor_id_info.module_id);
+#endif
+
+	if (slave_info->is_init_params_valid) {
+		CDBG("position %d",
+			slave_info->sensor_init_params.position);
+		CDBG("mount %d",
+			slave_info->sensor_init_params.sensor_mount_angle);
+	}
 
 	/* Validate camera id */
 	if (slave_info->camera_id >= MAX_CAMERAS) {
@@ -773,14 +903,24 @@ int32_t msm_sensor_driver_probe(void *setting,
 		 * Different sensor on this camera slot has been connected
 		 * and probe already succeeded for that sensor. Ignore this
 		 * probe
+		 *
+		 * Besieds sensor id,
+		 * Module id and VCM id also need to use to determine a whole camera module
 		 */
-		if (slave_info->sensor_id_info.sensor_id ==
-			s_ctrl->sensordata->cam_slave_info->
-				sensor_id_info.sensor_id) {
-			pr_err("slot%d: sensor id%d already probed\n",
+		if ((slave_info->sensor_id_info.sensor_id ==
+			s_ctrl->sensordata->cam_slave_info->sensor_id_info.sensor_id) &&
+			(s_ctrl->sensordata->cam_slave_info->sensor_id_info.module_id ==
+			slave_info->sensor_id_info.module_id) &&
+			(s_ctrl->sensordata->cam_slave_info->sensor_id_info.vcm_id ==
+			slave_info->sensor_id_info.vcm_id)) {
+			pr_err("slot%d:sensor id %d probed%d, module id %d probed%d,vcm id %d, probed %d\n",
 				slave_info->camera_id,
-				s_ctrl->sensordata->cam_slave_info->
-					sensor_id_info.sensor_id);
+				s_ctrl->sensordata->cam_slave_info->sensor_id_info.sensor_id,
+				slave_info->sensor_id_info.sensor_id,
+				s_ctrl->sensordata->cam_slave_info->sensor_id_info.module_id,
+				slave_info->sensor_id_info.module_id,
+				s_ctrl->sensordata->cam_slave_info->sensor_id_info.vcm_id,
+				slave_info->sensor_id_info.vcm_id);
 			msm_sensor_fill_sensor_info(s_ctrl,
 				probed_info, entity_name);
 		} else
@@ -816,6 +956,11 @@ int32_t msm_sensor_driver_probe(void *setting,
 	camera_info->sensor_id_reg_addr =
 		slave_info->sensor_id_info.sensor_id_reg_addr;
 	camera_info->sensor_id = slave_info->sensor_id_info.sensor_id;
+#ifndef LETV_SINGLE_MODULE_VENDOR
+	camera_info->camera_id = slave_info->camera_id;
+	camera_info->module_id = slave_info->sensor_id_info.module_id;
+	camera_info->vcm_id = slave_info->sensor_id_info.vcm_id;
+#endif
 	camera_info->sensor_id_mask = slave_info->sensor_id_info.sensor_id_mask;
 
 	/* Fill CCI master, slave address and CCI default params */
@@ -958,10 +1103,12 @@ CSID_TG:
 
 	s_ctrl->msm_sd.sd.entity.flags = mount_pos | MEDIA_ENT_FL_DEFAULT;
 
-	/*Save sensor info*/
+	/* Save sensor info */
 	s_ctrl->sensordata->cam_slave_info = slave_info;
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
+	/* Save sensor info into camerainfo struct */
+	camera_slave_info[slave_info->camera_id] = slave_info;
 
 	return rc;
 
@@ -971,6 +1118,70 @@ free_camera_info:
 	kfree(camera_info);
 free_slave_info:
 	kfree(slave_info);
+	return rc;
+}
+
+static int32_t msm_sensor_driver_get_gpio_data(
+	struct msm_camera_sensor_board_info *sensordata,
+	struct device_node *of_node)
+{
+	int32_t                      rc = 0, i = 0;
+	struct msm_camera_gpio_conf *gconf = NULL;
+	uint16_t                    *gpio_array = NULL;
+	uint16_t                     gpio_array_size = 0;
+
+	/* Validate input paramters */
+	if (!sensordata || !of_node) {
+		pr_err("failed: invalid params sensordata %pK of_node %pK",
+			sensordata, of_node);
+		return -EINVAL;
+	}
+
+	sensordata->power_info.gpio_conf = kzalloc(
+			sizeof(struct msm_camera_gpio_conf), GFP_KERNEL);
+	if (!sensordata->power_info.gpio_conf) {
+		pr_err("failed");
+		return -ENOMEM;
+	}
+	gconf = sensordata->power_info.gpio_conf;
+
+	gpio_array_size = of_gpio_count(of_node);
+	CDBG("gpio count %d", gpio_array_size);
+	if (!gpio_array_size)
+		return 0;
+
+	gpio_array = kzalloc(sizeof(uint16_t) * gpio_array_size, GFP_KERNEL);
+	if (!gpio_array) {
+		pr_err("failed");
+		goto FREE_GPIO_CONF;
+	}
+	for (i = 0; i < gpio_array_size; i++) {
+		gpio_array[i] = of_get_gpio(of_node, i);
+		CDBG("gpio_array[%d] = %d", i, gpio_array[i]);
+	}
+
+	rc = msm_camera_get_dt_gpio_req_tbl(of_node, gconf, gpio_array,
+		gpio_array_size);
+	if (rc < 0) {
+		pr_err("failed");
+		goto FREE_GPIO_CONF;
+	}
+
+	rc = msm_camera_init_gpio_pin_tbl(of_node, gconf, gpio_array,
+		gpio_array_size);
+	if (rc < 0) {
+		pr_err("failed");
+		goto FREE_GPIO_REQ_TBL;
+	}
+
+	kfree(gpio_array);
+	return rc;
+
+FREE_GPIO_REQ_TBL:
+	kfree(sensordata->power_info.gpio_conf->cam_gpio_req_tbl);
+FREE_GPIO_CONF:
+	kfree(sensordata->power_info.gpio_conf);
+	kfree(gpio_array);
 	return rc;
 }
 
@@ -1031,8 +1242,7 @@ static int32_t msm_sensor_driver_get_dt_data(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 
 	/* Read gpio information */
-	rc = msm_sensor_driver_get_gpio_data
-		(&(sensordata->power_info.gpio_conf), of_node);
+	rc = msm_sensor_driver_get_gpio_data(sensordata, of_node);
 	if (rc < 0) {
 		pr_err("failed: msm_sensor_driver_get_gpio_data rc %d", rc);
 		goto FREE_VREG_DATA;
@@ -1116,7 +1326,6 @@ static int32_t msm_sensor_driver_parse(struct msm_sensor_ctrl_t *s_ctrl)
 	if (!s_ctrl->msm_sensor_mutex) {
 		pr_err("failed: no memory msm_sensor_mutex %pK",
 			s_ctrl->msm_sensor_mutex);
-		rc = -ENOMEM;
 		goto FREE_SENSOR_I2C_CLIENT;
 	}
 
@@ -1164,6 +1373,7 @@ FREE_SENSOR_I2C_CLIENT:
 static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
+	int err=0;
 	struct msm_sensor_ctrl_t *s_ctrl = NULL;
 
 	/* Create sensor control structure */
@@ -1177,30 +1387,65 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev)
 	s_ctrl->sensor_device_type = MSM_CAMERA_PLATFORM_DEVICE;
 	s_ctrl->of_node = pdev->dev.of_node;
 
-	/*fill in platform device*/
-	s_ctrl->pdev = pdev;
-
 	rc = msm_sensor_driver_parse(s_ctrl);
 	if (rc < 0) {
 		pr_err("failed: msm_sensor_driver_parse rc %d", rc);
 		goto FREE_S_CTRL;
 	}
 
-	/* Get clocks information */
-	rc = msm_camera_get_clk_info(s_ctrl->pdev,
-		&s_ctrl->sensordata->power_info.clk_info,
-		&s_ctrl->sensordata->power_info.clk_ptr,
-		&s_ctrl->sensordata->power_info.clk_info_size);
-	if (rc < 0) {
-		pr_err("failed: msm_camera_get_clk_info rc %d", rc);
-		goto FREE_S_CTRL;
-	}
-
-	/* Fill platform device id*/
+	/* Fill platform device */
 	pdev->id = s_ctrl->id;
+	s_ctrl->pdev = pdev;
 
 	/* Fill device in power info */
 	s_ctrl->sensordata->power_info.dev = &pdev->dev;
+
+	pr_err("%s:%d pdev->name = %s\n",__func__, __LINE__, pdev->name);
+        err = sysfs_create_file(&pdev->dev.kobj, &dev_attr_sensor_register_debug.attr);
+        if (err)
+	        dev_err(&pdev->dev, "Failed to create sensor register sysfs file: %d for: %s\n", err, pdev->name);
+
+	if (!strncmp(pdev->name, "a0c000.qcom,cci:qcom,camera@0",
+		strlen("a0c000.qcom,cci:qcom,camera@0"))) {
+		err = sysfs_create_file(&pdev->dev.kobj, &dev_attr_bois.attr);
+		if (err)
+			dev_err(&pdev->dev, "Failed to create REAR sensor ois sysfs files: %d\n",
+				err);
+		g_rear_camera_ois = 1;
+	}
+	if (!strncmp(pdev->name, "a0c000.qcom,cci:qcom,camera@0",
+		strlen("a0c000.qcom,cci:qcom,camera@0"))) {
+		err = sysfs_create_file(&pdev->dev.kobj,& dev_attr_bcid.attr);
+		if (err) {
+			dev_err(&pdev->dev, "Failed to create REAR sensor sysfs files: %d\n", err);
+		}
+
+		memset(g_rear_camera_lot_id,
+			0, MSM_OTP_REAR_CAMERA_ID_BUFF_SIZE);
+
+		err = msm_get_otp_data(g_rear_camera_lot_id,
+			MSM_OTP_REAR_CAMERA_ID_BUFF_SIZE, OTP_REAR_CAMERA_ID);
+		if (err < 0) {
+			pr_err("failed: get rear camera %s : err %d", pdev->name, err);
+		}
+	} else if (!strncmp(pdev->name, "a0c000.qcom,cci:qcom,camera@2",
+		strlen("a0c000.qcom,cci:qcom,camera@2"))) {
+		err = sysfs_create_file(&pdev->dev.kobj,&dev_attr_fcid.attr);
+		if (err) {
+			dev_err(&pdev->dev, "Failed to create FRONT sensor sysfs files: %d\n", err);
+		}
+
+		memset(g_front_camera_lot_id, 0,
+			MSM_OTP_FRONT_CAMERA_ID_BUFF_SIZE);
+
+		err = msm_get_otp_data(g_front_camera_lot_id,
+			MSM_OTP_FRONT_CAMERA_ID_BUFF_SIZE, OTP_FRONT_CAMERA_ID);
+		if (err < 0) {
+			pr_err("failed: get front camera %s : otp data err %d", pdev->name, err);
+		}
+	} else
+		pr_err("%s:%d failed UNKNOWN DEVICE", __func__, __LINE__);
+
 	return rc;
 FREE_S_CTRL:
 	kfree(s_ctrl);
@@ -1242,18 +1487,8 @@ static int32_t msm_sensor_driver_i2c_probe(struct i2c_client *client,
 		s_ctrl->sensor_i2c_client->client = client;
 		s_ctrl->sensordata->power_info.dev = &client->dev;
 
-		/* Get clocks information */
-		rc = msm_camera_i2c_dev_get_clk_info(
-			&s_ctrl->sensor_i2c_client->client->dev,
-			&s_ctrl->sensordata->power_info.clk_info,
-			&s_ctrl->sensordata->power_info.clk_ptr,
-			&s_ctrl->sensordata->power_info.clk_info_size);
-		if (rc < 0) {
-			pr_err("failed: msm_camera_i2c_dev_get_clk_info rc %d",
-				rc);
-			goto FREE_S_CTRL;
-		}
 	}
+
 	return rc;
 FREE_S_CTRL:
 	kfree(s_ctrl);
