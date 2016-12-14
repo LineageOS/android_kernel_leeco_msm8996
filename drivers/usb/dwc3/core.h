@@ -440,6 +440,15 @@
 #define DWC3_OTG_OCTL_DEVSETHNPEN	(1 << 1)
 #define DWC3_OTG_OCTL_HSTSETHNPEN	(1 << 0)
 
+#define MHL_POWER_OUT
+#ifdef MHL_POWER_OUT
+struct dwc3_mhl {
+	struct regulator	*vbus_mhl;
+};
+extern struct platform_device *dwc3_mhl_t;
+extern struct dwc3_mhl *dwc3_mhl_n;
+#endif
+
 /* Structures */
 
 struct dwc3_trb;

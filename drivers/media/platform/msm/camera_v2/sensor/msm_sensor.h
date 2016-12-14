@@ -90,7 +90,13 @@ struct msm_sensor_ctrl_t {
 	uint8_t is_csid_tg_mode;
 };
 
+#ifndef LETV_SINGLE_MODULE_VENDOR
+extern int msm_get_otp_data(uint8_t*, uint32_t, uint16_t);
+#endif
+
 int msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp);
+
+int msm_sensor_power_up_no_check_id(struct msm_sensor_ctrl_t *s_ctrl);
 
 int msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl);
 
@@ -100,7 +106,12 @@ int msm_sensor_check_id(struct msm_sensor_ctrl_t *s_ctrl);
 
 int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl);
 
+int32_t msm_sensor_platform_probe(struct platform_device *pdev,
+	const void *data);
 int msm_sensor_update_cfg(struct msm_sensor_ctrl_t *s_ctrl);
+
+int msm_sensor_i2c_probe(struct i2c_client *client,
+	const struct i2c_device_id *id, struct msm_sensor_ctrl_t *s_ctrl);
 
 int msm_sensor_free_sensor_data(struct msm_sensor_ctrl_t *s_ctrl);
 

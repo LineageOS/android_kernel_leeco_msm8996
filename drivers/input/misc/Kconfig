@@ -746,4 +746,31 @@ config INPUT_DRV2667_HAPTICS
 	  To compile this driver as a module, choose M here: the
 	  module will be called drv260x-haptics.
 
+config DRV2604L_HAPTICS
+	tristate "TI DRV260X haptics support"
+	depends on I2C && GPIOLIB
+	select REGMAP_I2C
+	help
+	  Say Y to enable support for the TI DRV260X haptics driver.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called drv260x-haptics.
+
+config STMVL53L0
+	tristate "STM VL53L0 driver support"
+	depends on INPUT && I2C
+
+	help
+	  Say Y to enable support for the STM VL53L0 driver.
+
+	  To compile this driver as a module, choose M here.
+
+config NXU8010
+	tristate "NXU8010 light sensor support"
+	depends on INPUT && I2C
+
+	help
+	  Say Y to enable support for the NXU8010 driver.
+
+	  To compile this driver as a module, choose M here.
 endif

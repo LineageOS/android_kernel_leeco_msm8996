@@ -3207,6 +3207,13 @@ static int wcd9xxx_slim_device_down(struct slim_device *sldev)
 static int wcd9xxx_slim_resume(struct slim_device *sldev)
 {
 	struct wcd9xxx *wcd9xxx = slim_get_devicedata(sldev);
+
+	pr_info("%s, enable register 0x803b!\n", __func__);
+	wcd9xxx_reg_update_bits(
+			&wcd9xxx->core_res,
+			WCD9335_TEST_DEBUG_NPL_DLY_TEST_1,
+			0x90, 0x90);
+
 	return wcd9xxx_core_res_resume(&wcd9xxx->core_res);
 }
 
@@ -3222,6 +3229,13 @@ static int wcd9xxx_i2c_resume(struct i2c_client *i2cdev)
 static int wcd9xxx_slim_suspend(struct slim_device *sldev, pm_message_t pmesg)
 {
 	struct wcd9xxx *wcd9xxx = slim_get_devicedata(sldev);
+
+	pr_info("%s, disable register 0x803b!\n", __func__);
+	wcd9xxx_reg_update_bits(
+			&wcd9xxx->core_res,
+			WCD9335_TEST_DEBUG_NPL_DLY_TEST_1,
+			0x90, 0x90);
+
 	return wcd9xxx_core_res_suspend(&wcd9xxx->core_res, pmesg);
 }
 

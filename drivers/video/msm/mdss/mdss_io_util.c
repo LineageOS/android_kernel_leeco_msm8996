@@ -211,6 +211,8 @@ vreg_get_fail:
 } /* msm_dss_config_vreg */
 EXPORT_SYMBOL(msm_dss_config_vreg);
 
+extern bool panel_rst_high_flag;
+extern void mdss_dsi_panel_reset_high(int enable);
 int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 {
 	int i = 0, rc = 0;
@@ -235,6 +237,10 @@ int msm_dss_enable_vreg(struct dss_vreg *in_vreg, int num_vreg, int enable)
 					__builtin_return_address(0), __func__,
 					in_vreg[i].vreg_name);
 				goto vreg_set_opt_mode_fail;
+			}
+			if ((!strcmp(in_vreg[i].vreg_name, "lab")) && panel_rst_high_flag)
+			{
+				mdss_dsi_panel_reset_high(1);
 			}
 			rc = regulator_enable(in_vreg[i].vreg);
 			if (in_vreg[i].post_on_sleep && need_sleep)

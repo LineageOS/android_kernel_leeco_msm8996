@@ -1,0 +1,7 @@
+#include "msm8996-le_x5-dvt1.dtsi" 
+
+&cyccg {
+	external-5v-en-gpio = <&tlmm 39 0x0>;
+	external-5v-en-flag;
+};
+

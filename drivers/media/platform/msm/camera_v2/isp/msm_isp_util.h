@@ -16,7 +16,7 @@
 #include <soc/qcom/camera2.h>
 #include "msm_camera_io_util.h"
 
-/* #define CONFIG_MSM_ISP_DBG 1 */
+/*#define CONFIG_MSM_ISP_DBG 1*/
 
 #ifdef CONFIG_MSM_ISP_DBG
 #define ISP_DBG(fmt, args...) printk(fmt, ##args)
@@ -81,5 +81,6 @@ void msm_isp_flush_tasklet(struct vfe_device *vfe_dev);
 void msm_isp_save_framedrop_values(struct vfe_device *vfe_dev,
 	enum msm_vfe_input_src frame_src);
 void msm_isp_get_timestamp(struct msm_isp_timestamp *time_stamp);
+void msm_isp_start_error_recovery(struct vfe_device *vfe_dev);
 
 #endif /* __MSM_ISP_UTIL_H__ */

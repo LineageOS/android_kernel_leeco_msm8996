@@ -1682,7 +1682,7 @@ struct xhci_segment *trb_in_td(struct xhci_hcd *xhci,
 				&cur_seg->trbs[TRBS_PER_SEGMENT - 1]);
 		/* If the end TRB isn't in this segment, this is set to 0 */
 		end_trb_dma = xhci_trb_virt_to_dma(cur_seg, end_trb);
-
+		/*
 		if (debug)
 			xhci_warn(xhci,
 				"Looking for event-dma %016llx trb-start %016llx trb-end %016llx seg-start %016llx seg-end %016llx\n",
@@ -1691,7 +1691,7 @@ struct xhci_segment *trb_in_td(struct xhci_hcd *xhci,
 				(unsigned long long)end_trb_dma,
 				(unsigned long long)cur_seg->dma,
 				(unsigned long long)end_seg_dma);
-
+		*/
 		if (end_trb_dma > 0) {
 			/* The end TRB is in this segment, so suspect should be here */
 			if (start_dma <= end_trb_dma) {
@@ -2455,11 +2455,13 @@ static int handle_tx_event(struct xhci_hcd *xhci,
 					goto cleanup;
 				}
 				/* HC is busted, give up! */
+				/*
 				xhci_err(xhci,
 					"ERROR Transfer event TRB DMA ptr not "
 					"part of current TD ep_index %d "
 					"comp_code %u\n", ep_index,
 					trb_comp_code);
+				*/
 				trb_in_td(xhci, ep_ring->deq_seg,
 					  ep_ring->dequeue, td->last_trb,
 					  event_dma, true);
@@ -3936,7 +3938,8 @@ static int queue_command(struct xhci_hcd *xhci, struct xhci_command *cmd,
 {
 	int reserved_trbs = xhci->cmd_ring_reserved_trbs;
 	int ret;
-	if (xhci->xhc_state) {
+	if ((xhci->xhc_state & XHCI_STATE_DYING)||
+        (xhci->xhc_state & XHCI_STATE_HALTED)){
 		xhci_dbg(xhci, "xHCI dying or halted, can't queue_command\n");
 		return -ESHUTDOWN;
 	}

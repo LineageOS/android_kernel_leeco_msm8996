@@ -1312,7 +1312,7 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 			if (power_setting->seq_val >= CAM_VREG_MAX) {
 				pr_err("%s vreg index %d >= max %d\n", __func__,
 					power_setting->seq_val,
-					SENSOR_GPIO_MAX);
+					CAM_VREG_MAX);
 				goto power_up_failed;
 			}
 			if (power_setting->seq_val < ctrl->num_vreg)

@@ -93,6 +93,11 @@ config MSM_MEMORY_DUMP_V2
 	  of deadlocks or cpu hangs these dump regions are captured to
 	  give a snapshot of the system at the time of the crash.
 
+config DEEP_SLEEP_LED_SWITCH
+	bool "deep sleep led indicator"
+	help
+	  This will enable deep sleep led indicating for system status.
+
 config MSM_DEBUG_LAR_UNLOCK
 	bool "MSM Debug LAR Unlock Support"
 	depends on MSM_MEMORY_DUMP_V2

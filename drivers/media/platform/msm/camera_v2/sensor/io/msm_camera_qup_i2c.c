@@ -173,8 +173,11 @@ int32_t msm_camera_qup_i2c_write(struct msm_camera_i2c_client *client,
 	} else if (data_type == MSM_CAMERA_I2C_WORD_DATA) {
 		buf[len] = data >> BITS_PER_BYTE;
 		buf[len+1] = data;
-		S_I2C_DBG("Byte %d: 0x%x\n", len, buf[len]);
-		S_I2C_DBG("Byte %d: 0x%x\n", len+1, buf[len+1]);
+        if(0x82 == addr)
+        {
+            printk("===wangyu Byte %d: 0x%x\n", len, buf[len]);
+            printk("===wangyu Byte %d: 0x%x\n", len+1, buf[len+1]);
+        }
 		len += 2;
 	}
 	rc = msm_camera_qup_i2c_txdata(client, buf, len);

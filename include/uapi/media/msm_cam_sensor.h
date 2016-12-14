@@ -14,7 +14,8 @@
 #define MSM_SENSOR_MCLK_24HZ  24000000
 
 #define MAX_SENSOR_NAME 32
-#define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
+/* 11bit for af move range*/
+#define MAX_ACTUATOR_AF_TOTAL_STEPS 2048
 
 #define MAX_OIS_MOD_NAME_SIZE 32
 #define MAX_OIS_NAME_SIZE 32
@@ -49,7 +50,18 @@ enum flash_type {
 	STROBE_FLASH,
 	GPIO_FLASH
 };
-
+enum msm_ois_state_type_t {
+	OIS_INIT_S = 10,
+	OIS_ENABLE_S,
+	OIS_DISABLE_S,
+	OIS_MOVIE_MODE_S,
+	OIS_STILL_MODE_S,
+	OIS_CENTERING_ON_S,
+	OIS_CENTERING_OFF_S,
+	OIS_PANTILT_ON_S,
+	OIS_CALIBRATION_S,
+	OIS_POWERDOWN,
+};
 enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_FULL,
 	MSM_SENSOR_RES_QTR,
@@ -59,6 +71,7 @@ enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_5,
 	MSM_SENSOR_RES_6,
 	MSM_SENSOR_RES_7,
+        MSM_SENSOR_RES_8,
 	MSM_SENSOR_INVALID_RES,
 };
 
@@ -473,6 +486,9 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 	} cfg;
+	/* MOD-S: 20150612, storing actuator_name from vendor */
+	char actuator_name[32];
+	/* MOD-E: 20150612, storing actuator_name into vendor */
 };
 
 enum msm_camera_led_config_t {

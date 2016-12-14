@@ -1,0 +1,58 @@
+config MACH_LEECO
+	bool
+	depends on ARCH_MSM
+
+config MACH_LEECO_MSM8996
+	depends on ARCH_MSM8996
+	select MACH_LEECO
+	bool "LeEco MSM8996 Platform"
+	help
+	  Support for LeEco MSM8996 device variants.
+
+menu "LeEco board selection"
+
+config MACH_MAX_PLUS
+	select MACH_LEECO_MSM8996
+	bool "Max-Plus"
+	help
+	  Support for the Max-Plus variant
+
+config MACH_X10
+	select MACH_LEECO_MSM8996
+	bool "x10"
+	help
+	  Support for the x10 variant
+
+config MACH_X2
+	select MACH_LEECO_MSM8996
+	bool "x2"
+	help
+	  Support for the x2 variant
+
+config MACH_X5
+	select MACH_LEECO_MSM8996
+	bool "x5"
+	help
+	  Support for the x5 variant
+
+config MACH_X51
+	select MACH_LEECO_MSM8996
+	bool "x51"
+	help
+	  Support for the x51 variant
+
+config MACH_TURBO
+	select MACH_LEECO_MSM8996
+	bool "turbo"
+	help
+	  Support for the turbo variant
+
+config MACH_ZL1
+	select MACH_LEECO_MSM8996
+	bool "zl1"
+	help
+	  Support for the zl1 variant
+
+endmenu
+
+

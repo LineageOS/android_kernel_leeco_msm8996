@@ -730,6 +730,12 @@ config REGULATOR_TWL4030
 	  This driver supports the voltage regulators provided by
 	  this family of companion chips.
 
+config REGULATOR_TWL80125
+	tristate "TI TWL80125 PMIC"
+	help
+	  This driver supports the voltage regulators provided by
+	  this family of companion chips.
+
 config REGULATOR_VEXPRESS
 	tristate "Versatile Express regulators"
 	depends on VEXPRESS_CONFIG

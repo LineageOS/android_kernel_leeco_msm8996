@@ -105,6 +105,10 @@ struct msm_actuator_ctrl_t {
 	struct msm_actuator_vreg vreg_cfg;
 	struct park_lens_data_t park_lens;
 	uint32_t max_code_size;
+	struct msm_camera_sensor_board_info *actuatordata;
+	const char *project_name;
+	uint16_t maxdac;// add for semico  sa3103 actuator , which is different with all qcom supported standard actuator type.
+	uint16_t mindac;
 };
 
 #endif

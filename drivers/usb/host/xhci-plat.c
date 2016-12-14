@@ -278,9 +278,11 @@ static int xhci_plat_remove(struct platform_device *dev)
 	struct clk *clk = xhci->clk;
 
 	pm_runtime_disable(&dev->dev);
-
+        pm_runtime_barrier(&dev->dev);
+        pm_runtime_set_suspended(&dev->dev);
 	device_remove_file(&dev->dev, &dev_attr_config_imod);
-	usb_remove_hcd(xhci->shared_hcd);
+        xhci->xhc_state |= XHCI_STATE_REMOVING;
+        usb_remove_hcd(xhci->shared_hcd);
 	usb_put_hcd(xhci->shared_hcd);
 
 	usb_remove_hcd(hcd);

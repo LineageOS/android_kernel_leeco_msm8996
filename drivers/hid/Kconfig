@@ -865,6 +865,14 @@ config HID_SENSOR_HUB
 	  for events and handle data streams. Each sensor driver can format
 	  data and present to user mode using input or IIO interface.
 
+config HID_OVR
+	tristate "OVR device support"
+	depends on USB_HID
+	---help---
+	  Support for OVR devices.
+	  Say Y here if you have a OVR device.
+
+
 endmenu
 
 endif # HID

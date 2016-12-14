@@ -110,22 +110,21 @@ int xhci_halt(struct xhci_hcd *xhci)
 	int ret;
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init, "// Halt the HC");
 	xhci_quiesce(xhci);
-
 	ret = xhci_handshake(xhci, &xhci->op_regs->status,
 			STS_HALT, STS_HALT, XHCI_MAX_HALT_USEC);
-	if (!ret) {
-		xhci->xhc_state |= XHCI_STATE_HALTED;
-		xhci->cmd_ring_state = CMD_RING_STATE_STOPPED;
 
-		if (timer_pending(&xhci->cmd_timer)) {
-			xhci_dbg_trace(xhci, trace_xhci_dbg_init,
-					"Cleanup command queue");
-			del_timer(&xhci->cmd_timer);
-			xhci_cleanup_command_queue(xhci);
-		}
-	} else
-		xhci_warn(xhci, "Host not halted after %u microseconds.\n",
-				XHCI_MAX_HALT_USEC);
+        if (!ret) {
+           xhci->xhc_state |= XHCI_STATE_HALTED;
+        }else
+           xhci_warn(xhci, "Host not halted after %u microseconds.\n",
+           XHCI_MAX_HALT_USEC);
+           xhci->cmd_ring_state = CMD_RING_STATE_STOPPED;
+
+       if (timer_pending(&xhci->cmd_timer)) {
+           xhci_dbg_trace(xhci, trace_xhci_dbg_init,"Cleanup command queue");
+           del_timer(&xhci->cmd_timer);
+           xhci_cleanup_command_queue(xhci);
+        }
 	return ret;
 }
 
@@ -154,7 +153,8 @@ static int xhci_start(struct xhci_hcd *xhci)
 				"waited %u microseconds.\n",
 				XHCI_MAX_HALT_USEC);
 	if (!ret)
-		xhci->xhc_state &= ~XHCI_STATE_HALTED;
+           /* clear state flags. Including dying, halted or removing */
+            xhci->xhc_state = 0;
 	return ret;
 }
 
@@ -2703,7 +2703,6 @@ static int xhci_configure_endpoint(struct xhci_hcd *xhci,
 
 	/* Wait for the configure endpoint command to complete */
 	wait_for_completion(command->completion);
-
 	if (!ctx_change)
 		ret = xhci_configure_endpoint_result(xhci, udev,
 						     &command->status);
@@ -2763,12 +2762,12 @@ int xhci_check_bandwidth(struct usb_hcd *hcd, struct usb_device *udev)
 	if (ret <= 0)
 		return ret;
 	xhci = hcd_to_xhci(hcd);
-	if (xhci->xhc_state & XHCI_STATE_DYING)
+	if ((xhci->xhc_state & XHCI_STATE_DYING)||
+        (xhci->xhc_state & XHCI_STATE_REMOVING))
 		return -ENODEV;
 
 	xhci_dbg(xhci, "%s called for udev %p\n", __func__, udev);
 	virt_dev = xhci->devs[udev->slot_id];
-
 	command = xhci_alloc_command(xhci, false, true, GFP_KERNEL);
 	if (!command)
 		return -ENOMEM;
@@ -2806,6 +2805,7 @@ int xhci_check_bandwidth(struct usb_hcd *hcd, struct usb_device *udev)
 		}
 	}
 	xhci_dbg(xhci, "New Input Control Context:\n");
+
 	xhci_dbg_ctx(xhci, virt_dev->in_ctx,
 		     LAST_CTX_TO_EP_NUM(le32_to_cpu(slot_ctx->dev_info)));
 
@@ -3809,7 +3809,7 @@ static int xhci_setup_device(struct usb_hcd *hcd, struct usb_device *udev,
 
 	mutex_lock(&xhci->mutex);
 
-	if (xhci->xhc_state)	/* dying or halted */
+	if (xhci->xhc_state) /* dying, removing or halted */
 		goto out;
 
 	if (!udev->slot_id) {

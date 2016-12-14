@@ -89,6 +89,14 @@ int cap_capable(const struct cred *cred, struct user_namespace *targ_ns,
 		return 0;
 #endif
 
+	/* WIFI_START */
+	//** 2016-06-01 add AID_WIFI(1010) to get CAP_NET_ADMIN for WLAN SAR API iwpriv
+	//** add source code here
+	if (cap == CAP_NET_ADMIN && in_egroup_p(KGIDT_INIT(1010))) {
+		return 0;
+	}
+	/* WIFI_END */
+
 	/* See if cred has the capability in the target user namespace
 	 * by examining the target user namespace and all of the target
 	 * user namespace's parents.
