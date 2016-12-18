@@ -1,5 +1,5 @@
 /*
- + * Copyright (C) NXP Semiconductors (PLMA)
+ * Copyright (C) NXP Semiconductors (PLMA)
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

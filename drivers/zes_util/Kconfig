@@ -1,0 +1,4 @@
+config ZES_POWER_DEBUG
+        bool "Enable ZES POWER DEBUG"
+        ---help---
+          Allows to enable power debug feature

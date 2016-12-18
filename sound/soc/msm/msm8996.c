@@ -2300,7 +2300,7 @@ static u32 msm8996_get_mi2s_bit_clock(int mi2s_bit_format, int sample_rate)
 				bit_clock = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
 				break;
 			case SAMPLING_RATE_44P1KHZ:
-				bit_clock = Q6AFE_LPASS_IBIT_CLK_2_P8224_MHZ;
+				bit_clock = Q6AFE_LPASS_IBIT_CLK_2_P822_MHZ;
 				break;
 			case SAMPLING_RATE_32KHZ:
 				bit_clock = Q6AFE_LPASS_IBIT_CLK_2_P048_MHZ;
@@ -2330,7 +2330,7 @@ static u32 msm8996_get_mi2s_bit_clock(int mi2s_bit_format, int sample_rate)
 				bit_clock = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
 				break;
 			case SAMPLING_RATE_44P1KHZ:
-				bit_clock = Q6AFE_LPASS_IBIT_CLK_1_P4112_MHZ;
+				bit_clock = Q6AFE_LPASS_IBIT_CLK_1_P411_MHZ;
 				break;
 			case SAMPLING_RATE_32KHZ:
 				bit_clock = Q6AFE_LPASS_IBIT_CLK_1_P024_MHZ;
@@ -2370,7 +2370,7 @@ static u32 msm8996_get_sec_mi2s_bit_clock(int mi2s_bit_format, int sample_rate)
 			bit_clock = Q6AFE_LPASS_IBIT_CLK_3_P072_MHZ;
 			break;
 		case SAMPLING_RATE_44P1KHZ:
-			bit_clock = Q6AFE_LPASS_IBIT_CLK_2_P8224_MHZ;
+			bit_clock = Q6AFE_LPASS_IBIT_CLK_2_P822_MHZ;
 			break;
 		case SAMPLING_RATE_32KHZ:
 			bit_clock = Q6AFE_LPASS_IBIT_CLK_2_P048_MHZ;

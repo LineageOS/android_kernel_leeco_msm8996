@@ -623,9 +623,6 @@ config SND_SOC_UDA134X
 config SND_SOC_UDA1380
         tristate
 
-config SND_SOC_WCD9306
-        tristate
-
 config SND_SOC_WCD9320
         tristate
 
@@ -636,18 +633,13 @@ config SND_SOC_WCD9330
 config SND_SOC_WCD9335
         tristate
 
-config SND_SOC_WSA881X_SENSORS
-	tristate
-
 config SND_SOC_WSA881X
         tristate
 	select REGMAP_SWR
-	select SND_SOC_WSA881X_SENSORS
 
 config SND_SOC_WSA881X_ANALOG
         tristate
 	select REGMAP_I2C
-	select SND_SOC_WSA881X_SENSORS
 
 config SND_SOC_MSM8X16_WCD
 	tristate
@@ -655,7 +647,6 @@ config SND_SOC_MSM8X16_WCD
 config SND_SOC_WCD9XXX
 	tristate
 	default y if SND_SOC_WCD9320=y || SND_SOC_WCD9330=y || SND_SOC_WCD9335=y
-	default y if SND_SOC_WCD9306=y
 
 config SND_SOC_WCD9XXX_V2
 	tristate
@@ -883,6 +874,11 @@ config SND_SOC_ES9018
 	  monitoring switches by userspace via sysfs and uevent.
 config SND_SOC_TFA98XX
 	tristate "Audio SMART PA support"
+	help
+	  Say Y here to enable Audio SMART PA support. This allows
+	  monitoring switches by userspace via sysfs and uevent.
+config SND_SOC_MAX98927
+	tristate "Audio SMART PA 98927 support"
 	help
 	  Say Y here to enable Audio SMART PA support. This allows
 	  monitoring switches by userspace via sysfs and uevent.
