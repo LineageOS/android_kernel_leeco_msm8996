@@ -630,7 +630,7 @@ static ssize_t dwc3_store_ep_num(struct file *file, const char __user *ubuf,
 	struct seq_file		*s = file->private_data;
 	struct dwc3		*dwc = s->private;
 	char			kbuf[10];
-	unsigned int		num, dir;
+	unsigned int		num, dir, temp;
 	unsigned long		flags;
 
 	memset(kbuf, 0, 10);
@@ -641,8 +641,16 @@ static ssize_t dwc3_store_ep_num(struct file *file, const char __user *ubuf,
 	if (sscanf(kbuf, "%u %u", &num, &dir) != 2)
 		return -EINVAL;
 
+	if (dir != 0 && dir != 1)
+		return -EINVAL;
+
+	temp = (num << 1) + dir;
+	if (temp >= (dwc->num_in_eps + dwc->num_out_eps) ||
+					temp >= DWC3_ENDPOINTS_NUM)
+		return -EINVAL;
+
 	spin_lock_irqsave(&dwc->lock, flags);
-	ep_num = (num << 1) + dir;
+	ep_num = temp;
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	return count;
@@ -738,8 +746,10 @@ static int dwc3_ep_trbs_show(struct seq_file *s, void *unused)
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	dep = dwc->eps[ep_num];
-	if (!dep->trb_pool)
+	if (!dep->trb_pool) {
+		spin_unlock_irqrestore(&dwc->lock, flags);
 		return 0;
+	}
 
 	seq_printf(s, "%s trb pool: flags:0x%x freeslot:%d busyslot:%d\n",
 		dep->name, dep->flags, dep->free_slot, dep->busy_slot);

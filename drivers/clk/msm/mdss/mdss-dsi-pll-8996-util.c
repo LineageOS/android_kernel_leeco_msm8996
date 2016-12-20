@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -26,6 +26,7 @@
 #define DSI_PLL_POLL_TIMEOUT_US                 1000
 #define MSM8996_DSI_PLL_REVISION_2		2
 
+#define DSI_PLL_DEFAULT_POSTDIV			1
 #define CEIL(x, y)		(((x) + ((y)-1)) / (y))
 
 int set_mdss_byte_mux_sel_8996(struct mux_clk *clk, int sel)
@@ -113,7 +114,7 @@ int post_n1_div_set_div(struct div_clk *clk, int div)
 	 */
 
 	/* this is for vco/bit clock */
-	pout->pll_postdiv = 1;	/* fixed, divided by 1 */
+	pout->pll_postdiv = DSI_PLL_DEFAULT_POSTDIV;
 	pout->pll_n1div  = div;
 
 	pr_debug("ndx=%d div=%d postdiv=%x n1div=%x\n",
@@ -317,7 +318,7 @@ init_lock_err:
 
 static int dsi_pll_enable(struct clk *c)
 {
-	int i, rc;
+	int i, rc = 0;
 	struct dsi_pll_vco_clk *vco = to_vco_clk(c);
 	struct mdss_pll_resources *pll = vco->priv;
 
@@ -502,6 +503,24 @@ static u32 pll_8996_kvco_slop(u32 vrate)
 	return slop;
 }
 
+static inline u32 pll_8996_calc_kvco_code(s64 vco_clk_rate)
+{
+	u32 kvco_code;
+
+	if ((vco_clk_rate >= 2300000000ULL) &&
+	    (vco_clk_rate <= 2600000000ULL))
+		kvco_code = 0x2f;
+	else if ((vco_clk_rate >= 1800000000ULL) &&
+		 (vco_clk_rate < 2300000000ULL))
+		kvco_code = 0x2c;
+	else
+		kvco_code = 0x28;
+
+	pr_debug("rate: %llu kvco_code: 0x%x\n",
+		vco_clk_rate, kvco_code);
+	return kvco_code;
+}
+
 static void pll_8996_calc_vco_count(struct dsi_pll_db *pdb,
 			 s64 vco_clk_rate, s64 fref)
 {
@@ -537,7 +556,7 @@ static void pll_8996_calc_vco_count(struct dsi_pll_db *pdb,
 	pout->pll_resetsm_cntrl = 48;
 	pout->pll_resetsm_cntrl2 = pin->bandgap_timer << 3;
 	pout->pll_resetsm_cntrl5 = pin->pll_wakeup_timer;
-	pout->pll_kvco_code = 0;
+	pout->pll_kvco_code = pll_8996_calc_kvco_code(vco_clk_rate);
 }
 
 static void pll_db_commit_ssc(struct mdss_pll_resources *pll,
@@ -718,15 +737,12 @@ static void pll_db_commit_8996(struct mdss_pll_resources *pll,
 	data &= 0x03;
 	MDSS_PLL_REG_W(pll_base, DSIPHY_PLL_KVCO_COUNT2, data);
 
-	/*
-	 * tx_band = pll_postdiv
-	 * 0: divided by 1 <== for now
-	 * 1: divided by 2
-	 * 2: divided by 4
-	 * 3: divided by 8
-	 */
 	data = (((pout->pll_postdiv - 1) << 4) | pdb->in.pll_lpf_res1);
 	MDSS_PLL_REG_W(pll_base, DSIPHY_PLL_PLL_LPF2_POSTDIV, data);
+
+	data = pout->pll_kvco_code;
+	MDSS_PLL_REG_W(pll_base, DSIPHY_PLL_KVCO_CODE, data);
+	pr_debug("kvco_code:0x%x\n", data);
 
 	data = (pout->pll_n1div | (pout->pll_n2div << 4));
 	MDSS_PLL_REG_W(pll_base, DSIPHY_CMN_CLK_CFG0, data);
@@ -836,6 +852,14 @@ int pll_vco_set_rate_8996(struct clk *c, unsigned long rate)
 	pll->vco_ref_clk_rate = vco->ref_clk_rate;
 
 	mdss_dsi_pll_8996_input_init(pll, pdb);
+	/*
+	 * tx_band = pll_postdiv
+	 * 0: divided by 1 <== for now
+	 * 1: divided by 2
+	 * 2: divided by 4
+	 * 3: divided by 8
+	 */
+	pdb->out.pll_postdiv = DSI_PLL_DEFAULT_POSTDIV;
 
 	pll_8996_dec_frac_calc(pll, pdb);
 

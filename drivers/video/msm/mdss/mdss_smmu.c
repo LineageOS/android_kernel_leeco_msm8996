@@ -209,6 +209,7 @@ static int mdss_smmu_attach_v2(struct mdss_data_type *mdata)
 		}
 	}
 	mutex_unlock(&mdp_iommu_lock);
+
 	return 0;
 
 err:
@@ -221,6 +222,7 @@ err:
 		}
 	}
 	mutex_unlock(&mdp_iommu_lock);
+
 	return rc;
 }
 
@@ -245,6 +247,7 @@ static int mdss_smmu_detach_v2(struct mdss_data_type *mdata)
 			mdss_smmu_enable_power(mdss_smmu, false);
 	}
 	mutex_unlock(&mdp_iommu_lock);
+
 	return 0;
 }
 

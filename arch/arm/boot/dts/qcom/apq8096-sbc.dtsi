@@ -825,13 +825,13 @@
 
 &cam_sensor_mclk1_active { /* MCLK1 */
 	config {
-		drive-strength = <8>; /* 8 MA */
+		drive-strength = <4>; /* 8 MA */
 	};
 };
 
 &cam_sensor_mclk1_suspend { /* MCLK1 */
 	config {
-		drive-strength = <8>; /* 8 MA */
+		drive-strength = <4>; /* 8 MA */
 	};
 };
 
@@ -845,4 +845,10 @@
 	config {
 		drive-strength = <8>; /* 8 MA */
 	};
+};
+
+&wil6210 {
+	status = "ok";
+	/delete-property/ qcom,wigig-en;
+	/delete-property/ qcom,sleep-clk-en;
 };

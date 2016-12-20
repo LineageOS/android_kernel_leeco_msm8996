@@ -60,6 +60,8 @@ struct intf_timing_params {
 	u32 v_front_porch;
 	u32 hsync_pulse_width;
 	u32 vsync_pulse_width;
+	u32 h_polarity;
+	u32 v_polarity;
 
 	u32 border_clr;
 	u32 underflow_clr;
@@ -478,13 +480,8 @@ static int mdss_mdp_video_timegen_setup(struct mdss_mdp_ctl *ctl,
 	display_hctl = (hsync_end_x << 16) | hsync_start_x;
 
 	den_polarity = 0;
-	if (MDSS_INTF_HDMI == ctx->intf_type) {
-		hsync_polarity = p->yres >= 720 ? 0 : 1;
-		vsync_polarity = p->yres >= 720 ? 0 : 1;
-	} else {
-		hsync_polarity = 0;
-		vsync_polarity = 0;
-	}
+	hsync_polarity = p->h_polarity;
+	vsync_polarity = p->v_polarity;
 	polarity_ctl = (den_polarity << 2)   | /*  DEN Polarity  */
 		       (vsync_polarity << 1) | /* VSYNC Polarity */
 		       (hsync_polarity << 0);  /* HSYNC Polarity */
@@ -833,7 +830,8 @@ static int mdss_mdp_video_ctx_stop(struct mdss_mdp_ctl *ctl,
 		}
 		WARN(rc, "intf %d blank error (%d)\n", ctl->intf_num, rc);
 
-		frame_rate = mdss_panel_get_framerate(pinfo);
+		frame_rate = mdss_panel_get_framerate(pinfo,
+				FPS_RESOLUTION_HZ);
 		if (!(frame_rate >= 24 && frame_rate <= 240))
 			frame_rate = 24;
 
@@ -956,6 +954,8 @@ static void mdss_mdp_video_vsync_intr_done(void *arg)
 
 	vsync_time = ktime_get();
 	ctl->vsync_cnt++;
+
+	mdss_debug_frc_add_vsync_sample(ctl, vsync_time);
 
 	MDSS_XLOG(ctl->num, ctl->vsync_cnt, ctl->vsync_cnt);
 
@@ -1124,20 +1124,21 @@ static int mdss_mdp_video_hfp_fps_update(struct mdss_mdp_video_ctx *ctx,
 	u32 hsync_start_x, hsync_end_x, display_v_start, display_v_end;
 	u32 display_hctl, hsync_ctl;
 	struct mdss_panel_info *pinfo = &pdata->panel_info;
+	u32 div = (ctx->ctl->cdm && pinfo->out_format == MDP_Y_CBCR_H2V2) ? 1 : 0;
 
-	hsync_period = mdss_panel_get_htotal(pinfo, true);
+	hsync_period = mdss_panel_get_htotal(pinfo, true) >> div;
 	vsync_period = mdss_panel_get_vtotal(pinfo);
 
 	display_v_start = ((pinfo->lcdc.v_pulse_width +
 			pinfo->lcdc.v_back_porch) * hsync_period) +
-					pinfo->lcdc.hsync_skew;
+					(pinfo->lcdc.hsync_skew >> div);
 	display_v_end = ((vsync_period - pinfo->lcdc.v_front_porch) *
-				hsync_period) + pinfo->lcdc.hsync_skew - 1;
+				hsync_period) + (pinfo->lcdc.hsync_skew >> div) - 1;
 
-	hsync_start_x = pinfo->lcdc.h_back_porch + pinfo->lcdc.h_pulse_width;
-	hsync_end_x = hsync_period - pinfo->lcdc.h_front_porch - 1;
+	hsync_start_x = (pinfo->lcdc.h_back_porch + pinfo->lcdc.h_pulse_width) >> div;
+	hsync_end_x = hsync_period - (pinfo->lcdc.h_front_porch >> div) - 1;
 
-	hsync_ctl = (hsync_period << 16) | pinfo->lcdc.h_pulse_width;
+	hsync_ctl = (hsync_period << 16) | (pinfo->lcdc.h_pulse_width >> div);
 	display_hctl = (hsync_end_x << 16) | hsync_start_x;
 
 	mdp_video_write(ctx, MDSS_MDP_REG_INTF_HSYNC_CTL, hsync_ctl);
@@ -1220,7 +1221,7 @@ static int mdss_mdp_video_fps_update(struct mdss_mdp_video_ctx *ctx,
 	return rc;
 }
 
-static int mdss_mdp_video_dfps_wait4vsync(struct mdss_mdp_ctl *ctl)
+static int mdss_mdp_video_wait4vsync(struct mdss_mdp_ctl *ctl)
 {
 	int rc = 0;
 	struct mdss_mdp_video_ctx *ctx;
@@ -1231,6 +1232,8 @@ static int mdss_mdp_video_dfps_wait4vsync(struct mdss_mdp_ctl *ctl)
 		return -ENODEV;
 	}
 
+	MDSS_XLOG(ctl->num, ctl->vsync_cnt, XLOG_FUNC_ENTRY);
+
 	video_vsync_irq_enable(ctl, true);
 	reinit_completion(&ctx->vsync_comp);
 	rc = wait_for_completion_timeout(&ctx->vsync_comp,
@@ -1240,6 +1243,7 @@ static int mdss_mdp_video_dfps_wait4vsync(struct mdss_mdp_ctl *ctl)
 		pr_warn("vsync timeout %d fallback to poll mode\n",
 			ctl->num);
 		rc = mdss_mdp_video_pollwait(ctl);
+		MDSS_XLOG(ctl->num, ctl->vsync_cnt);
 		if (rc) {
 			pr_err("error polling for vsync\n");
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0_ctrl", "dsi0_phy",
@@ -1250,6 +1254,8 @@ static int mdss_mdp_video_dfps_wait4vsync(struct mdss_mdp_ctl *ctl)
 		rc = 0;
 	}
 	video_vsync_irq_disable(ctl);
+
+	MDSS_XLOG(ctl->num, ctl->vsync_cnt, XLOG_FUNC_EXIT);
 
 	return rc;
 }
@@ -1425,7 +1431,7 @@ exit_dfps:
 			 * to wait before programming the flush bits.
 			 */
 			if (!rc) {
-				rc = mdss_mdp_video_dfps_wait4vsync(ctl);
+				rc = mdss_mdp_video_wait4vsync(ctl);
 				if (rc < 0)
 					pr_err("Error in dfps_wait: %d\n", rc);
 			}
@@ -1853,7 +1859,8 @@ static int mdss_mdp_video_ctx_setup(struct mdss_mdp_ctl *ctl,
 		itp->width = dsc->pclk_per_line;
 		itp->xres = dsc->pclk_per_line;
 	}
-
+	itp->h_polarity = pinfo->lcdc.h_polarity;
+	itp->v_polarity = pinfo->lcdc.v_polarity;
 	itp->h_back_porch = pinfo->lcdc.h_back_porch;
 	itp->h_front_porch = pinfo->lcdc.h_front_porch;
 	itp->v_back_porch = pinfo->lcdc.v_back_porch;
@@ -2001,7 +2008,8 @@ void mdss_mdp_switch_to_cmd_mode(struct mdss_mdp_ctl *ctl, int prep)
 			  usecs_to_jiffies(VSYNC_TIMEOUT_US));
 	}
 	frame_rate = mdss_panel_get_framerate
-			(&(ctl->panel_data->panel_info));
+			(&(ctl->panel_data->panel_info),
+				FPS_RESOLUTION_HZ);
 	if (!(frame_rate >= 24 && frame_rate <= 240))
 		frame_rate = 24;
 	frame_rate = ((1000/frame_rate) + 1);
@@ -2139,6 +2147,7 @@ int mdss_mdp_video_start(struct mdss_mdp_ctl *ctl)
 	ctl->ops.stop_fnc = mdss_mdp_video_stop;
 	ctl->ops.display_fnc = mdss_mdp_video_display;
 	ctl->ops.wait_fnc = mdss_mdp_video_wait4comp;
+	ctl->ops.wait_vsync_fnc = mdss_mdp_video_wait4vsync;
 	ctl->ops.read_line_cnt_fnc = mdss_mdp_video_line_count;
 	ctl->ops.add_vsync_handler = mdss_mdp_video_add_vsync_handler;
 	ctl->ops.remove_vsync_handler = mdss_mdp_video_remove_vsync_handler;

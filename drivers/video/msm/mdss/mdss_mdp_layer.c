@@ -749,7 +749,6 @@ static struct sync_fence *__create_fence(struct msm_fb_data_type *mfd,
 		goto end;
 	}
 
-	sync_fence_install(sync_fence, *fence_fd);
 end:
 	return sync_fence;
 }
@@ -822,6 +821,9 @@ static int __handle_buffer_fences(struct msm_fb_data_type *mfd,
 		ret = PTR_ERR(retire_fence);
 		goto retire_fence_err;
 	}
+
+	sync_fence_install(release_fence, commit->release_fence);
+	sync_fence_install(retire_fence, commit->retire_fence);
 
 	mutex_unlock(&sync_pt_data->sync_mutex);
 	return ret;
@@ -1407,6 +1409,43 @@ end:
 }
 
 /*
+ * __parse_frc_info() - parse frc info from userspace
+ * @mdp5_data: mdss data per FB device
+ * @input_frc: frc info from user space
+ *
+ * This function fills the FRC info of current device which will be used
+ * during following kickoff.
+ */
+static void __parse_frc_info(struct mdss_overlay_private *mdp5_data,
+	struct mdp_frc_info *input_frc)
+{
+	struct mdss_mdp_ctl *ctl = mdp5_data->ctl;
+	struct mdss_mdp_frc_fsm *frc_fsm = mdp5_data->frc_fsm;
+
+	if (input_frc->flags & MDP_VIDEO_FRC_ENABLE) {
+		struct mdss_mdp_frc_info *frc_info = &frc_fsm->frc_info;
+
+		if (!frc_fsm->enable) {
+			/* init frc_fsm when first entry */
+			mdss_mdp_frc_fsm_init_state(frc_fsm);
+			/* keep vsync on when FRC is enabled */
+			ctl->ops.add_vsync_handler(ctl,
+					&ctl->frc_vsync_handler);
+		}
+
+		frc_info->cur_frc.frame_cnt = input_frc->frame_cnt;
+		frc_info->cur_frc.timestamp = input_frc->timestamp;
+	} else if (frc_fsm->enable) {
+		/* remove vsync handler when FRC is disabled */
+		ctl->ops.remove_vsync_handler(ctl, &ctl->frc_vsync_handler);
+	}
+
+	frc_fsm->enable = input_frc->flags & MDP_VIDEO_FRC_ENABLE;
+
+	pr_debug("frc_enable=%d\n", frc_fsm->enable);
+}
+
+/*
  * mdss_mdp_layer_pre_commit() - pre commit validation for input layers
  * @mfd:	Framebuffer data structure for display
  * @commit:	Commit version-1 structure for display
@@ -1488,6 +1527,9 @@ int mdss_mdp_layer_pre_commit(struct msm_fb_data_type *mfd,
 		pr_err("unable to start overlay %d (%d)\n", mfd->index, ret);
 		goto map_err;
 	}
+
+	if (commit->frc_info)
+		__parse_frc_info(mdp5_data, commit->frc_info);
 
 	ret = __handle_buffer_fences(mfd, commit, layer_list);
 
