@@ -2264,6 +2264,22 @@ static int fwu_get_device_config_id(void)
 	return 0;
 }
 
+u32 synaptics_rmi4_get_config_id(void)
+{
+	int retval;
+	int i;
+	retval = fwu_get_device_config_id();
+	if (retval < 0) {
+		pr_err("%s: Failed to read device config ID\n",__func__);
+		return false;
+	}
+	retval = 0;
+	for(i=0;i<4;i++){
+		retval = retval <<8 | fwu->config_id[i];
+	}
+	return retval;
+}
+
 static enum flash_area fwu_go_nogo(void)
 {
 	int retval;
@@ -3418,15 +3434,22 @@ static int fwu_start_reflash(void)
 	}
 
 	rmi4_data->stay_awake = true;
-
+#ifdef ESD_CHECK_SUPPORT
+	rmi4_data->esd_switch(rmi4_data, false);
+#endif
 	mutex_lock(&rmi4_data->rmi4_exp_init_mutex);
 
 	pr_notice("%s: Start of reflash process\n", __func__);
 
 	if (fwu->image == NULL) {
-		retval = snprintf(fwu->image_name, MAX_IMAGE_NAME_LEN,
-				"synaptics/startup_fw_update_%s.img",
-				rmi4_data->rmi4_mod_info.product_id_string);
+		if(likely(strcmp(rmi4_data->rmi4_mod_info.product_id_string,"s3320"))){
+			retval = snprintf(fwu->image_name, MAX_IMAGE_NAME_LEN,
+					"synaptics/startup_fw_update_%s.img",
+					rmi4_data->rmi4_mod_info.product_id_string);
+		}else{
+			retval = snprintf(fwu->image_name, MAX_IMAGE_NAME_LEN,
+					"synaptics/startup_fw_update_%s.img","ZL1-0A-01");
+		}
 		if (retval < 0) {
 			dev_err(rmi4_data->pdev->dev.parent,
 					"%s: Failed to copy image file name\n",
@@ -3567,7 +3590,9 @@ exit:
 	mutex_unlock(&rmi4_data->rmi4_exp_init_mutex);
 
 	rmi4_data->stay_awake = false;
-
+#ifdef ESD_CHECK_SUPPORT
+	rmi4_data->esd_switch(rmi4_data, true);
+#endif
 	return retval;
 }
 
@@ -3796,10 +3821,32 @@ exit:
 
 	return retval;
 }
+int synaptics_rmi4_compare_id(void)
+{
+	int img_id = 0;
+	int i;
+	int config_id = synaptics_rmi4_get_config_id();
+
+	for(i=0;i<4;i++){
+		img_id = img_id << 8 | fwu->img.ui_config.data[i];
+	}
+
+	if(img_id == config_id){
+		pr_err("%s fw  config_id=%#x \n",__func__,config_id);
+		return 0;
+	}else{
+		pr_err("%s fw update error img_id =%#x config_id=%#x \n",__func__,img_id,config_id);
+		return -1;
+	}
+}
 
 int synaptics_fw_updater(const unsigned char *fw_data)
 {
 	int retval;
+	int retry = 3;
+#ifdef OPEN_CHARGE_BIT
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
+#endif
 
 	if (!fwu)
 		return -ENODEV;
@@ -3812,8 +3859,20 @@ int synaptics_fw_updater(const unsigned char *fw_data)
 
 	fwu->image = fw_data;
 
-	retval = fwu_start_reflash();
+	do{
+		retval = fwu_start_reflash();
+		if(retval == 0){
+			msleep(100);
+			retval = synaptics_rmi4_compare_id();
+		}
+	}while((retval !=0) && (retry-- > 0));
+	pr_err("%s syna fwu retry=%d \n",__func__,3-retry);
 
+#ifdef OPEN_CHARGE_BIT
+	queue_delayed_work(rmi4_data->charge_workqueue,
+					&rmi4_data->charge_work,
+					msecs_to_jiffies(1));
+#endif
 	fwu->image = NULL;
 
 	return retval;

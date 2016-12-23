@@ -221,7 +221,71 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 		bdata->vir_button_map->map = NULL;
 	}
 
+	prop = of_find_property(np, "synaptics,driver-line-num", NULL);
+	if (prop && prop->length) {
+		retval = of_property_read_u32(np, "synaptics,driver-line-num",
+			&bdata->driver_line_num);
+		if (retval < 0) {
+			goto NO_CAPACITANCE_TEST;
+		}
+	} else {
+		goto NO_CAPACITANCE_TEST;
+	}
+
+	prop = of_find_property(np, "synaptics,sense-line-num", NULL);
+	if (prop && prop->length) {
+		retval = of_property_read_u32(np, "synaptics,sense-line-num",
+			&bdata->sense_line_num);
+		if (retval < 0) {
+			goto NO_CAPACITANCE_TEST;
+		}
+	} else {
+		goto NO_CAPACITANCE_TEST;
+	}
+
+	prop = of_find_property(np, "synaptics,capacitance-max-value", NULL);
+	if (prop && prop->length) {
+		retval = bdata->driver_line_num * bdata->sense_line_num * sizeof(int);
+		if (prop->length != retval) {
+			goto NO_CAPACITANCE_TEST;
+		}
+		bdata->cap_max_value = devm_kzalloc(dev, prop->length, GFP_KERNEL);
+		if (!bdata->cap_max_value) {
+			dev_err(dev, "malloc cap_max_value failed\n");
+			goto NO_CAPACITANCE_TEST;
+		}
+		retval = of_property_read_u32_array(np, "synaptics,capacitance-max-value",
+				bdata->cap_max_value, prop->length / sizeof(u32));
+		if (retval < 0) {
+			goto NO_CAPACITANCE_TEST;
+		}
+	}
+
+	prop = of_find_property(np, "synaptics,capacitance-min-value", NULL);
+	if (prop && prop->length) {
+		retval = bdata->driver_line_num * bdata->sense_line_num * sizeof(int);
+		if (prop->length != retval) {
+			goto NO_CAPACITANCE_TEST;
+		}
+		bdata->cap_min_value = devm_kzalloc(dev, prop->length, GFP_KERNEL);
+		if (!bdata->cap_max_value) {
+			dev_err(dev, "malloc cap_min_value failed\n");
+			goto NO_CAPACITANCE_TEST;
+		}
+		retval = of_property_read_u32_array(np, "synaptics,capacitance-min-value",
+				bdata->cap_min_value, prop->length / sizeof(u32));
+		if (retval < 0) {
+			goto NO_CAPACITANCE_TEST;
+		}
+	}
+
+
 	return 0;
+NO_CAPACITANCE_TEST:
+	bdata->driver_line_num = -1;
+	bdata->sense_line_num = -1;
+	return 0;
+
 }
 #endif
 
