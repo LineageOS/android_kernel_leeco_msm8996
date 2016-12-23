@@ -107,6 +107,10 @@ struct synaptics_dsx_board_data {
 	const char *bus_reg_name;
 	struct synaptics_dsx_button_map *cap_button_map;
 	struct synaptics_dsx_button_map *vir_button_map;
+	int driver_line_num;
+	int sense_line_num;
+	u32 * cap_max_value;
+	u32 * cap_min_value;
 };
 
 #endif
