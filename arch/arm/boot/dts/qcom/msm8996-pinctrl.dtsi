@@ -315,11 +315,11 @@
 
 		mdss_te_active: mdss_te_active {
 			mux {
-				pins = "gpio97";
-				function = "mdp_vsync_p_b";
+				pins = "gpio10";
+				function = "mdp_vsync";
 			};
 			config {
-				pins = "gpio97";
+				pins = "gpio10";
 				drive-strength = <2>; /* 8 mA */
 				bias-pull-down; /* pull down*/
 			};
@@ -328,11 +328,11 @@
 
 		mdss_te_suspend: mdss_te_suspend {
 			mux {
-				pins = "gpio97";
-				function = "mdp_vsync_p_b";
+				pins = "gpio10";
+				function = "mdp_vsync";
 			};
 			config {
-				pins = "gpio97";
+				pins = "gpio10";
 				drive-strength = <2>; /* 2 mA */
 				bias-pull-down; /* pull down */
 			};

@@ -11,33 +11,24 @@
  */
 
 #include "msm8996-mtp.dtsi"
-#include "msm8996-pinctrl-x2.dtsi"
-#include "dsi-panel-truly-dualmipi-cmd-x2-dvt1.dtsi"
+#include "msm8996-pinctrl-x5.dtsi"
 #include "letv-tp-synaptics-dsx-i2c.dtsi"
-#include "letv-ft-hideep-i2c.dtsi"
-#include "dsi-panel-sharp-dualmipi-cmd.dtsi"
-#include "dsi-panel-sharp-dualmipi-video.dtsi"
-#include "letv-tp-atmel_mxt_ts.dtsi"
-#include "msm8996-camera-sensor-x2-dvt1.dtsi"
-
+#include "dsi-panel-truly-cmd.dtsi"
+#include "msm8996-camera-sensor-x5-evt.dtsi"
 &sdhc_2 {
 	status = "disabled";
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_dual_truly_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_truly_video>;
 	/delete-property/ vddio-supply;
 	qcom,platform-te-gpio = <&tlmm 97 0>;
 	qcom,platform-reset-gpio = <&tlmm 24 0>;
-	/delete-property/ qcom,platform-bklight-en-gpio;
+	qcom,platform-bklight-en-gpio = <&pm8994_gpios 13 0>;
 };
 
 &mdss_dsi1 {
-	qcom,dsi-pref-prim-pan = <&dsi_dual_truly_cmd>;
-	/delete-property/ vddio-supply;
-	qcom,platform-te-gpio = <&tlmm 97 0>;
-	qcom,platform-reset-gpio = <&tlmm 24 0>;
-	/delete-property/ qcom,platform-bklight-en-gpio;
+	status = "disabled";
 };
 
 &lab_regulator {
@@ -46,6 +37,10 @@
 
 &ibb_regulator {
 	qcom,qpnp-ibb-init-lcd-voltage = <5900000>;
+};
+
+&mdss_dsi {
+	hw-config = "single_dsi";
 };
 
 &spmi_bus {
@@ -76,34 +71,28 @@
 				qcom,mode = "manual";
 			};
 		};
-
-		/*long press power key hardreset,  long press power+vol_donw into ramdump mode*/
-		qcom,power-on@800 {
-			qcom,pon_1 {
-				qcom,s1-timer = <6720>;
-				qcom,s2-type = <7>;
-			};
-
-			qcom,pon_3 {
-				qcom,s1-timer = <4480>;
-				qcom,s2-type = <1>;
-			};
-		};
 	};
+
 };
 
-&dsi_dual_truly_cmd {
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+&dsi_truly_video {
+	pwms = <&pm8994_pwm_2 0 0>;
+	pwm-names = "backlight";
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+	qcom,mdss-dsi-bl-pmic-bank-select = <0> ; //pm8996-bank#2
+	qcom,mdss-dsi-pwm-gpio = <&pm8994_gpios 5 0>;
+	qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
 	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-dsi-bl-max-level = <255>;
 	qcom,cont-splash-enabled;
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 
-	qcom,mdss-dsi-panel-timings-8996 = [22 1e 07 08 04 03 04 a0
-		22 1e 07 08 04 03 04 a0
-		22 1e 07 08 04 03 04 a0
-		22 1e 07 08 04 03 04 a0
-		 22 18 07 08 04 03 04 a0];
+	qcom,mdss-dsi-panel-timings-8996 = [
+		23 1f 07 09 05 03 04 a0
+		23 1f 07 09 05 03 04 a0
+		23 1f 07 09 05 03 04 a0
+		23 1f 07 09 05 03 04 a0
+		23 19 07 08 05 03 04 a0];
 };
 
 &usb_otg_switch {
@@ -132,13 +121,30 @@
 
 &pm8994_gpios {
 	/delete-node/ gpio@c200; /* PM8996 GPIO 3 */
-	/delete-node/ gpio@c400; /* PM8996 GPIO 5 */
 	/delete-node/ gpio@c500; /* PM8996 GPIO 6 */
 	/delete-node/ gpio@c600; /* PM8996 GPIO 7 */
 	/delete-node/ gpio@c900; /* PM8996 GPIO 10 */
+	/delete-node/ gpio@ca00; /* PM8996 GPIO 11 */
 	/delete-node/ gpio@cb00; /* PM8996 GPIO 12 */
-	/delete-node/ gpio@cc00; /* PM8996 GPIO 13 */
 	/delete-node/ gpio@cd00; /* PM8996 GPIO 14 */
+	gpio@c400 { /* GPIO 5 - lcd-pwm*/
+		qcom,mode = <1>;
+		qcom,invert = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
+		status = "okay";
+	};
+	gpio@cc00 { /* GPIO 13 - bl_en */
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,invert = <1>; 	/* output hight initially */
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <1>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		status = "disabled";
+	};
 
 	gpio@d500 { /* GPIO 22 */ /* cclogic cable interrupt gpio */
 		qcom,mode = <0>;
@@ -149,18 +155,14 @@
 	};
 };
 
+&pm8994_pwm_2 {
+	qcom,supported-sizes = <6>, <9>;
+	qcom,ramp-index = <2>;
+	status = "okay";
+};
 &slim_msm {
-	tasha_codec {
-		qcom,cdc-micbias1-mv = <1800>;
-		qcom,cdc-micbias2-mv = <2700>;
-		qcom,cdc-micbias3-mv = <1800>;
-		qcom,cdc-micbias4-mv = <1800>;
-
-		/delete-node/ wsa881x@20170211;
-		/delete-node/ wsa881x@20170212;
-		/delete-node/ wsa881x@21170213;
-		/delete-node/ wsa881x@21170214;
-	};
+	/delete-node/ tomtom_codec;
+	/delete-node/ tasha_codec;
 };
 
 &soc {
@@ -168,15 +170,6 @@
 		synaptics@20 {
 			status = "disabled";
 			synaptics,button-map = <158 139 102>;
-		};
-		synaptics_dsx@4b {
-			synaptics,report-pressure-hideep = <0>;
-		};
-	};
-	i2c@75b9000 {
-		hideep_z@6c {
-			status = "disabled";
-			hideep,project_name = "x2";
 		};
 	};
 
@@ -188,75 +181,7 @@
 
 	/delete-node/ flash_led;
 
-	sound-9335 {
-		qcom,model = "msm8996-tasha-mtp-snd-card";
-
-		qcom,audio-routing =
-			"AIF4 VI", "MCLK",
-			"RX_BIAS", "MCLK",
-			"MADINPUT", "MCLK",
-			"AMIC2", "MIC BIAS2",
-			"MIC BIAS2", "Headset Mic",
-			"AMIC3", "MIC BIAS2",
-			"MIC BIAS2", "ANCRight Headset Mic",
-			"AMIC4", "MIC BIAS2",
-			"MIC BIAS2", "ANCLeft Headset Mic",
-			"AMIC1", "MIC BIAS1",
-			"MIC BIAS1", "Handset Mic",
-			"AMIC4", "MIC BIAS4",
-			"MIC BIAS4", "REC ANC Analog Mic",
-			"AMIC5", "MIC BIAS3",
-			"MIC BIAS3", "ANC Analog Mic",
-			"AMIC6", "MIC BIAS3",
-			"MIC BIAS3", "Analog Mic6",
-			"DMIC0", "MIC BIAS1",
-			"MIC BIAS1", "Digital Mic0",
-			"DMIC1", "MIC BIAS1",
-			"MIC BIAS1", "Digital Mic1",
-			"DMIC2", "MIC BIAS3",
-			"MIC BIAS3", "Digital Mic2",
-			"DMIC3", "MIC BIAS3",
-			"MIC BIAS3", "Digital Mic3",
-			"DMIC4", "MIC BIAS4",
-			"MIC BIAS4", "Digital Mic4",
-			"DMIC5", "MIC BIAS4",
-			"MIC BIAS4", "Digital Mic5";
-
-		qcom,hdmi-audio-rx;
-		letv,smartpa-audio;
-		letv,hph_irq_detect = <0>;
-		asoc-codec = <&stub_codec>, <&hdmi_audio>;
-		asoc-codec-names = "msm-stub-codec.1", "msm-hdmi-audio-codec-rx";
-		/delete-property/ qcom,hph-en1-gpio;
-		/delete-property/ qcom,hph-en0-gpio;
-		/delete-property/ qcom,us-euro-gpios;
-		/delete-property/ qcom,wsa-devs;
-		/delete-property/ qcom,wsa-aux-dev-prefix;
-	};
-
-	ir-remote {
-		compatible = "qcom,ir-remote";
-		lable = "maxq616-v";
-		pinctrl-names = "ir_active", "ir_sleep";
-		pinctrl-0 = <&blsp2_uart6_active>;
-		pinctrl-1 = <&blsp2_uart6_sleep>;
-		qcom,ir-en-gpio = <&tlmm 74 0>;
-	};
-
-	blsp2_uart6: serial@075b4000 {
-		compatible = "qcom,msm-lsuart-v14";
-		reg = <0x075b4000 0x1000>;
-		interrupts = <0 118 0>;
-		status = "disabled";
-
-		clock-names = "core_clk", "iface_clk";
-		clocks = <&clock_gcc clk_gcc_blsp2_uart6_apps_clk>,
-		 <&clock_gcc clk_gcc_blsp2_ahb_clk>;
-        };
-};
-
-&blsp2_uart6 {
-	status = "ok";
+	/delete-node/ sound-9335;
 };
 
 &i2c_6 {
@@ -270,7 +195,7 @@
 		reset-gpio = <&pmi8994_gpios 9 0x0>;
 		cbl-det-gpio = <&pm8994_gpios 22 0x0>;
 		intr-comm-gpio = <&tlmm 73 0x0>;
-		uart-sw-gpio = <&tlmm 132 0x0>;
+		uart-sw-gpio = <&tlmm 83 0x0>;
 		uart-sw2-gpio = <&tlmm 21 0x0>;
 		ad-sel-gpio = <&tlmm 25 0x0>;
 	};
@@ -283,25 +208,17 @@
 };
 
 &i2c_8 {
-	tfa9890@34 { /* tfa9890 smartpa device */
-		compatible = "nxp,tfa9890";
-		reg = <0x34>;
-		interrupt-parent = <&tlmm>;
-		interrupts = <122 0x00>;
-		irq-gpio = <&tlmm 122 0x00>;
-		reset-gpio = <&tlmm 90 0x00>;
-	};
-
 	at24@51 {
 		compatible = "atmel,24c32";
 		reg = <0x51>;
 	};
-
 };
+
 &pm8994_mpps {
 	/* Remove pm8994 MPP2 reference function, because it is
 	configured as back-light of touch key */
 	/delete-node/ mpp@a100; /* MPP 2 */
+	/delete-node/ mpp@a700; /* MPP 8 */
 };
 
 /*haptics start*/
@@ -333,12 +250,6 @@
 	};
 };
 
-&uartblsp2dm1 {
-        pinctrl-names = "default", "sleep";
-        pinctrl-0 = <&uart_console_active>;
-        pinctrl-1 = <&uart_console_sleep>;
-};
-
 &qusb_phy0 {
         qcom,qusb-phy-init-seq = <0x78 0x80
                                 0xAC 0x84
@@ -351,7 +262,4 @@
                                 0x80 0x04
                                 0x9F 0x1C
                                 0x00 0x18>;
-};
-&spi_11 {
-	status = "disabled";
 };

@@ -17,7 +17,7 @@ qcom,mtp-3395mah {
 	qcom,rbatt-capacitive-mohm = <50>;
 	qcom,v-cutoff-uv = <3460000>;
 	qcom,chg-term-ua = <170000>;
-	qcom,batt-id-kohm = <10>;
+	qcom,batt-id-kohm = <10 68>;
 	qcom,battery-type = "max_plus_3395mah_tmp";
 
 	qcom,fg-profile-data = [

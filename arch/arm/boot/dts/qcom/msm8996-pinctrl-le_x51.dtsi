@@ -442,32 +442,6 @@
 /*********** audio MI2S gpio config end ***********/
 
 /*********** lcd gpio config start ***********/
-		mdss_te_active: mdss_te_active {
-			mux {
-				pins = "gpio97";
-				function = "mdp_vsync_p_b";
-			};
-			config {
-				pins = "gpio97";
-				drive-strength = <2>; /* 8 mA */
-				bias-pull-down; /* pull down*/
-			};
-		};
-
-
-		mdss_te_suspend: mdss_te_suspend {
-			mux {
-				pins = "gpio97";
-				function = "mdp_vsync_p_b";
-			};
-			config {
-				pins = "gpio97";
-				drive-strength = <2>; /* 2 mA */
-				bias-pull-down; /* pull down */
-			};
-		};
-
-
 		pmx_mdss: pmx_mdss {
 			mdss_dsi_active: mdss_dsi_active {
 				mux {
@@ -498,32 +472,32 @@
 /*********** lcd gpio config end ***********/
 
 /*********** IR MAXQ616 config start ***********/
-	blsp2_uart6_active: blsp2_uart6_active {
-		mux {
-			pins = "gpio85", "gpio86";
-			function = "blsp_uart12";
-		};
+        blsp2_uart6_active: blsp2_uart6_active {
+                mux {
+                        pins = "gpio85", "gpio86";
+                        function = "blsp_uart12";
+                };
 
-		config {
-			pins = "gpio85", "gpio86";
-			drive-strength = <2>;
-			bias-disable = <0>;
-		};
-	};
+                config {
+                        pins = "gpio85", "gpio86";
+                        drive-strength = <2>;
+                        bias-disable = <0>;
+                };
+        };
 
-	blsp2_uart6_sleep: blsp2_uart6_sleep {
-		mux {
-			pins = "gpio85", "gpio86";
-			function = "gpio";
-		};
+        blsp2_uart6_sleep: blsp2_uart6_sleep {
+                mux {
+                        pins = "gpio85", "gpio86";
+                        function = "gpio";
+                };
 
-		config {
-			pins = "gpio85", "gpio86";
-			drive-strength = <2>;
-			bias_disable = <0>;
-			output-low;
-		};
-	};
+                config {
+                        pins = "gpio85", "gpio86";
+                        drive-strength = <2>;
+                        bias_disable = <0>;
+                        output-low;
+                };
+        };
 /*********** IR MAXQ616 config end ***********/
 
 /***********redefine sec_mi2s to release gpio81 start********/
@@ -546,37 +520,28 @@
 				};
 			};
 		};
-/***********redefine sec_mi2s to release gpio81 end********/
 
-/*********** force touch gpio config start ***********/
-		ft_mux {
-			ft_active: ft_active {
-				mux {
-					pins = "gpio58", "gpio59";
-					function = "gpio";
-				};
-
-				config {
-					pins = "gpio58", "gpio59";
-					drive-strength = <16>;
-					bias-pull-up;
+		sec_mi2s_sd1 {
+			sec_mi2s_sd1_sleep: sec_mi2s_sd1_sleep {
+				sec_mi2s_sd1 {
+					pins = "gpio80";
+					function = "sec_mi2s";
+					drive-strength = <2>;   /* 2 mA */
+					bias-pull-down;         /* PULL DOWN */
 				};
 			};
-
-			ft_suspend: ft_suspend {
-				mux {
-					pins = "gpio58", "gpio59";
-					function = "gpio";
-				};
-
-				config {
-					pins = "gpio58", "gpio59";
-					drive-strength = <2>;
-					bias-disable;
+			sec_mi2s_sd1_active: sec_mi2s_sd1_active {
+				sec_mi2s_sd1 {
+					pins = "gpio80";
+					function = "sec_mi2s";
+					drive-strength = <8>;   /* 8 mA */
+					bias-disable;           /* NO PULL */
 				};
 			};
 		};
-/*********** force touch gpio config end ***********/
+
+/***********redefine sec_mi2s to release gpio81 end********/
+
 /*********** Rear/Front Camera config start ***********/
 		cam_sensor_mclk0_active: cam_sensor_mclk0_active {
 			/* MCLK0 */
@@ -611,12 +576,12 @@
 		cam_sensor_rear_active: cam_sensor_rear_active {
 			/* FLASH, AF, STANDBY */
 			mux {
-				pins = "gpio62", "gpio47", "gpio29";
+				pins = "gpio62", "gpio47", "gpio29", "gpio48";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio62", "gpio47", "gpio29";
+				pins = "gpio62", "gpio47", "gpio29", "gpio48";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -625,12 +590,12 @@
 		cam_sensor_rear_suspend: cam_sensor_rear_suspend{
 			/* FLASH, AF, STANDBY */
 			mux {
-				pins = "gpio62", "gpio47", "gpio29";
+				pins = "gpio62", "gpio47", "gpio29", "gpio48";
 				function = "gpio";
 			};
 
 			config {
-				pins = "gpio62", "gpio47", "gpio29";
+				pins = "gpio62", "gpio47", "gpio29", "gpio48";
 				bias-disable; /* No PULL */
 				drive-strength = <2>; /* 2 MA */
 			};
@@ -694,5 +659,96 @@
 			};
 		};
 /*********** Rear/Front Camera config end ***********/
+/*********** IRIS sensor gpio config start *************/
+		cam_sensor_mclk3_active: cam_sensor_mclk3_active{
+			/* MCLK3 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio16";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio16";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_mclk3_suspend: cam_sensor_mclk3_suspend {
+			/* MCLK3 */
+			mux {
+				/* CLK, DATA */
+				pins = "gpio16";
+				function = "cam_mclk";
+			};
+
+			config {
+				pins = "gpio16";
+				bias-pull-down; /* PULL DOWN */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_front2_active: cam_sensor_front2_active {
+			/* FLASH2, STANDBY1 */
+			mux {
+				pins = "gpio10","gpio84";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio10","gpio84";
+				bias-disable; /* No PULL */
+				drive-strength = <2>; /* 2 MA */
+			};
+		};
+
+		cam_sensor_front2_sus {
+			cam_sensor_front2_suspend: cam_sensor_front2_suspend{
+				/* FLASH2, STANDBY1 */
+				mux {
+					pins = "gpio10","gpio84";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio10","gpio84";
+					bias-disable; /* No PULL */
+					drive-strength = <2>; /* 2 MA */
+				};
+			};
+		};
+/*********** IRIS sensor gpio config end *************/
+
+/*********** force touch gpio config start ***********/
+		ft_mux {
+			ft_active: ft_active {
+				mux {
+					pins = "gpio58", "gpio59";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio58", "gpio59";
+					drive-strength = <16>;
+					bias-pull-up;
+				};
+			};
+
+			ft_suspend: ft_suspend {
+				mux {
+					pins = "gpio58", "gpio59";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio58", "gpio59";
+					drive-strength = <2>;
+					bias-disable;
+				};
+			};
+		};
+/*********** force touch gpio config end ***********/
 	};
 };

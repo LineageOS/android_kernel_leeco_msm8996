@@ -1,0 +1,109 @@
+/*
+ * Copyright (c) 2015 The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+};
+
+&cci {
+	qcom,camera@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera";
+		reg = <0x0>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <0>;
+		//qcom,led-flash-src = <&led_flash0>;
+		//qcom,actuator-src = <&actuator0>;
+		//qcom,ois-src = <&ois0>;
+		//qcom,eeprom-src = <&eeprom0>;
+		cam_vdig-supply = <&twl80125_ldo1>;
+		cam_vio-supply = <&twl80125_ldo5>;
+		cam_vana-supply = <&twl80125_ldo3>;
+		cam_vaf-supply = <&twl80125_buck1>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana","cam_vaf";
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 3000000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 3000000>;
+		qcom,cam-vreg-op-mode = <0 0 0 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_active &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk0_suspend &cam_sensor_rear_suspend>;
+		
+		gpios = <&tlmm 13 0>,
+		    <&tlmm 30 0>;
+		
+		qcom,gpio-standby = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+					  "CAM_STANDBY0";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		qcom,proj-name = "turbo";
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk0_clk_src>,
+				<&clock_mmss clk_camss_mclk0_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+
+  /*
+  avdd===>  2.8V  LDO 4
+  dvdd ===> 1.2  / LDO 2
+  diodd   ===> 1.8 / LDO 5
+  vaf  ==>  3.0 / BUCK 2
+  */
+
+	qcom,camera@1 {
+		cell-index = <1>;
+		compatible = "qcom,camera";
+		reg = <0x1>;
+		qcom,csiphy-sd-index = <1>;
+		qcom,csid-sd-index = <1>;
+		qcom,mount-angle = <0>;
+		//qcom,led-flash-src = <&led_flash0>;
+		//qcom,actuator-src = <&actuator0>;
+		//qcom,ois-src = <&ois0>;
+		//qcom,eeprom-src = <&eeprom0>;
+		cam_vdig-supply = <&twl80125_ldo2>;
+		cam_vio-supply = <&twl80125_ldo5>;
+		cam_vana-supply = <&twl80125_ldo4>;
+		cam_vaf-supply = <&twl80125_buck2>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana","cam_vaf";
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 3000000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 3000000>;
+		qcom,cam-vreg-op-mode = <0 0 0 0>;
+		qcom,gpio-no-mux = <0>;
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk1_active &cam_sensor_aux_active>;
+		pinctrl-1 = <&cam_sensor_mclk1_suspend &cam_sensor_aux_suspend>;
+		
+		gpios = <&tlmm 14 0>,
+		    <&tlmm 63 0>;
+		
+		qcom,gpio-standby = <1>;
+		qcom,gpio-req-tbl-num = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
+					  "CAM_STANDBY1";
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <1>;
+		qcom,proj-name = "turbo";
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk1_clk_src>,
+				<&clock_mmss clk_camss_mclk1_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+
+};

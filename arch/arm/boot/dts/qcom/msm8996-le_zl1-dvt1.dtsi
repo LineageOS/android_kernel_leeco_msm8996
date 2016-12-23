@@ -1,0 +1,52 @@
+#include "msm8996-le_zl1-evt.dtsi"
+
+/* Add DVT1 different HW configs below */
+&pmi8994_charger {
+        qcom,float-voltage-mv = <4400>;
+        qcom,fastchg-current-ma = <4000>;
+        qcom,thermal-mitigation = <4000 2500 1500 1500 0>;
+        qcom,main_chg_fcc_percent = <62 60 66 66 100>;
+        qcom,thermal-discharge-vol = <4400 4400 4400 4100 4400>;
+        qcom,usb-thermal-mitigation = <2000 1000 1000 500 500>;
+        qcom,fastchg-current-comp = <1200>;
+        qcom,float-voltage-comp = <16>;
+        qcom,hvdcp3_icl_ma = <3000>;
+        qcom,hvdcp-icl-ma = <1200>;
+        qcom,jeita-monitor-enable;
+        qcom,warm-bat-ma =<1200>;
+        qcom,cool-bat-ma = <1100>;
+        qcom,thermal-scn-support;
+        qcom,thermal-mitigation-scn = <4000 2500 2000 1500 0>;
+        qcom,main-chg-fcc-percent-scn = <25 50 50 100 100>;
+
+        qcom,parallel-usb-min-current-ma = <600>;
+        qcom,parallel-usb-9v-min-current-ma = <600>;
+        qcom,parallel-allowed-lowering-ma = <500>;
+        qcom,aicl-rerun-period-s = <180>;
+};
+&pmi8994_fg {
+        qcom,warm-bat-decidegc = <450>;
+        qcom,hot-bat-decidegc = <500>;
+        qcom,cool-bat-decidegc = <100>;
+        qcom,cold-bat-decidegc = <0>;
+        qcom,fg-cc-cv-threshold-mv = <4390>;
+        qcom,fg-iterm-ma = <200>;
+        qcom,fg-chg-iterm-ma = <80>;
+        qcom,fg-cutoff-voltage-mv = <3400>;
+        qcom,irq-volt-empty-mv = <3300>;
+};
+
+&pm8994_mpps {
+		mpp@a700 {
+			reg = <0xa700 0x100>;
+			qcom,pin-num = <8>;
+			status = "okay";
+			qcom,mode = <0x1>;
+			qcom,pull = <0x0>;
+			qcom,invert = <0>;
+			qcom,output-type = <0>;
+			qcom,src-sel = <0>;
+			qcom,master-en = <1>;
+			qcom,vin-sel = <0x0>;
+		};
+};
