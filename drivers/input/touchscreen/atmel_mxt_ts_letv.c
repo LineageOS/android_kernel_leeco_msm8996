@@ -425,6 +425,7 @@ struct mxt_data {
 #endif
 	bool is_support_esd;
 	bool is_support_ups;
+	bool ambient_display_flag;
 };
 
 #ifdef ATMEL_ESD_PROTECT
@@ -2214,6 +2215,7 @@ static void mxt_free_object_table(struct mxt_data *data)
 	data->T6_reset_flag = 0;
 	data->T6_reset_isruning = 0;
 	#endif
+	data->ambient_display_flag = false;
 }
 
 static int mxt_parse_object_table(struct mxt_data *data,
@@ -2591,8 +2593,10 @@ retry_wait:
 
 static void mxt_regulator_disable(struct mxt_data *data)
 {
-	if(data->pdata->gpio_reset)
+	if(data->T6_reset_isruning)
 		gpio_direction_output(data->pdata->gpio_reset, 1);
+	else if(data->pdata->gpio_reset)
+		gpio_direction_output(data->pdata->gpio_reset, 0);
 
 	if(data->reg_vdd_io)
 		regulator_disable(data->reg_vdd_io);
@@ -2638,6 +2642,16 @@ static void mxt_probe_regulators(struct mxt_data *data)
 		error = PTR_ERR(data->reg_vdd_io);
 		dev_err(dev, "Error %d getting vdd_io regulator\n", error);
 		goto fail_release_vddio;
+	}
+
+	if (regulator_count_voltages(data->reg_vdd_io) > 0) {
+		error = regulator_set_voltage(data->reg_vdd_io, 1800000,
+							1800000);
+		if (error) {
+			dev_err(dev,
+				"regulator set_vtg reg_avdd failed error=%d\n", error);
+			goto fail_release;
+		}
 	}
 
 	data->reg_avdd = regulator_get(dev, "avdd");
@@ -3848,6 +3862,7 @@ void read_raw_data(struct mxt_data *data, u16 *raw_data)
 {
 	struct mxt_object *object;
 	u8 value[1280];
+	u8 value_key[128];
 	int j, ret, i = 0;
 	u8 lsb, msb;
 	u16 raw_data_tmp;
@@ -3870,13 +3885,27 @@ void read_raw_data(struct mxt_data *data, u16 *raw_data)
 		lsb = value[j] & 0xff;
 		msb = value[j+1] & 0xff;
 		raw_data_tmp = lsb | msb << 8;
-
-		if (raw_data_tmp == 0) {
+		if (raw_data_tmp == 0 || (msb == 0x80 && lsb == 0x0)) {
 			raw_data_tmp = 0;
 			continue;
 		}
 		raw_data[i] = raw_data_tmp;
 		i++;
+	}
+	if(data->info->family_id == 0xA6 && data->info->variant_id == 0x01){
+		ret = mxt_t6_command(data, MXT_COMMAND_DIAGNOSTIC,
+			0x18, true);
+		ret = __mxt_read_reg(data->client, object->start_address + 2,
+						PAGE, value_key);
+		ret = mxt_t6_command(data, MXT_COMMAND_DIAGNOSTIC,
+						MXT_RESET_VALUE, true);
+		for(j=0;j<6;j+=2){
+			lsb = value_key[j] & 0xff;
+			msb = value_key[j+1] & 0xff;
+			raw_data_tmp = lsb | msb << 8;
+			raw_data[i] = raw_data_tmp;
+			i++;
+		}
 	}
 
 	return;
@@ -3943,7 +3972,7 @@ static ssize_t mxt_raw_cap_data_show(struct device *dev,
 	short min = 0;
 	short max_tkey = 0;
 	short min_tkey = 0;
-	u16 *report_data_16;
+	short *report_data_16;
 
 	read_raw_data(data, data->raw_data_16);
 	report_data_16 = data->raw_data_16;
@@ -4782,14 +4811,14 @@ static int mxt_probe(struct i2c_client *client,
 	if(data->info->family_id == 0xA4 && data->info->variant_id == 0x02){
 		data->is_support_esd = true;
 		data->is_support_ups = true;
-		dev_dbg(&data->client->dev, "Find le_x2\n");
+		dev_dbg(&data->client->dev, "Find le_x2,le_x10\n");
 	}
 	else if(data->info->family_id == 0xA4 && data->info->variant_id == 0x2F){
 		data->is_support_esd = true;
 		data->is_support_ups = true;
 		dev_dbg(&data->client->dev, "Find le_x5\n");
 	}
-	else if(data->info->family_id == 0xA4 && data->info->variant_id == 0x2F){
+	else if(data->info->family_id == 0xA6 && data->info->variant_id == 0x01){
 		data->is_support_esd = false;
 		data->is_support_ups = false;
 		dev_dbg(&data->client->dev, "Find le_turbo\n");
@@ -4797,7 +4826,7 @@ static int mxt_probe(struct i2c_client *client,
 	else{
 		data->is_support_esd = false;
 		data->is_support_ups = false;
-		dev_err(&data->client->dev, "Find no support device,use default power config\n");
+		dev_err(&data->client->dev, "Find no support device,use default power/esd config\n");
 	}
 
 	error = sysfs_create_group(&client->dev.kobj, &mxt_attr_group);
@@ -4812,7 +4841,7 @@ static int mxt_probe(struct i2c_client *client,
 	 if(error){
 		dev_err(&client->dev, "Failure %d creating classdev\n",
 			error);
-	 	}
+	}
 	sysfs_bin_attr_init(&data->mem_access_attr);
 	data->mem_access_attr.attr.name = "mem_access";
 	data->mem_access_attr.attr.mode = S_IRUGO | S_IWUSR;
@@ -4921,7 +4950,11 @@ static int fb_notifier_callback(struct notifier_block *self,
 	if (evdata && evdata->data && event == FB_EVENT_BLANK &&
 				mxt && mxt->client) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK) {
+		if (*blank == FB_BLANK_UNBLANK || *blank == FB_BLANK_NORMAL) {
+			if(mxt->ambient_display_flag)
+				goto fb_exit;
+			if(*blank == FB_BLANK_NORMAL)
+				mxt->ambient_display_flag = true;
 			dev_dbg(&mxt->client->dev,
 					"TP: %s(), FB_BLANK_UNBLANK\n",
 					__func__);
@@ -4942,9 +4975,11 @@ static int fb_notifier_callback(struct notifier_block *self,
 			mxt_reset_slots(mxt);
 
 			mxt_suspend(&(mxt->input_dev->dev));
+			mxt->ambient_display_flag = false;
 		}
 	}
 
+fb_exit:
 	diff = ktime_sub(ktime_get(), start);
 	if (ktime_to_ms(diff) > 1000)
 		dev_err(&mxt->client->dev,"%s %s timeout %d ms\n", __FILE__, __func__, (int)ktime_to_ms(diff));
