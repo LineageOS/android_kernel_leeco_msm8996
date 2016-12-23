@@ -72,6 +72,10 @@ static int usb_typec_swap = -1;
 unsigned int voice_call_state = 0;
 bool typec_set_cc_state = false;
 
+#ifdef CONFIG_SND_SOC_MAX98927
+extern int max98927_get_i2c_states(void);
+#endif
+
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_tx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim1_tx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -151,7 +155,11 @@ static int quat_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
 
 static int pri_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int sec_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+#ifdef CONFIG_SND_SOC_MAX98927
+static int tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S24_LE;
+#else
 static int tert_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+#endif
 static int quat_mi2s_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 
 static int msm_pri_mi2s_tx_ch = 2;
