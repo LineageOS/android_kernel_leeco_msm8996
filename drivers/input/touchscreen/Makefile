@@ -94,3 +94,4 @@ obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE) 	+= synaptics_fw_update.o
 obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx/
 obj-$(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)		+= hideep_letv/
 obj-$(CONFIG_LETVS_CLASS)       +=  letv_clss.o
+obj-$(CONFIG_TOUCHSCREEN_FTS) 		+= focaltech_letv/

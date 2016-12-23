@@ -1117,6 +1117,14 @@ config TOUCHSCREEN_GT9XX
 
           If unsure, say N.
 
+config TOUCHSCREEN_FTS
+	bool "focaltech touchpanel"
+	depends on I2C
+	help
+		Say Y here if you have a Focaltech touchscreen.
+
+		If unsure, say N.
+
 config TOUCHSCREEN_MAXIM_STI
 	tristate "Maxim based STI touchscreens"
 	depends on SPI_MASTER
