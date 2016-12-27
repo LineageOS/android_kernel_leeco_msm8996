@@ -49,6 +49,8 @@ config MACH_TURBO
 
 config MACH_ZL1
 	select MACH_LEECO_MSM8996
+	select SND_SOC_WCD_MBHC_ZL1
+	select SND_SOC_MAX98927
 	bool "zl1"
 	help
 	  Support for the zl1 variant
