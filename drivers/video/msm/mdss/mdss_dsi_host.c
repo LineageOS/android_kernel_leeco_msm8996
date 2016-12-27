@@ -118,6 +118,11 @@ void mdss_dsi_ctrl_init(struct device *ctrl_dev,
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->tx_buf, SZ_4K);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->rx_buf, SZ_4K);
 	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->status_buf, SZ_4K);
+#ifdef CONFIG_MACH_ZL1
+	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->status_buf1, SZ_4K);
+	mdss_dsi_buf_alloc(ctrl_dev, &ctrl->status_buf2, SZ_4K);
+#endif
+
 	ctrl->cmdlist_commit = mdss_dsi_cmdlist_commit;
 	ctrl->err_cont.err_time_delta = 100;
 	ctrl->err_cont.max_err_index = MAX_ERR_INDEX;
@@ -1095,7 +1100,41 @@ static int mdss_dsi_read_status(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	return mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
+static int mdss_dsi_read_status1(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	struct dcs_cmd_req cmdreq1;
+	memset(&cmdreq1, 0, sizeof(cmdreq1));
+	cmdreq1.cmds = ctrl->status_cmds1.cmds;
+	cmdreq1.cmds_cnt = ctrl->status_cmds1.cmd_cnt;
+	cmdreq1.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_RX;
+	cmdreq1.rlen = ctrl->status_cmds_rlen1;
+	cmdreq1.cb = NULL;
+	cmdreq1.rbuf = ctrl->status_buf1.data;
 
+	if (ctrl->status_cmds1.link_state == DSI_LP_MODE)
+		cmdreq1.flags  |= CMD_REQ_LP_MODE;
+	else if (ctrl->status_cmds1.link_state == DSI_HS_MODE)
+		cmdreq1.flags |= CMD_REQ_HS_MODE;
+	return mdss_dsi_cmdlist_put(ctrl, &cmdreq1);
+}
+
+static int mdss_dsi_read_status2(struct mdss_dsi_ctrl_pdata *ctrl)
+{
+	struct dcs_cmd_req cmdreq2;
+	memset(&cmdreq2, 0, sizeof(cmdreq2));
+	cmdreq2.cmds = ctrl->status_cmds2.cmds;
+	cmdreq2.cmds_cnt = ctrl->status_cmds2.cmd_cnt;
+	cmdreq2.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_RX;
+	cmdreq2.rlen = ctrl->status_cmds_rlen2;
+	cmdreq2.cb = NULL;
+	cmdreq2.rbuf = ctrl->status_buf2.data;
+
+	if (ctrl->status_cmds2.link_state == DSI_LP_MODE)
+		cmdreq2.flags  |= CMD_REQ_LP_MODE;
+	else if (ctrl->status_cmds2.link_state == DSI_HS_MODE)
+		cmdreq2.flags |= CMD_REQ_HS_MODE;
+	return mdss_dsi_cmdlist_put(ctrl, &cmdreq2);
+}
 
 /**
  * mdss_dsi_reg_status_check() - Check dsi panel status through reg read
@@ -1144,6 +1183,56 @@ int mdss_dsi_reg_status_check(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 				ret = mdss_dsi_read_status(sctrl_pdata);
 		}
 	}
+#ifdef CONFIG_MACH_ZL1
+		if(true == ctrl_pdata->enable_reg_check1)
+		{
+			if (!mdss_dsi_sync_wait_enable(ctrl_pdata)) {
+				ret = mdss_dsi_read_status1(ctrl_pdata);
+			} else {
+				/*
+				 * Read commands to check ESD status are usually sent at
+				 * the same time to both the controllers. However, if
+				 * sync_wait is enabled, we need to ensure that the
+				 * dcs commands are first sent to the non-trigger
+				 * controller so that when the commands are triggered,
+				 * both controllers receive it at the same time.
+				 */
+				if (mdss_dsi_sync_wait_trigger(ctrl_pdata)) {
+					if (sctrl_pdata)
+						ret = mdss_dsi_read_status1(sctrl_pdata);
+					ret = mdss_dsi_read_status1(ctrl_pdata);
+				} else {
+					ret = mdss_dsi_read_status1(ctrl_pdata);
+					if (sctrl_pdata)
+						ret = mdss_dsi_read_status1(sctrl_pdata);
+				}
+			}
+		}
+		if(true == ctrl_pdata->enable_reg_check2)
+		{
+			if (!mdss_dsi_sync_wait_enable(ctrl_pdata)) {
+				ret = mdss_dsi_read_status2(ctrl_pdata);
+			} else {
+				/*
+				 * Read commands to check ESD status are usually sent at
+				 * the same time to both the controllers. However, if
+				 * sync_wait is enabled, we need to ensure that the
+				 * dcs commands are first sent to the non-trigger
+				 * controller so that when the commands are triggered,
+				 * both controllers receive it at the same time.
+				 */
+				if (mdss_dsi_sync_wait_trigger(ctrl_pdata)) {
+					if (sctrl_pdata)
+						ret = mdss_dsi_read_status2(sctrl_pdata);
+					ret = mdss_dsi_read_status2(ctrl_pdata);
+				} else {
+					ret = mdss_dsi_read_status2(ctrl_pdata);
+					if (sctrl_pdata)
+						ret = mdss_dsi_read_status2(sctrl_pdata);
+				}
+			}
+		}
+#endif
 
 	/*
 	 * mdss_dsi_read_status returns the number of bytes returned
