@@ -82,3 +82,12 @@ config NFC_NQ
 	  This enables the NFC driver for NQx based devices.
 	  This is for i2c connected version. NCI protocol logic
 	  resides in the usermode and it has no other NFC dependencies.
+
+config NFC_PN544_LETV
+	tristate "LETV Variant Qualcomm NCI based NFC Controller Driver for NQx"
+	depends on I2C
+	depends on MACH_ZL1
+	help
+	  This enables the NFC driver for NQx based devices.
+	  This is for i2c connected version. NCI protocol logic
+	  resides in the usermode and it has no other NFC dependencies.
