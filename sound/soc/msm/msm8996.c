@@ -1532,7 +1532,20 @@ static int hdmi_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 static int msm8996_auxpcm_rate_get(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
-	ucontrol->value.integer.value[0] = msm8996_auxpcm_rate;
+	int sample_rate_val;
+
+	switch (msm8996_auxpcm_rate) {
+	case SAMPLING_RATE_16KHZ:
+		sample_rate_val = 1;
+		break;
+
+	case SAMPLING_RATE_8KHZ:
+	default:
+		sample_rate_val = 0;
+		break;
+	}
+
+	ucontrol->value.integer.value[0] = sample_rate_val;
 	return 0;
 }
 
