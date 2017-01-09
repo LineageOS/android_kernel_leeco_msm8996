@@ -3302,9 +3302,15 @@ static void *def_tasha_mbhc_cal(void)
 		return NULL;
 	}
 
+#ifdef CONFIG_SND_SOC_MAX98927
+#define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(tasha_wcd_cal)->X) = (Y))
+	S(v_hs_max, 2800);
+#undef S
+#else
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(tasha_wcd_cal)->X) = (Y))
 	S(v_hs_max, 1500);
 #undef S
+#endif
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(tasha_wcd_cal)->X) = (Y))
 	S(num_btn, WCD_MBHC_DEF_BUTTONS);
 #undef S
@@ -3313,8 +3319,13 @@ static void *def_tasha_mbhc_cal(void)
 	btn_high = ((void *)&btn_cfg->_v_btn_low) +
 		(sizeof(btn_cfg->_v_btn_low[0]) * btn_cfg->num_btn);
 
+#ifdef CONFIG_SND_SOC_MAX98927
+	btn_high[0] = 113;
+	btn_high[1] = 215;
+#else
 	btn_high[0] = 75;
 	btn_high[1] = 250;
+#endif
 	btn_high[2] = 500;
 	btn_high[3] = 500;
 	btn_high[4] = 500;
@@ -4537,6 +4548,22 @@ static struct snd_soc_dai_link msm8996_common_be_dai_links[] = {
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
 		.ignore_suspend = 1,
 	},
+#ifdef CONFIG_SND_SOC_MAX98927
+    {
+        .name = LPASS_BE_TERT_MI2S_RX,
+        .stream_name = "Tertiary MI2S Playback",
+        .cpu_dai_name = "msm-dai-q6-mi2s.2",
+        .platform_name = "msm-pcm-routing",
+        .codec_name = "msm-stub-codec.1",
+        .codec_dai_name = "msm-stub-rx",
+        .no_pcm = 1,
+        .dpcm_playback = 1,
+        .be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+        .be_hw_params_fixup = msm_tert_mi2s_rx_be_hw_params_fixup,
+        .ops = &legacy_msm8996_mi2s_be_ops,
+        .ignore_suspend = 1,
+    },
+#endif
 	{
 		.name = LPASS_BE_TERT_MI2S_TX,
 		.stream_name = "Tertiary MI2S Capture",
@@ -4835,6 +4862,40 @@ static struct snd_soc_dai_link msm8996_smartpa_dai_link[] = {
 	},
 };
 
+#ifdef CONFIG_SND_SOC_MAX98927
+static struct snd_soc_dai_link msm8996_max98927_dai_link[] = {
+	/* MAX98927 SMARTPA BACK END DAI Link */
+	{
+			.name = LPASS_BE_TERT_MI2S_RX,
+			.stream_name = "Tertiary MI2S Playback",
+			.cpu_dai_name = "msm-dai-q6-mi2s.2",
+			.platform_name = "msm-pcm-routing",
+			.codec_name = "max98927.9-003a",
+			.codec_dai_name = "max98927-aif1",
+			.no_pcm = 1,
+			.dpcm_playback = 1,
+			.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
+			.be_hw_params_fixup = msm_tert_mi2s_rx_be_hw_params_fixup,
+			.ops = &msm8996_tert_mi2s_be_ops,
+			.ignore_suspend = 1,
+	},
+	{
+			.name = LPASS_BE_TERT_MI2S_TX,
+			.stream_name = "Tertiary MI2S Capture",
+			.cpu_dai_name = "msm-dai-q6-mi2s.2",
+			.platform_name = "msm-pcm-routing",
+			.codec_name = "max98927.9-003a",
+			.codec_dai_name = "max98927-aif1",
+			.no_pcm = 1,
+			.dpcm_capture = 1,
+			.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
+			.be_hw_params_fixup = msm_tert_mi2s_tx_be_hw_params_fixup,
+			.ops = &msm8996_tert_mi2s_be_ops,
+			.ignore_suspend = 1,
+	},
+};
+#endif
+
 static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_common_dai_links) +
 			 ARRAY_SIZE(msm8996_tasha_fe_dai_links) +
@@ -5001,6 +5062,7 @@ static int msm8996_prepare_us_euro(struct snd_soc_card *card)
 				__func__, pdata->us_euro_gpio, ret);
 			return ret;
 		}
+		gpio_direction_output(pdata->us_euro_gpio, 0);
 	}
 
 	return 0;
@@ -5109,6 +5171,31 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	} else {
 		pr_info("%s(): No smartpa audio support\n", __func__);
 	}
+
+#ifdef CONFIG_SND_SOC_MAX98927
+	if (of_property_read_bool(dev->of_node, "letv,smartpa-audio-max98927")) {
+		int i;
+		pr_info( "%s(): max98927 smartpa audio support present\n",
+				__func__);
+		for (i = 0; i < len_4; i++) {
+			if (MSM_BACKEND_DAI_TERTIARY_MI2S_RX == dailink[i].be_id
+				&& !strcmp(dailink[i].cpu_dai_name, "msm-dai-q6-mi2s.2")
+				&& !max98927_get_i2c_states()) {
+				pr_info("MSM_BACKEND_DAI_TERTIARY_MI2S_RX matched %s\n", dailink[i].cpu_dai_name);
+				dailink[i] = msm8996_max98927_dai_link[0];
+			}
+
+			if (MSM_BACKEND_DAI_TERTIARY_MI2S_TX == dailink[i].be_id
+				&& !strcmp(dailink[i].cpu_dai_name, "msm-dai-q6-mi2s.2")
+				&& !max98927_get_i2c_states()) {
+				pr_info("MSM_BACKEND_DAI_TERTIARY_MI2S_TX matched %s\n", dailink[i].cpu_dai_name);
+				dailink[i] = msm8996_max98927_dai_link[1];
+			}
+		}
+	} else {
+		pr_info("%s(): No max98927 smartpa audio support\n", __func__);
+	}
+#endif
 
 	if (card) {
 		card->dai_link = dailink;

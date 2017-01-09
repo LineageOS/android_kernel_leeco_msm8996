@@ -74,6 +74,7 @@ static bool mbhc_hold_in3p_dwork = false;
 static bool micbias2_on_state = false;
 static bool mbhc_insert_state = false;
 extern bool letv_typec_plug_state;
+bool letv_typec_4_pole = false;
 extern int tasha_codec_enable_standalone_micbias(struct snd_soc_codec *codec,
 						 int micb_num,
 						 bool enable);
@@ -626,6 +627,11 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_MICB_CTRL, 0);
 			tasha_codec_enable_standalone_micbias(mbhc->codec, 1, false);
 		}
+		if (letv_typec_4_pole) {
+			pr_info("clear WCD_MBHC_MICB_CTRL!\n");
+			letv_typec_4_pole = false;
+			WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_MICB_CTRL, 0);
+		}
 	} else {
 		/*
 		 * Report removal of current jack type.
@@ -737,6 +743,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			pr_info("letv_typec enable micbias2!\n");
 			tasha_codec_enable_standalone_micbias(mbhc->codec, 1, true);
 			micbias2_on_state = true;
+			letv_typec_4_pole = true;
 		}
 	}
 	pr_info("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
