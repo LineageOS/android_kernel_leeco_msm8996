@@ -5119,7 +5119,7 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 
 static inline bool task_fits_spare(struct task_struct *p, int cpu)
 {
-	return __task_fits(p, cpu, cpu_util(cpu, UTIL_EST));
+	return __task_fits(p, cpu, cpu_util(cpu, UTIL_AVG));
 }
 
 static bool cpu_overutilized(int cpu)
@@ -5290,7 +5290,7 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 			 * Look for group which has most spare capacity on a
 			 * single cpu.
 			 */
-			spare_capacity = capacity_of(i) - cpu_util(i, UTIL_EST);
+			spare_capacity = capacity_of(i) - cpu_util(i, UTIL_AVG);
 			if (spare_capacity > max_spare_capacity) {
 				max_spare_capacity = spare_capacity;
 				spare_group = group;
