@@ -67,6 +67,8 @@ enum wcd_mbhc_register_function {
 	WCD_MBHC_ANC_DET_EN,
 	WCD_MBHC_FSM_STATUS,
 	WCD_MBHC_MUX_CTL,
+	WCD_MBHC_HS_VREF_INP,
+	WCD_MBHC_AMIC2_HOLD_EN,
 	WCD_MBHC_REG_FUNC_MAX,
 };
 
@@ -481,7 +483,7 @@ struct wcd_mbhc {
 	(cfg_ptr->_n_rload * \
 	(sizeof(cfg_ptr->_rload[0]) + sizeof(cfg_ptr->_alpha[0]))))
 
-#ifdef CONFIG_SND_SOC_WCD_MBHC
+#if defined(CONFIG_SND_SOC_WCD_MBHC) || defined(CONFIG_SND_SOC_WCD_MBHC_ZL1)
 int wcd_mbhc_set_keycode(struct wcd_mbhc *mbhc);
 int wcd_mbhc_start(struct wcd_mbhc *mbhc,
 		       struct wcd_mbhc_config *mbhc_cfg);

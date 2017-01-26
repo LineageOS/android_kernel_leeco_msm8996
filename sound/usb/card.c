@@ -72,6 +72,16 @@ MODULE_DESCRIPTION("USB Audio");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{Generic,USB Audio}}");
 
+#define LETV_USB_AUDIO_VID  0x262A
+#define LETV_USB_AUDIO_PID_0  0x1530
+#define LETV_USB_AUDIO_PID_1  0x1532
+#define LETV_USB_AUDIO_PID_2  0x1534
+
+#define IS_LETV_USB_AUDIO(usb_id) \
+(LETV_USB_AUDIO_VID == USB_ID_VENDOR(usb_id) && (\
+(LETV_USB_AUDIO_PID_0 == USB_ID_PRODUCT(usb_id)) || \
+(LETV_USB_AUDIO_PID_1 == USB_ID_PRODUCT(usb_id)) || \
+(LETV_USB_AUDIO_PID_2 == USB_ID_PRODUCT(usb_id))))
 
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
@@ -82,6 +92,10 @@ static int pid[SNDRV_CARDS] = { [0 ... (SNDRV_CARDS-1)] = -1 };
 static int device_setup[SNDRV_CARDS]; /* device parameter for this card */
 static bool ignore_ctl_error;
 static bool autoclock = true;
+struct letv_usb_audio_info{
+	int letv_pid;
+	bool is_letv_usb_audio;
+}letv_usb_audio;
 
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for the USB audio adapter.");
@@ -480,6 +494,10 @@ static int snd_usb_audio_create(struct usb_interface *intf,
 	strcpy(card->driver, "USB-Audio");
 	sprintf(component, "USB%04x:%04x",
 		USB_ID_VENDOR(chip->usb_id), USB_ID_PRODUCT(chip->usb_id));
+	if (IS_LETV_USB_AUDIO(chip->usb_id)) {
+		letv_usb_audio.is_letv_usb_audio = true;
+		letv_usb_audio.letv_pid = (0x0000FFFF & USB_ID_PRODUCT(chip->usb_id));
+	}
 	snd_component_add(card, component);
 
 	/* retrieve the device string as shortname */
@@ -648,6 +666,12 @@ snd_usb_audio_probe(struct usb_device *dev,
 	chip->num_interfaces++;
 	chip->probing = 0;
 	intf->needs_remote_wakeup = 1;
+
+	if (IS_LETV_USB_AUDIO(chip->usb_id)) {
+		usb_enable_autosuspend(dev);
+		pm_runtime_set_autosuspend_delay(&dev->dev, 40 * 1000); /* msec */
+	}
+
 	mutex_unlock(&register_mutex);
 	return chip;
 
@@ -706,6 +730,8 @@ static void snd_usb_audio_disconnect(struct usb_device *dev,
 		list_for_each(p, &chip->mixer_list) {
 			snd_usb_mixer_disconnect(p);
 		}
+		letv_usb_audio.is_letv_usb_audio = false;
+		letv_usb_audio.letv_pid = 0;
 	}
 
 	chip->num_interfaces--;
@@ -740,6 +766,13 @@ static void usb_audio_disconnect(struct usb_interface *intf)
 				 usb_get_intfdata(intf));
 }
 
+void usb_audio_if_letv(bool *letv, int *pid)
+{
+	*letv = letv_usb_audio.is_letv_usb_audio;
+	*pid  = letv_usb_audio.letv_pid;
+	return;
+}
+EXPORT_SYMBOL(usb_audio_if_letv);
 #ifdef CONFIG_PM
 
 int snd_usb_autoresume(struct snd_usb_audio *chip)
@@ -747,10 +780,10 @@ int snd_usb_autoresume(struct snd_usb_audio *chip)
 	int err = -ENODEV;
 
 	down_read(&chip->shutdown_rwsem);
-	if (chip->probing || chip->in_pm)
+	if (!chip->shutdown && !chip->probing && !chip->in_pm)
+  		err = usb_autopm_get_interface(chip->pm_intf);
+	else
 		err = 0;
-	else if (!chip->shutdown)
-		err = usb_autopm_get_interface(chip->pm_intf);
 	up_read(&chip->shutdown_rwsem);
 
 	return err;
