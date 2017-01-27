@@ -531,7 +531,7 @@ int msm_camera_get_regulator_info(struct platform_device *pdev,
 			rc = -EINVAL;
 			goto err1;
 		}
-		CDBG("vdd ptr[%d] :%p\n", i, tmp_reg[i].vdd);
+		CDBG("vdd ptr[%d] :%pK\n", i, tmp_reg[i].vdd);
 	}
 
 	*num_reg = cnt;
@@ -607,7 +607,7 @@ void msm_camera_put_regulators(struct platform_device *pdev,
 	for (i = cnt - 1; i >= 0; i--) {
 		if (vdd_info[i] && !IS_ERR_OR_NULL(vdd_info[i]->vdd))
 			devm_regulator_put(vdd_info[i]->vdd);
-			CDBG("vdd ptr[%d] :%p\n", i, vdd_info[i]->vdd);
+			CDBG("vdd ptr[%d] :%pK\n", i, vdd_info[i]->vdd);
 	}
 
 	devm_kfree(&pdev->dev, *vdd_info);
