@@ -5875,11 +5875,11 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
             */
             //csrRoamStateChange( pMac, eCSR_ROAMING_STATE_JOINED );
 
-            /* Reset remainInPowerActiveTillDHCP as it might have been set
+            /* Reset full_power_till_set_key as it might have been set
              * by last failed secured connection.
              * It should be set only for secured connection.
              */
-            pMac->pmc.remainInPowerActiveTillDHCP = FALSE;
+            pMac->pmc.full_power_till_set_key = false;
             if( CSR_IS_INFRASTRUCTURE( pProfile ) )
             {
                 pSession->connectState = eCSR_ASSOC_STATE_TYPE_INFRA_ASSOCIATED;
@@ -6229,15 +6229,14 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
             //enough to let security and DHCP handshake succeed before entry into BMPS
             if (!pMac->psOffloadEnabled && pmcShouldBmpsTimerRun(pMac))
             {
-                /* Set remainInPowerActiveTillDHCP to make sure we wait for
+                /* Set full_power_till_set_key to make sure we wait for
                  * until keys are set before going into BMPS.
                  */
                 if(eANI_BOOLEAN_TRUE == roamInfo.fAuthRequired)
                 {
-                     pMac->pmc.remainInPowerActiveTillDHCP = TRUE;
-                     smsLog(pMac, LOG1, FL("Set remainInPowerActiveTillDHCP "
-                            "to make sure we wait until keys are set before"
-                            " going to BMPS"));
+                     pMac->pmc.full_power_till_set_key = true;
+                     smsLog(pMac, LOG1,
+                       FL("Set full_power_till_set_key to make sure we wait until keys are set before going to BMPS"));
                 }
                 if (pmcStartTrafficTimer(pMac, BMPS_TRAFFIC_TIMER_ALLOW_SECURITY_DHCP)
                     != eHAL_STATUS_SUCCESS)
@@ -11099,6 +11098,11 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                                     {
                                        tpSirSetActiveModeSetBncFilterReq pMsg;
                                        pMsg = vos_mem_malloc(sizeof(tSirSetActiveModeSetBncFilterReq));
+                                       if (!pMsg) {
+                                           smsLog(pMac, LOGE,
+                                               FL("Failed to allocate memory"));
+                                           return;
+                                       }
                                        pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_SET_BCN_FILTER_REQ);
                                        pMsg->length = pal_cpu_to_be16(sizeof(
                                            tSirSetActiveModeSetBncFilterReq));
@@ -15260,12 +15264,7 @@ eHalStatus csrSendMBSetContextReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId,
                 // set pSirKey->keyLength = keyLength;
                 p = pal_set_U16( p, pal_cpu_to_be16(keyLength) );
         if (keyLength && pKey)
-        {
             vos_mem_copy(p, pKey, keyLength);
-            smsLog(pMac, LOG1, FL("SME set keyIndx (%d) encType (%d) key"),
-                                                keyId, edType);
-            sirDumpBuf(pMac, SIR_SMS_MODULE_ID, LOG2, pKey, keyLength);
-        }
         status = palSendMBMessage(pMac->hHdd, pMsg);
     } while( 0 );
     return( status );
