@@ -60,7 +60,7 @@
 		qcom,mdss-dsi-t-clk-pre = <0x2d>;
 		qcom,mdss-mdp-transfer-time-us = <12000>;
 		qcom,mdss-dsi-bl-max-level = <4095>;
-		qcom,mdss-brightness-max-level = <4095>;
+		qcom,mdss-brightness-max-level = <255>;
 		qcom,mdss-dsi-dma-trigger = "trigger_sw";
 		qcom,mdss-dsi-mdp-trigger = "none";
 		qcom,mdss-dsi-te-pin-select = <1>;
