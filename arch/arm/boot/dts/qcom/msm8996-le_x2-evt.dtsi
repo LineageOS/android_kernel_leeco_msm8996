@@ -15,6 +15,7 @@
 #include "msm8996-le-common.dtsi"
 #include "dsi-panel-truly-dualmipi-cmd-le_x2-evt.dtsi"
 #include "letv-tp-synaptics-dsx-i2c-le_x2-evt.dtsi"
+#include "msm8996-synchronized-leds.dtsi"
 
 &sdhc_2 {
 	status = "disabled";
