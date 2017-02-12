@@ -132,13 +132,13 @@ endif
 # Feature flags which are not (currently) configurable via Kconfig
 
 #Whether to build debug version
-BUILD_DEBUG_VERSION ?= 1
+BUILD_DEBUG_VERSION := 0
 
 #Enable this flag to build driver in diag version
 BUILD_DIAG_VERSION := 1
 
 #Do we panic on bug?  default is to warn
-PANIC_ON_BUG := 1
+PANIC_ON_BUG := 0
 
 #Re-enable wifi on WDI timeout
 RE_ENABLE_WIFI_ON_WDI_TIMEOUT := 0
@@ -150,7 +150,7 @@ CONFIG_ADF_SUPPORT := 1
 CONFIG_ATH_PERF_PWR_OFFLOAD := 1
 
 #Disable packet log
-CONFIG_REMOVE_PKT_LOG := 0
+CONFIG_REMOVE_PKT_LOG := 1
 
 #Enable 11AC TX
 ifeq ($(CONFIG_ROME_IF),pci)
@@ -1010,11 +1010,8 @@ CDEFINES += 	-DTRACE_RECORD \
 ifeq ($(BUILD_DEBUG_VERSION),1)
 CDEFINES +=	-DWLAN_DEBUG \
 		-DPE_DEBUG_LOGW \
-		-DPE_DEBUG_LOGE
-endif
-
-ifeq ($(CONFIG_QCACLD_SPAMMY_DEBUG),y)
-CDEFINES += -DDEBUG
+		-DPE_DEBUG_LOGE \
+		-DDEBUG
 endif
 
 ifeq ($(CONFIG_SLUB_DEBUG_ON),y)

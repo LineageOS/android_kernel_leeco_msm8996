@@ -959,8 +959,8 @@ out:
 
 static void ramdump_work_handler(struct work_struct *ramdump)
 {
+#ifdef BUILD_DEBUG_VERSION
 #if !defined(HIF_SDIO)
-#ifdef DEBUG
 	int ret;
 #endif
 #endif

@@ -41,7 +41,7 @@
 #include <vos_trace.h>
 #include <kthread.h>
 #include <adf_os_time.h>
-#include "pktlog_ac.h"
+#include <pktlog_ac.h>
 #include <linux/rtc.h>
 #define LOGGING_TRACE(level, args...) \
 		VOS_TRACE(VOS_MODULE_ID_HDD, level, ## args)

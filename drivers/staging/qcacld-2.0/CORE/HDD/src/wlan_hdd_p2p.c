@@ -55,6 +55,7 @@
 //Ms to Micro Sec
 #define MS_TO_MUS(x)   ((x)*1000)
 
+#ifdef BUILD_DEBUG_VERSION
 static tANI_U8* hdd_getActionString(tANI_U16 MsgType)
 {
     switch (MsgType)
@@ -81,6 +82,7 @@ static tANI_U8* hdd_getActionString(tANI_U16 MsgType)
            return ("UNKNOWN");
      }
 }
+#endif
 
 #ifdef WLAN_FEATURE_P2P_DEBUG
 #define MAX_P2P_ACTION_FRAME_TYPE 9
@@ -2726,7 +2728,9 @@ void __hdd_indicate_mgmt_frame(hdd_adapter_t *pAdapter,
                 vos_mem_compare(&pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+2], SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE))
             // P2P action frames
             {
+#ifdef BUILD_DEBUG_VERSION
                 u8 *macFrom = &pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6];
+#endif
                 actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
                 hddLog(LOG1, "Rx Action Frame %u", actionFrmType);
 #ifdef WLAN_FEATURE_P2P_DEBUG

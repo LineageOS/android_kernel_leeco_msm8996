@@ -12261,6 +12261,7 @@ void sme_UpdateEnableSSR(tHalHandle hHal, tANI_BOOLEAN enableSSR)
  * SME API to stringify bonding mode. (hostapd convention)
  */
 
+#ifdef BUILD_DEBUG_VERSION
 static const char* sme_CBMode2String( tANI_U32 mode)
 {
    switch (mode)
@@ -12286,6 +12287,7 @@ static const char* sme_CBMode2String( tANI_U32 mode)
          return "Unknown";
    }
 }
+#endif
 
 /*
  * SME API to adjust bonding mode to regulatory, dfs nol .. etc.
@@ -13803,6 +13805,7 @@ VOS_STATUS sme_notify_ht2040_mode(tHalHandle hHal, tANI_U16 staId,
    vos_mem_copy(pHtOpMode->peer_mac, macAddrSTA.bytes,
                  sizeof(tSirMacAddr));
    pHtOpMode->smesessionId = sessionId;
+   pHtOpMode->chanMode = MODE_MAX;
 
    msg.type     = WDA_UPDATE_OP_MODE;
    msg.reserved = 0;

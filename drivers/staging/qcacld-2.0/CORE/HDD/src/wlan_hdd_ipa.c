@@ -362,6 +362,7 @@ struct ipa_uc_pending_event {
 	uint8_t mac_addr[VOS_MAC_ADDR_SIZE];
 };
 
+#ifdef BUILD_DEBUG_VERSION
 static const char *op_string[HDD_IPA_UC_OPCODE_MAX] = {
 	"TX_SUSPEND",
 	"TX_RESUME",
@@ -370,6 +371,7 @@ static const char *op_string[HDD_IPA_UC_OPCODE_MAX] = {
 	"STATS",
 	"OPCODE_MAX"
 };
+#endif
 
 struct uc_rm_work_struct {
 	struct work_struct work;
@@ -2342,6 +2344,39 @@ int hdd_ipa_set_perf_level(hdd_context_t *hdd_ctx, uint64_t tx_packets,
 	return 0;
 }
 
+/**
+ * hdd_ipa_is_present() - get IPA hw status
+ * @hdd_ctx: pointer to hdd context
+ *
+ * ipa_uc_reg_rdyCB is not directly designed to check
+ * ipa hw status. This is an undocumented function which
+ * has confirmed with IPA team.
+ *
+ * Return: true - ipa hw present
+ *         false - ipa hw not present
+ */
+bool hdd_ipa_is_present(hdd_context_t *hdd_ctx)
+{
+	/* Check if ipa hw is enabled */
+	if (ipa_uc_reg_rdyCB(NULL) != -EPERM)
+		return true;
+	else
+		return false;
+}
+
+/**
+ * hdd_ipa_reset_ipaconfig() - reset IpaConfig
+ * @hdd_ctx: pointer to hdd context
+ * @ipaconfig: new value for IpaConfig
+ *
+ * Return: none
+ */
+void hdd_ipa_reset_ipaconfig(hdd_context_t *hdd_ctx, v_U32_t ipaconfig)
+{
+	hdd_ctx->cfg_ini->IpaConfig = ipaconfig;
+	return;
+}
+
 static int hdd_ipa_setup_rm(struct hdd_ipa_priv *hdd_ipa)
 {
 	struct ipa_rm_create_params create_params = {0};
@@ -3259,10 +3294,10 @@ static int hdd_ipa_register_interface(struct hdd_ipa_priv *hdd_ipa,
 		rx_prop[IPA_IP_v6].hdr_l2_type = IPA_HDR_L2_ETHERNET_II;
 #endif
 
-		rx_prop[IPA_IP_v6].attrib.attrib_mask = IPA_FLT_META_DATA;
-		rx_prop[IPA_IP_v6].attrib.meta_data =
+		rx_prop[IPA_IP_v4].attrib.attrib_mask = IPA_FLT_META_DATA;
+		rx_prop[IPA_IP_v4].attrib.meta_data =
 			htonl(iface_context->adapter->sessionId<< 16);
-		rx_prop[IPA_IP_v6].attrib.meta_data_mask = htonl(0x00FF0000);
+		rx_prop[IPA_IP_v4].attrib.meta_data_mask = htonl(0x00FF0000);
 
 		rx_intf.num_props++;
 	}
