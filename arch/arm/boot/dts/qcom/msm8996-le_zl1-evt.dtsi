@@ -22,6 +22,7 @@
 #include "letv-tp-focaltech_ts.dtsi"
 #include "letv-tp-synaptics-dsx-i2c-le_zl1.dtsi"
 #include "le_zl1_audio.dtsi"
+#include "msm8996-synchronized-leds.dtsi"
 
 /*
  * add ft8716 touchscreen of device
