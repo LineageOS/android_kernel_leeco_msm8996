@@ -405,6 +405,7 @@ struct synaptics_rmi4_data {
 	struct pinctrl_state *pinctrl_state_active;
 	struct pinctrl_state *pinctrl_state_suspend;
 	struct pinctrl_state *pinctrl_state_release;
+	ktime_t timestamp;
 };
 
 
