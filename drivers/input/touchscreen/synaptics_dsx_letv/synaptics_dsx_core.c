@@ -147,6 +147,7 @@ static int synaptics_rmi4_free_button(struct synaptics_rmi4_data *rmi4_data);
 static int synaptics_rmi4_reinit_device(struct synaptics_rmi4_data *rmi4_data);
 static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data,
 		bool rebuild);
+static void synaptics_key_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable);
 
 #ifdef CONFIG_FB
 static int synaptics_rmi4_fb_notifier_cb(struct notifier_block *self,
@@ -1745,6 +1746,8 @@ static int synaptics_rmi4_int_enable(struct synaptics_rmi4_data *rmi4_data,
 			}
 		}
 	}
+
+	synaptics_key_ctrl(rmi4_data, enable && rmi4_data->button_0d_enabled);
 
 	return retval;
 }
@@ -3352,6 +3355,47 @@ static void synaptics_rmi4_set_params(struct synaptics_rmi4_data *rmi4_data)
 	}
 
 	return;
+}
+
+static void synaptics_key_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enable)
+{
+	int retval;
+	unsigned char ii;
+	unsigned char intr_enable;
+	struct synaptics_rmi4_fn *fhandler;
+	struct synaptics_rmi4_device_info *rmi;
+
+	rmi = &(rmi4_data->rmi4_mod_info);
+
+	if (list_empty(&rmi->support_fn_list))
+		return ;
+
+	list_for_each_entry(fhandler, &rmi->support_fn_list, link) {
+		if (fhandler->fn_number == SYNAPTICS_RMI4_F1A) {
+			ii = fhandler->intr_reg_num;
+
+			retval = synaptics_rmi4_reg_read(rmi4_data,
+					rmi4_data->f01_ctrl_base_addr + 1 + ii,
+					&intr_enable,
+					sizeof(intr_enable));
+			if (retval < 0)
+				return ;
+
+			if (enable == true)
+				intr_enable |= fhandler->intr_mask;
+			else
+				intr_enable &= ~fhandler->intr_mask;
+
+			retval = synaptics_rmi4_reg_write(rmi4_data,
+					rmi4_data->f01_ctrl_base_addr + 1 + ii,
+					&intr_enable,
+					sizeof(intr_enable));
+			if (retval < 0)
+				return ;
+		}
+	}
+
+	return ;
 }
 
 static int synaptics_rmi4_set_input_dev(struct synaptics_rmi4_data *rmi4_data)
