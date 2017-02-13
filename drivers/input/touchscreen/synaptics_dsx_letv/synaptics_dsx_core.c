@@ -39,6 +39,7 @@
 #include <linux/input.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
+#include <linux/proc_fs.h>
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_dsx_v26.h>
 #include "synaptics_dsx_core.h"
@@ -856,6 +857,41 @@ static ssize_t synaptics_rmi4_virtual_key_map_show(struct kobject *kobj,
 
 	return count;
 }
+
+static int synaptics_rmi4_proc_init(struct kernfs_node *sysfs_node_parent)
+{
+	int ret = 0;
+	char *buf, *path = NULL;
+	char *key_disabler_sysfs_node;
+	struct proc_dir_entry *proc_entry_tp = NULL;
+	struct proc_dir_entry *proc_symlink_tmp  = NULL;
+
+	buf = kzalloc(PATH_MAX, GFP_KERNEL);
+	if (buf)
+		path = kernfs_path(sysfs_node_parent, buf, PATH_MAX);
+
+	proc_entry_tp = proc_mkdir("touchpanel", NULL);
+	if (proc_entry_tp == NULL) {
+		ret = -ENOMEM;
+		pr_err("%s: Couldn't create touchpanel\n", __func__);
+	}
+
+	key_disabler_sysfs_node = kzalloc(PATH_MAX, GFP_KERNEL);
+	if (key_disabler_sysfs_node)
+		sprintf(key_disabler_sysfs_node, "/sys%s/%s", path, "0dbutton");
+	proc_symlink_tmp = proc_symlink("capacitive_keys_enable",
+			proc_entry_tp, key_disabler_sysfs_node);
+	if (proc_symlink_tmp == NULL) {
+		ret = -ENOMEM;
+		pr_err("%s: Couldn't create capacitive_keys_enable symlink\n", __func__);
+	}
+
+	kfree(buf);
+	kfree(key_disabler_sysfs_node);
+
+	return ret;
+}
+
 static ssize_t synaptics_rmi4_tp_info_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
 {
@@ -4337,6 +4373,9 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 			goto err_sysfs;
 		}
 	}
+
+	synaptics_rmi4_proc_init(rmi4_data->input_dev->dev.kobj.sd);
+
 	rmi4_data->cdev.name = "touchpanel";
 	rmi4_data->cdev.groups = attr_groups;
 	retval = letv_classdev_register(&pdev->dev,&rmi4_data->cdev);
