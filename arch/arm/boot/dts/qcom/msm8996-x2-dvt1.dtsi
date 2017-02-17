@@ -14,7 +14,6 @@
 #include "msm8996-pinctrl-x2.dtsi"
 #include "dsi-panel-truly-dualmipi-cmd-x2-dvt1.dtsi"
 #include "letv-tp-synaptics-dsx-i2c.dtsi"
-//#include "msm8996-camera-sensor-x2-dvt1.dtsi"
 #include "letv-ft-hideep-i2c.dtsi"
 #include "dsi-panel-sharp-dualmipi-cmd.dtsi"
 #include "dsi-panel-sharp-dualmipi-video.dtsi"
