@@ -511,6 +511,21 @@ static const struct file_operations gf_fops = {
 #endif
 };
 
+static void set_fingerprintd_nice(int nice)
+{
+	struct task_struct *p;
+
+	read_lock(&tasklist_lock);
+	for_each_process(p) {
+		if (!memcmp(p->comm, "fingerprintd", 13)) {
+			set_user_nice(p, nice);
+			pr_info("%s scaling fingerprint prio\n", __func__);
+			break;
+		}
+	}
+	read_unlock(&tasklist_lock);
+}
+
 static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 					unsigned long val, void *data)
 {
@@ -537,6 +552,14 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 #endif
 				/*device unavailable */
 				//gf_dev->device_available = 0;
+
+				/*
+				 * Elevate fingerprintd priority when screen is off to ensure
+				 * the fingerprint sensor is responsive and that the haptic
+				 * response on successful verification always fires.
+				 */
+				pr_info("%s: setting highest_fp priority\n", __func__);
+				set_fingerprintd_nice(-1);
 			}
 			break;
 		case FB_BLANK_UNBLANK:
@@ -550,6 +573,8 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 #endif
 				/*device available */
 				//gf_dev->device_available = 1;
+				pr_info("%s: setting low_fp priority\n", __func__);
+				set_fingerprintd_nice(0);
 			}
 			break;
 		default:
