@@ -683,6 +683,8 @@ static int __init cpufreq_stats_init(void)
 	if (ret)
 		return ret;
 
+        create_all_freq_table();
+
 	get_online_cpus();
 	for_each_online_cpu(cpu)
 		cpufreq_stats_create_table(cpu);
@@ -700,7 +702,6 @@ static int __init cpufreq_stats_init(void)
 		return ret;
 	}
 
-	create_all_freq_table();
 	WARN_ON(cpufreq_get_global_kobject());
 	ret = sysfs_create_file(cpufreq_global_kobject,
 			&_attr_all_time_in_state.attr);
