@@ -2006,7 +2006,9 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
 
         /* Store vendor specfic IE for CISCO AP */
-        ieLen = GET_IE_LEN_IN_BSS(pSmeJoinReq->bssDescription.length);
+        ieLen = (pSmeJoinReq->bssDescription.length +
+                  sizeof( pSmeJoinReq->bssDescription.length ) -
+                  GET_FIELD_OFFSET( tSirBssDescription, ieFields ));
 
         vendorIE = cfg_get_vendor_ie_ptr_from_oui(pMac, SIR_MAC_CISCO_OUI,
                     SIR_MAC_CISCO_OUI_SIZE,
@@ -2248,8 +2250,8 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         {
            limExtractApCapability( pMac,
               (tANI_U8 *) psessionEntry->pLimJoinReq->bssDescription.ieFields,
-              GET_IE_LEN_IN_BSS(
-              psessionEntry->pLimJoinReq->bssDescription.length),
+              limGetIElenFromBssDescription(
+              &psessionEntry->pLimJoinReq->bssDescription),
               &psessionEntry->limCurrentBssQosCaps,
               &psessionEntry->limCurrentBssPropCap,
               &pMac->lim.gLimCurrentBssUapsd
@@ -2261,8 +2263,8 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         {
            limExtractApCapability( pMac,
               (tANI_U8 *) psessionEntry->pLimJoinReq->bssDescription.ieFields,
-              GET_IE_LEN_IN_BSS(
-              psessionEntry->pLimJoinReq->bssDescription.length),
+              limGetIElenFromBssDescription(
+              &psessionEntry->pLimJoinReq->bssDescription),
               &psessionEntry->limCurrentBssQosCaps,
               &psessionEntry->limCurrentBssPropCap,
               &psessionEntry->gLimCurrentBssUapsd,
@@ -2611,8 +2613,8 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         limExtractApCapability( pMac,
             (tANI_U8 *) psessionEntry->pLimReAssocReq->bssDescription.ieFields,
-            GET_IE_LEN_IN_BSS(
-            psessionEntry->pLimReAssocReq->bssDescription.length),
+            limGetIElenFromBssDescription(
+                     &psessionEntry->pLimReAssocReq->bssDescription),
             &psessionEntry->limReassocBssQosCaps,
             &psessionEntry->limReassocBssPropCap,
             &pMac->lim.gLimCurrentBssUapsd
@@ -2624,8 +2626,8 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         limExtractApCapability(pMac,
             (tANI_U8 *) psessionEntry->pLimReAssocReq->bssDescription.ieFields,
-            GET_IE_LEN_IN_BSS(
-            psessionEntry->pLimReAssocReq->bssDescription.length),
+            limGetIElenFromBssDescription(
+                     &psessionEntry->pLimReAssocReq->bssDescription),
             &psessionEntry->limReassocBssQosCaps,
             &psessionEntry->limReassocBssPropCap,
             &psessionEntry->gLimCurrentBssUapsd,

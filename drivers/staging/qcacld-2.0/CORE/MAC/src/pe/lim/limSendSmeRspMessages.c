@@ -783,8 +783,8 @@ limSendSmeStartBssRsp(tpAniSirGlobal pMac,
                        * pointer to ieFields.
                        */
                       pSirSmeRsp->bssDescription.length =
-                              ((uintptr_t)OFFSET_OF(tSirBssDescription, ieFields))
-                               - sizeof(pSirSmeRsp->bssDescription.length) + ieLen;
+                              sizeof(pSirSmeRsp->bssDescription) -
+                              sizeof(tANI_U16) - sizeof(tANI_U32) + ieLen;
                       /*
                        * This is the size of the message, subtract the size of
                        * the pointer to ieFields

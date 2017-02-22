@@ -4606,8 +4606,6 @@ static int hdd_set_rx_filter(hdd_adapter_t *adapter, bool action,
 				    MAC_ADDR_ARRAY(filter->multicastAddr[j]));
 				j++;
 			}
-			if (j == SIR_MAX_NUM_MULTICAST_ADDRESS)
-				break;
 		}
 		filter->ulMulticastAddrCnt = j;
 		/* Set rx filter */
