@@ -555,6 +555,8 @@ static void msm_vfe44_process_reg_update(struct vfe_device *vfe_dev,
 				(uint32_t)BIT(i));
 			switch (i) {
 			case VFE_PIX_0:
+				msm_isp_save_framedrop_values(vfe_dev,
+						VFE_PIX_0);
 				msm_isp_notify(vfe_dev, ISP_EVENT_REG_UPDATE,
 					VFE_PIX_0, ts);
 				if (atomic_read(
@@ -584,7 +586,6 @@ static void msm_vfe44_process_reg_update(struct vfe_device *vfe_dev,
 			}
 			if (vfe_dev->axi_data.stream_update[i])
 				msm_isp_axi_stream_update(vfe_dev, i);
-			msm_isp_save_framedrop_values(vfe_dev, i);
 			if (atomic_read(&vfe_dev->axi_data.axi_cfg_update[i])) {
 				msm_isp_axi_cfg_update(vfe_dev, i);
 				if (atomic_read(
@@ -2045,9 +2046,7 @@ struct msm_vfe_hardware_info vfe44_hw_info = {
 				msm_vfe44_is_module_cfg_lock_needed,
 			.set_halt_restart_mask =
 				msm_vfe44_set_halt_restart_mask,
-			.ahb_clk_cfg = NULL,
-			.set_halt_restart_mask =
-				msm_vfe44_set_halt_restart_mask,
+
 		},
 		.stats_ops = {
 			.get_stats_idx = msm_vfe44_get_stats_idx,
@@ -2067,7 +2066,6 @@ struct msm_vfe_hardware_info vfe44_hw_info = {
 			.get_pingpong_status = msm_vfe44_get_pingpong_status,
 			.update_cgc_override =
 				msm_vfe44_stats_update_cgc_override,
-			.enable_stats_wm = NULL,
 		},
 	},
 	.dmi_reg_offset = 0x918,

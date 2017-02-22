@@ -588,60 +588,13 @@ static int msm_isp_start_fetch_engine(struct vfe_device *vfe_dev,
 		start_fetch_eng(vfe_dev, arg);
 }
 
-static int msm_isp_start_fetch_engine_multi_pass(struct vfe_device *vfe_dev,
-	void *arg)
-{
-	struct msm_vfe_fetch_eng_multi_pass_start *fe_cfg = arg;
-	struct msm_vfe_axi_stream *stream_info = NULL;
-	int i = 0, rc;
-	uint32_t wm_reload_mask = 0;
-	/*
-	 * For Offline VFE, HAL expects same frame id
-	 * for offline output which it requested in do_reprocess.
-	 */
-	vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id =
-		fe_cfg->frame_id;
-
-	if (fe_cfg->offline_pass == OFFLINE_SECOND_PASS) {
-		for (i = 0; i < VFE_AXI_SRC_MAX; i++) {
-			stream_info = &vfe_dev->axi_data.stream_info[i];
-			if (stream_info->stream_id == fe_cfg->output_stream_id)
-				break;
-		}
-
-		if (i == VFE_AXI_SRC_MAX) {
-			pr_err("%s: Couldn't find streamid 0x%X\n", __func__,
-				fe_cfg->output_stream_id);
-			return -EINVAL;
-		}
-
-		msm_isp_reset_framedrop(vfe_dev, stream_info);
-
-		rc = msm_isp_cfg_offline_ping_pong_address(vfe_dev, stream_info,
-			VFE_PING_FLAG, fe_cfg->output_buf_idx);
-		if (rc < 0) {
-			pr_err("%s: Fetch engine config failed\n", __func__);
-			return -EINVAL;
-		}
-		for (i = 0; i < stream_info->num_planes; i++) {
-			vfe_dev->hw_info->vfe_ops.axi_ops.
-			enable_wm(vfe_dev->vfe_base, stream_info->wm[i],
-					1);
-			wm_reload_mask |= (1 << stream_info->wm[i]);
-		}
-		vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev,
-			VFE_SRC_MAX);
-		vfe_dev->hw_info->vfe_ops.axi_ops.reload_wm(vfe_dev,
-			vfe_dev->vfe_base, wm_reload_mask);
-	}
-	return vfe_dev->hw_info->vfe_ops.core_ops.
-		start_fetch_eng_multi_pass(vfe_dev, arg);
-}
-
 void msm_isp_fetch_engine_done_notify(struct vfe_device *vfe_dev,
 	struct msm_vfe_fetch_engine_info *fetch_engine_info)
 {
 	struct msm_isp_event_data fe_rd_done_event;
+	if (!fetch_engine_info->is_busy)
+		return;
+
 	memset(&fe_rd_done_event, 0, sizeof(struct msm_isp_event_data));
 	fe_rd_done_event.frame_id =
 		vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
@@ -986,6 +939,7 @@ static int msm_isp_proc_cmd_list(struct vfe_device *vfe_dev, void *arg)
 }
 #endif /* CONFIG_COMPAT */
 
+
 static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
 {
@@ -1098,15 +1052,6 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		rc = msm_isp_cfg_input(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
-	case VIDIOC_MSM_ISP_AHB_CLK_CFG:
-		mutex_lock(&vfe_dev->core_mutex);
-		if (vfe_dev->hw_info->vfe_ops.core_ops.ahb_clk_cfg)
-			rc = vfe_dev->hw_info->vfe_ops.core_ops.
-					ahb_clk_cfg(vfe_dev, arg);
-		else
-			rc = -EOPNOTSUPP;
-		mutex_unlock(&vfe_dev->core_mutex);
-		break;
 	case VIDIOC_MSM_ISP_SET_DUAL_HW_MASTER_SLAVE:
 		mutex_lock(&vfe_dev->core_mutex);
 		rc = msm_isp_set_dual_HW_master_slave_mode(vfe_dev, arg);
@@ -1116,12 +1061,6 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 	case VIDIOC_MSM_ISP_MAP_BUF_START_FE:
 		mutex_lock(&vfe_dev->core_mutex);
 		rc = msm_isp_start_fetch_engine(vfe_dev, arg);
-		mutex_unlock(&vfe_dev->core_mutex);
-		break;
-	case VIDIOC_MSM_ISP_FETCH_ENG_MULTI_PASS_START:
-	case VIDIOC_MSM_ISP_MAP_BUF_START_MULTI_PASS_FE:
-		mutex_lock(&vfe_dev->core_mutex);
-		rc = msm_isp_start_fetch_engine_multi_pass(vfe_dev, arg);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_REG_UPDATE_CMD:
@@ -1992,8 +1931,7 @@ static void msm_isp_process_overflow_irq(
 				ISP_VFE1 : ISP_VFE0;
 
 			atomic_cmpxchg(&(vfe_dev->common_data->dual_vfe_res->
-				vfe_dev[other_vfe_id]->
-				error_info.overflow_state),
+				vfe_dev[other_vfe_id]->error_info.overflow_state),
 				NO_OVERFLOW, OVERFLOW_DETECTED);
 
 			vfe_dev->hw_info->vfe_ops.core_ops.

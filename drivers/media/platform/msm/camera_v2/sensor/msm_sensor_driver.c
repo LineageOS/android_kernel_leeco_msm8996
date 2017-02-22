@@ -872,13 +872,6 @@ int32_t msm_sensor_driver_probe(void *setting,
 	pr_err("%s print: module_id 0x%x", __func__, slave_info->sensor_id_info.module_id);
 #endif
 
-	if (slave_info->is_init_params_valid) {
-		CDBG("position %d",
-			slave_info->sensor_init_params.position);
-		CDBG("mount %d",
-			slave_info->sensor_init_params.sensor_mount_angle);
-	}
-
 	/* Validate camera id */
 	if (slave_info->camera_id >= MAX_CAMERAS) {
 		pr_err("failed: invalid camera id %d max %d",
@@ -1326,7 +1319,6 @@ static int32_t msm_sensor_driver_parse(struct msm_sensor_ctrl_t *s_ctrl)
 	if (!s_ctrl->msm_sensor_mutex) {
 		pr_err("failed: no memory msm_sensor_mutex %pK",
 			s_ctrl->msm_sensor_mutex);
-		rc = -ENOMEM;
 		goto FREE_SENSOR_I2C_CLIENT;
 	}
 

@@ -96,11 +96,10 @@ config MSM_EEPROM
 	  Currently supports I2C, CCI and SPI protocol
 
 config MSM_I2C_FLASH
-        bool "Letv Flash Interface for I2C Flash support on Qualcomm platform"
+        bool "Letv's I2C Flash Interface for Qualcomm MSM platform"
         depends on MSMB_CAMERA
         ---help---
-          Enable support for Letv Flash Interface
-          for I2C Flash on Qualcomm platform.
+          Enable support for I2C Flash within Qualcomm MSM camera driver.
 
 config MSM_ISPIF
         bool "Qualcomm MSM Image Signal Processing interface support"
