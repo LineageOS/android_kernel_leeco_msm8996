@@ -208,7 +208,7 @@ int usb_add_function(struct usb_configuration *config,
 {
 	int	value = -EINVAL;
 
-	DBG(config->cdev, "adding '%s'/%p to config '%s'/%p\n",
+	DBG(config->cdev, "adding '%s'/%pK to config '%s'/%pK\n",
 			function->name, function,
 			config->label, config);
 
@@ -243,7 +243,7 @@ int usb_add_function(struct usb_configuration *config,
 
 done:
 	if (value)
-		DBG(config->cdev, "adding '%s'/%p --> %d\n",
+		DBG(config->cdev, "adding '%s'/%pK --> %d\n",
 				function->name, function, value);
 	return value;
 }
@@ -857,7 +857,7 @@ static int set_config(struct usb_composite_dev *cdev,
 
 		result = f->set_alt(f, tmp, 0);
 		if (result < 0) {
-			DBG(cdev, "interface %d (%s/%p) alt 0 --> %d\n",
+			DBG(cdev, "interface %d (%s/%pK) alt 0 --> %d\n",
 					tmp, f->name, f, result);
 
 			reset_config(cdev);
@@ -936,7 +936,7 @@ int usb_add_config(struct usb_composite_dev *cdev,
 	if (!bind)
 		goto done;
 
-	DBG(cdev, "adding config #%u '%s'/%p\n",
+	DBG(cdev, "adding config #%u '%s'/%pK\n",
 			config->bConfigurationValue,
 			config->label, config);
 
@@ -953,7 +953,7 @@ int usb_add_config(struct usb_composite_dev *cdev,
 					struct usb_function, list);
 			list_del(&f->list);
 			if (f->unbind) {
-				DBG(cdev, "unbind function '%s'/%p\n",
+				DBG(cdev, "unbind function '%s'/%pK\n",
 					f->name, f);
 				f->unbind(config, f);
 				/* may free memory for "f" */
@@ -964,7 +964,7 @@ int usb_add_config(struct usb_composite_dev *cdev,
 	} else {
 		unsigned	i;
 
-		DBG(cdev, "cfg %d/%p speeds:%s%s%s\n",
+		DBG(cdev, "cfg %d/%pK speeds:%s%s%s\n",
 			config->bConfigurationValue, config,
 			config->superspeed ? " super" : "",
 			config->highspeed ? " high" : "",
@@ -979,7 +979,7 @@ int usb_add_config(struct usb_composite_dev *cdev,
 
 			if (!f)
 				continue;
-			DBG(cdev, "  interface %d = %s/%p\n",
+			DBG(cdev, "  interface %d = %s/%pK\n",
 				i, f->name, f);
 		}
 	}
@@ -1007,13 +1007,13 @@ static void unbind_config(struct usb_composite_dev *cdev,
 				struct usb_function, list);
 		list_del(&f->list);
 		if (f->unbind) {
-			DBG(cdev, "unbind function '%s'/%p\n", f->name, f);
+			DBG(cdev, "unbind function '%s'/%pK\n", f->name, f);
 			f->unbind(config, f);
 			/* may free memory for "f" */
 		}
 	}
 	if (config->unbind) {
-		DBG(cdev, "unbind config '%s'/%p\n", config->label, config);
+		DBG(cdev, "unbind config '%s'/%pK\n", config->label, config);
 		config->unbind(config);
 			/* may free memory for "c" */
 	}
