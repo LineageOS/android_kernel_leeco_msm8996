@@ -484,6 +484,11 @@
 	qcom,mhl-wihd = <1>;
 };
 
+&pm8994_rtc {
+       qcom,qpnp-rtc-alarm-pwrup = <1>;
+};
+
+
 &mdss_hdmi_pll {
 	compatible = "qcom,mdss_hdmi_pll_8996_v3_1p8";
 };
