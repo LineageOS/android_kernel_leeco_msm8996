@@ -603,7 +603,7 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 #endif
 #endif
 	if (!sensor_i2c_client || !slave_info || !sensor_name) {
-		pr_err("[CAM-0x1801]%s:%d failed: %pK %pK %pK\n",
+		pr_err("%s:%d failed: %pK %pK %pK\n",
 			__func__, __LINE__, sensor_i2c_client, slave_info,
 			sensor_name);
 		return -EINVAL;
