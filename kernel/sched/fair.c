@@ -6444,9 +6444,13 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 
 	lockdep_assert_held(&env->src_rq->lock);
 
-	if (over_schedule_budget(env->dst_cpu))
-		return 0;
-
+	/*
+	 * We do not migrate tasks that are:
+	 * 1) throttled_lb_pair, or
+	 * 2) cannot be migrated to this CPU due to cpus_allowed, or
+	 * 3) running (obviously), or
+	 * 4) are cache-hot on their current CPU.
+	 */
 	if (throttled_lb_pair(task_group(p), env->src_cpu, env->dst_cpu))
 		return 0;
 
@@ -8229,9 +8233,9 @@ static int idle_balance(struct rq *this_rq)
 		goto out;
 	}
 
-	if (over_schedule_budget(this_cpu))
-		goto out;
-
+	/*
+	 * Drop the rq->lock, but keep IRQ/preempt disabled.
+	 */
 	raw_spin_unlock(&this_rq->lock);
 
 	/*
@@ -8679,8 +8683,7 @@ static void nohz_idle_balance(struct rq *this_rq, enum cpu_idle_type idle)
 		goto end;
 
 	for_each_cpu(balance_cpu, nohz.idle_cpus_mask) {
-		if (balance_cpu == this_cpu || !idle_cpu(balance_cpu) ||
-				over_schedule_budget(balance_cpu))
+		if (balance_cpu == this_cpu || !idle_cpu(balance_cpu))
 			continue;
 
 		/*
@@ -8831,9 +8834,6 @@ void trigger_load_balance(struct rq *rq)
 {
 	/* Don't need to rebalance while attached to NULL domain */
 	if (unlikely(on_null_domain(rq)))
-		return;
-
-	if (over_schedule_budget(cpu_of(rq)))
 		return;
 
 	if (time_after_eq(jiffies, rq->next_balance))
