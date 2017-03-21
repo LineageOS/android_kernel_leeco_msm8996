@@ -50,7 +50,9 @@ struct mxt_platform_data {
 	const char *fw_version;
 	const char *input_name;
 	struct mxt_config_info info;
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	bool report_pressure_hideep;
+#endif
 };
 
 #endif /* __LINUX_ATMEL_MXT_TS_LETV_H */

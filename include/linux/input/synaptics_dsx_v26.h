@@ -84,7 +84,9 @@ struct synaptics_dsx_board_data {
 	bool x_flip;
 	bool y_flip;
 	bool swap_axes;
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	bool report_pressure_hideep;
+#endif
 	int irq_gpio;
 	int irq_on_state;
 	int power_gpio;

@@ -83,12 +83,14 @@ static int parse_dt(struct device *dev, struct synaptics_dsx_board_data *bdata)
 	else
 		bdata->irq_flags = value;
 
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	retval = of_property_read_u32(np, "synaptics,report-pressure-hideep",
 			&value);
 	if (retval < 0)
 		bdata->report_pressure_hideep = 0;
 	else
 		bdata->report_pressure_hideep = value;
+#endif
 
 	retval = of_property_read_string(np, "synaptics,pwr-reg-name", &name);
 	if (retval == -EINVAL)

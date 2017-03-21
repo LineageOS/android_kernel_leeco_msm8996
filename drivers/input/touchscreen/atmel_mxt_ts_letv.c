@@ -1034,12 +1034,16 @@ static void mxt_proc_t6_messages(struct mxt_data *data, u8 *msg)
 		#ifdef ATMEL_ESD_PROTECT
 		if(data->is_support_esd){
 			if(data->T6_reset_flag){
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 				if(hideep3d_dev_state_init_updating() && data->pdata->report_pressure_hideep){
 					atomic_set(&data->reset_sum,0);
 				}
 				else{
+#endif
 					atomic_inc(&data->reset_sum);
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 				}
+#endif
 			}
 			else{
 				data->T6_reset_flag = 1;
@@ -1216,7 +1220,9 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 	u8 status;
 	int x;
 	int y;
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	int z;
+#endif
 	int tool;
 
 	id = message[0] - data->T100_reportid_min - 2;
@@ -1229,6 +1235,7 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 	x = (message[3] << 8) | message[2];
 	y = (message[5] << 8) | message[4];
 
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	if(data->pdata->report_pressure_hideep){
 		if(!data->got_pressure_hideep || data->lastid_hideep == id){
 			if(!data->got_pressure_hideep)
@@ -1240,6 +1247,7 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 		else
 			z = 10;
 	}
+#endif
 
 	dev_dbg(dev,
 		"[%u] status:%02X x:%u y:%u area:%02X amp:%02X vec:%02X\n",
@@ -1263,16 +1271,19 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 		input_report_abs(input_dev, ABS_MT_POSITION_X, x);
 		input_report_abs(input_dev, ABS_MT_POSITION_Y, y);
 
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 		if(data->pdata->report_pressure_hideep){
 			// 3d touch report
 			input_report_abs(input_dev, ABS_MT_PRESSURE, z);
 		}
 		else{
+#endif
 			if (data->t100_aux_ampl)
 				input_report_abs(input_dev, ABS_MT_PRESSURE,
 						 message[data->t100_aux_ampl]);
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 		}
-
+#endif
 
 		if (data->t100_aux_area) {
 			if (tool == MT_TOOL_PEN)
@@ -1287,6 +1298,7 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 			input_report_abs(input_dev, ABS_MT_ORIENTATION,
 					 message[data->t100_aux_vect]);
 	} else {
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 		if(data->pdata->report_pressure_hideep){
 			if(data->lastid_hideep == id){
 				// 3d touch release
@@ -1296,6 +1308,7 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 				data->lastid_hideep = -1;
 			}
 		}
+#endif
 		/* Touch no longer active, close out slot */
 		input_mt_report_slot_state(input_dev, MT_TOOL_FINGER, 0);
 	}
@@ -2929,11 +2942,13 @@ static int mxt_read_t100_config(struct mxt_data *data)
 	dev_info(&client->dev,
 		 "T100 Touchscreen size X%uY%u\n", data->max_x, data->max_y);
 
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	/*for hideep3d*/
 	if(data->pdata->report_pressure_hideep){
 		data->got_pressure_hideep = false;
 		data->lastid_hideep = -1;
 	}
+#endif
 
 	return 0;
 }
@@ -2979,15 +2994,19 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 			     0, data->max_x, 0, 0);
 	input_set_abs_params(input_dev, ABS_Y,
 			     0, data->max_y, 0, 0);
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	if(data->pdata->report_pressure_hideep){
 			input_set_abs_params(input_dev, ABS_PRESSURE,
 									 0, 65535, 0, 0);
 	}
 	else{
+#endif
 		if (data->t100_aux_ampl)
 			input_set_abs_params(input_dev, ABS_PRESSURE,
 				     0, 255, 0, 0);
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	}
+#endif
 	/* For multi touch */
 	error = input_mt_init_slots(input_dev, data->num_touchids,
 				    INPUT_MT_DIRECT);
@@ -3006,15 +3025,19 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 		input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR,
 				     0, MXT_MAX_AREA, 0, 0);
 
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	if(data->pdata->report_pressure_hideep){
 			input_set_abs_params(input_dev, ABS_MT_PRESSURE,
 									 0, 65535, 0, 0);
 	}
 	else{
+#endif
 		if (data->t100_aux_ampl)
 			input_set_abs_params(input_dev, ABS_MT_PRESSURE,
 					     0, 255, 0, 0);
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	}
+#endif
 
 	if (data->t100_aux_vect)
 		input_set_abs_params(input_dev, ABS_MT_ORIENTATION,
@@ -4514,7 +4537,10 @@ static struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	struct property *prop;
 	unsigned int *keymap;
-	int proplen, ret, value;
+	int proplen, ret;
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
+	int value;
+#endif
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
@@ -4528,12 +4554,14 @@ static struct mxt_platform_data *mxt_parse_dt(struct i2c_client *client)
 	pdata->gpio_vdd = of_get_named_gpio_flags(dev->of_node,
 		"atmel,vdd-gpio", 0, NULL);
 
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	/*support hideep3d*/
 	ret = of_property_read_u32(dev->of_node, "atmel,report-pressure-hideep",&value);
 	if (ret < 0)
 		pdata->report_pressure_hideep = 0;
 	else
 		pdata->report_pressure_hideep = value;
+#endif
 
 	of_property_read_string(dev->of_node, "atmel,cfg_name",
 				&pdata->cfg_name);
