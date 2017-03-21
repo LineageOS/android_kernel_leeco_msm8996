@@ -1,5 +1,5 @@
 config TOUCHSCREEN_HIDEEP_TP_LETV
-	default M
+	default N
 	tristate "Hideep Touchpannel for debug"
 	depends on I2C
 	---help---

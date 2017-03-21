@@ -1160,8 +1160,10 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int wx;
 	int wy;
 	int temp;
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 	unsigned short z;
 	bool got_pressure = false;
+#endif
 	bool touching = false;
 #ifdef REPORT_2D_PRESSURE
 	int pressure;
@@ -1347,6 +1349,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 						min(wx, wy));
 			}
 #endif
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 		if(rmi4_data->hw_if->board_data->report_pressure_hideep){
 			if (!got_pressure) {
 				z = hideep3d_get_value(x,y);
@@ -1357,6 +1360,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					ABS_MT_PRESSURE, z);
 		}
 		else{
+#endif
 #ifdef REPORT_2D_PRESSURE
 			if (rmi4_data->report_pressure) {
 				pressure = extra_data->data23_data[finger];
@@ -1364,7 +1368,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 						ABS_MT_PRESSURE, pressure);
 			}
 #endif
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 		}
+#endif
 #ifndef TYPE_B_PROTOCOL
 			input_mt_sync(rmi4_data->input_dev);
 #endif
@@ -1432,10 +1438,12 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			input_mt_report_slot_state(rmi4_data->input_dev,
 					MT_TOOL_FINGER, 0);
 #endif
+#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 			if(rmi4_data->hw_if->board_data->report_pressure_hideep){
 				if(!touching)
 					hideep3d_release_flag();
 			}
+#endif
 			break;
 		}
 	}
