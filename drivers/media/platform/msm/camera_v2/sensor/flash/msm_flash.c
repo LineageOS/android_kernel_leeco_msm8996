@@ -287,16 +287,6 @@ static int32_t msm_flash_i2c_init(
 	flash_ctrl->power_info.power_down_setting_size =
 		flash_ctrl->power_setting_array.size_down;
 
-	if ((flash_ctrl->power_info.power_setting_size > MAX_POWER_CONFIG) ||
-	(flash_ctrl->power_info.power_down_setting_size > MAX_POWER_CONFIG)) {
-		pr_err("%s:%d invalid power setting size=%d size_down=%d\n",
-			__func__, __LINE__,
-			flash_ctrl->power_info.power_setting_size,
-			flash_ctrl->power_info.power_down_setting_size);
-		rc = -EINVAL;
-		goto msm_flash_i2c_init_fail;
-	}
-
 	rc = msm_camera_power_up(&flash_ctrl->power_info,
 		flash_ctrl->flash_device_type,
 		&flash_ctrl->flash_i2c_client);
@@ -617,7 +607,7 @@ static int32_t msm_flash_release(
 static int32_t msm_flash_config(struct msm_flash_ctrl_t *flash_ctrl,
 	void __user *argp)
 {
-	int32_t rc = 0;
+	int32_t rc = -EINVAL;
 	struct msm_flash_cfg_data_t *flash_data =
 		(struct msm_flash_cfg_data_t *) argp;
 
@@ -1289,11 +1279,11 @@ static ssize_t irled2_store(struct device *dev,
 	return size;
 }
 
-static DEVICE_ATTR(flashled1, 0775, NULL, flashled1_store);
-static DEVICE_ATTR(flashled2, 0775, NULL, flashled2_store);
-static DEVICE_ATTR(flashled_chipid, 0775, flashled_chipid_show, NULL);
-static DEVICE_ATTR(irled1, 0775, NULL, irled1_store);
-static DEVICE_ATTR(irled2, 0775, NULL, irled2_store);
+static DEVICE_ATTR(flashled1, S_IWUSR | S_IWGRP | S_IWOTH, NULL, flashled1_store);
+static DEVICE_ATTR(flashled2, S_IWUSR | S_IWGRP | S_IWOTH, NULL, flashled2_store);
+static DEVICE_ATTR(flashled_chipid, S_IRUSR | S_IRGRP | S_IROTH, flashled_chipid_show, NULL);
+static DEVICE_ATTR(irled1, S_IWUSR | S_IWGRP | S_IWOTH, NULL, irled1_store);
+static DEVICE_ATTR(irled2, S_IWUSR | S_IWGRP | S_IWOTH, NULL, irled2_store);
 
 static int32_t msm_flash_get_dt_data(struct device_node *of_node,
 	struct msm_flash_ctrl_t *fctrl)
@@ -1335,13 +1325,6 @@ static int32_t msm_flash_get_dt_data(struct device_node *of_node,
 			fctrl->flash_driver_type = FLASH_DRIVER_LM3643;
 	}
 
-	/* Read the flash and torch source info from device tree node */
-	rc = msm_flash_get_pmic_source_info(of_node, fctrl);
-	if (rc < 0) {
-		pr_err("%s:%d msm_flash_get_pmic_source_info failed rc %d\n",
-			__func__, __LINE__, rc);
-		return rc;
-	}
 	/* Read the gpio information from device tree */
 	rc = msm_flash_get_gpio_dt_data(of_node, fctrl);
 	if (rc < 0) {
@@ -1350,6 +1333,13 @@ static int32_t msm_flash_get_dt_data(struct device_node *of_node,
 		return rc;
 	}
 
+	/* Read the flash and torch source info from device tree node */
+	rc = msm_flash_get_pmic_source_info(of_node, fctrl);
+	if (rc < 0) {
+		pr_err("%s:%d msm_flash_get_pmic_source_info failed rc %d\n",
+			__func__, __LINE__, rc);
+		return rc;
+	}
 	return rc;
 }
 

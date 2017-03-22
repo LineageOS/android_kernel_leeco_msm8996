@@ -26,7 +26,6 @@
 #include <linux/msm-bus-board.h>
 
 #include "msm_buf_mgr.h"
-#include "cam_hw_ops.h"
 
 #define VFE40_8974V1_VERSION 0x10000018
 #define VFE40_8974V2_VERSION 0x1001001A
@@ -240,10 +239,6 @@ struct msm_vfe_core_ops {
 		uint32_t *rdi_wm_mask);
 	bool (*is_module_cfg_lock_needed)(uint32_t reg_offset);
 	void (*set_halt_restart_mask)(struct vfe_device *vfe_dev);
-	int (*start_fetch_eng_multi_pass)(struct vfe_device *vfe_dev,
-		void *arg);
-	int (*ahb_clk_cfg)(struct vfe_device *vfe_dev,
-			struct msm_isp_ahb_clk_cfg *ahb_cfg);
 };
 struct msm_vfe_stats_ops {
 	int (*get_stats_idx)(enum msm_isp_stats_type stats_type);
@@ -281,8 +276,6 @@ struct msm_vfe_stats_ops {
 	uint32_t (*get_pingpong_status)(struct vfe_device *vfe_dev);
 
 	void (*update_cgc_override)(struct vfe_device *vfe_dev,
-		uint32_t stats_mask, uint8_t enable);
-	void (*enable_stats_wm)(struct vfe_device *vfe_dev,
 		uint32_t stats_mask, uint8_t enable);
 };
 
@@ -351,7 +344,6 @@ enum msm_vfe_axi_stream_type {
 struct msm_vfe_frame_request_queue {
 	struct list_head list;
 	enum msm_vfe_buff_queue_id buff_queue_id;
-	uint32_t buf_index;
 	uint8_t cmd_used;
 };
 
@@ -475,7 +467,6 @@ struct msm_vfe_axi_shared_data {
 struct msm_vfe_stats_hardware_info {
 	uint32_t stats_capability_mask;
 	uint8_t *stats_ping_pong_offset;
-	uint8_t *stats_wm_index;
 	uint8_t num_stats_type;
 	uint8_t num_stats_comp_mask;
 };
@@ -642,7 +633,6 @@ struct master_slave_resource_info {
 
 struct msm_vfe_common_dev_data {
 	spinlock_t common_dev_data_lock;
-	spinlock_t common_dev_axi_lock;
 	struct dual_vfe_resource *dual_vfe_res;
 	struct master_slave_resource_info ms_resource;
 };
@@ -681,11 +671,7 @@ struct vfe_device {
 	struct regulator *fs_camss;
 	struct regulator *fs_mmagic_camss;
 	struct clk **vfe_clk;
-	struct msm_cam_clk_info *vfe_clk_info;
-	uint32_t **vfe_clk_rates;
 	uint32_t num_clk;
-	size_t num_rates;
-	enum cam_ahb_clk_vote ahb_vote;
 
 	/* Sync variables*/
 	struct completion reset_complete;
@@ -726,7 +712,6 @@ struct vfe_device {
 	uint32_t is_split;
 	uint32_t dual_vfe_enable;
 	unsigned long page_fault_addr;
-	uint32_t vfe_hw_limit;
 
 	/* Debug variables */
 	int dump_reg;
