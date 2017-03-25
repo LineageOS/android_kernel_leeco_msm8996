@@ -254,6 +254,7 @@
 #define KPDBL_MODULE_EN_MASK		0x80
 #define NUM_KPDBL_LEDS			4
 #define KPDBL_MASTER_BIT_INDEX		0
+#define LED_DEV_BUFF_SIZE			50
 
 /**
  * enum qpnp_leds - QPNP supported led ids
@@ -565,6 +566,7 @@ struct qpnp_led_data {
 	bool			default_on;
 	bool                    in_order_command_processing;
 	int			turn_off_delay_ms;
+	struct mutex	brightness_lock;
 };
 
 /**
@@ -886,6 +888,7 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 	u8 val;
 	int duty_us, duty_ns, period_us;
 
+	mutex_lock(&led->brightness_lock);
 	if (led->cdev.brightness) {
 		if (led->mpp_cfg->mpp_reg && !led->mpp_cfg->enable) {
 			rc = regulator_set_voltage(led->mpp_cfg->mpp_reg,
@@ -895,7 +898,7 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 				dev_err(&led->spmi_dev->dev,
 					"Regulator voltage set failed rc=%d\n",
 									rc);
-				return rc;
+				goto out;
 			}
 
 			rc = regulator_enable(led->mpp_cfg->mpp_reg);
@@ -1030,7 +1033,7 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 				dev_err(&led->spmi_dev->dev,
 					"MPP regulator disable failed(%d)\n",
 					rc);
-				return rc;
+				goto out;
 			}
 
 			rc = regulator_set_voltage(led->mpp_cfg->mpp_reg,
@@ -1039,7 +1042,7 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 				dev_err(&led->spmi_dev->dev,
 					"MPP regulator voltage set failed(%d)\n",
 					rc);
-				return rc;
+				goto out;
 			}
 		}
 
@@ -1050,6 +1053,7 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 		led->mpp_cfg->pwm_cfg->blinking = false;
 	qpnp_dump_regs(led, mpp_debug_regs, ARRAY_SIZE(mpp_debug_regs));
 
+	mutex_unlock(&led->brightness_lock);
 	return 0;
 
 err_mpp_reg_write:
@@ -1060,7 +1064,8 @@ err_reg_enable:
 		regulator_set_voltage(led->mpp_cfg->mpp_reg, 0,
 							led->mpp_cfg->max_uV);
 	led->mpp_cfg->enable = false;
-
+out:
+	mutex_unlock(&led->brightness_lock);
 	return rc;
 }
 
@@ -1908,7 +1913,9 @@ static void qpnp_led_set(struct led_classdev *led_cdev,
 	if (value > led->cdev.max_brightness)
 		value = led->cdev.max_brightness;
 
+	mutex_lock(&led->brightness_lock);
 	led->cdev.brightness = value;
+	mutex_unlock(&led->brightness_lock);
 	if (led->in_order_command_processing)
 		queue_work(led->workqueue, &led->work);
 	else
@@ -1942,6 +1949,10 @@ static void __qpnp_led_work(struct qpnp_led_data *led,
 	case QPNP_ID_RGB_RED:
 	case QPNP_ID_RGB_GREEN:
 	case QPNP_ID_RGB_BLUE:
+		rc = qpnp_rgb_set(led);
+		if (rc < 0)
+			dev_err(&led->spmi_dev->dev,
+				"RGB set brightness failed (%d)\n", rc);
 		break;
 	case QPNP_ID_LED_MPP:
 		rc = qpnp_mpp_set(led);
@@ -2337,6 +2348,18 @@ static ssize_t pwm_us_store(struct device *dev,
 	return count;
 }
 
+static ssize_t pause_lo_show(struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	struct qpnp_led_data *led;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	led = container_of(led_cdev, struct qpnp_led_data, cdev);
+	return snprintf(buf,
+			LED_DEV_BUFF_SIZE, "%d\n",
+			led->rgb_cfg->pwm_cfg->lut_params.lut_pause_lo);
+}
+
 static ssize_t pause_lo_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
@@ -2501,6 +2524,18 @@ static ssize_t start_idx_store(struct device *dev,
 	}
 	qpnp_led_set(&led->cdev, led->cdev.brightness);
 	return count;
+}
+
+static ssize_t ramp_step_ms_show(struct device *dev,
+	struct device_attribute *attr,
+	char *buf)
+{
+	struct qpnp_led_data *led;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	led = container_of(led_cdev, struct qpnp_led_data, cdev);
+	return snprintf(buf,
+			LED_DEV_BUFF_SIZE, "%d\n",
+			led->rgb_cfg->pwm_cfg->lut_params.ramp_step_ms);
 }
 
 static ssize_t ramp_step_ms_store(struct device *dev,
@@ -2750,6 +2785,18 @@ static void led_blink(struct qpnp_led_data *led,
 	mutex_unlock(&led->lock);
 }
 
+static ssize_t blink_show(struct device *dev,
+	struct device_attribute *attr,	char *buf)
+{
+	struct qpnp_led_data *led;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	led = container_of(led_cdev, struct qpnp_led_data, cdev);
+	return snprintf(buf,
+					LED_DEV_BUFF_SIZE,
+					"%d\n",
+					led->rgb_cfg->pwm_cfg->blinking);
+}
+
 static ssize_t blink_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
@@ -2781,6 +2828,8 @@ static ssize_t blink_store(struct device *dev,
 		dev_err(&led->spmi_dev->dev, "Invalid LED id type for blink\n");
 		return -EINVAL;
 	}
+	if (blinking)
+		led->rgb_cfg->pwm_cfg->blinking = blinking;
 	return count;
 }
 
@@ -3008,16 +3057,16 @@ static ssize_t rgb_blink_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(led_mode, 0220, NULL, led_mode_store);
-static DEVICE_ATTR(strobe, 0220, NULL, led_strobe_type_store);
-static DEVICE_ATTR(pwm_us, 0220, NULL, pwm_us_store);
-static DEVICE_ATTR(pause_lo, 0220, NULL, pause_lo_store);
-static DEVICE_ATTR(pause_hi, 0220, NULL, pause_hi_store);
-static DEVICE_ATTR(start_idx, 0220, NULL, start_idx_store);
-static DEVICE_ATTR(ramp_step_ms, 0220, NULL, ramp_step_ms_store);
-static DEVICE_ATTR(lut_flags, 0220, NULL, lut_flags_store);
-static DEVICE_ATTR(duty_pcts, 0220, NULL, duty_pcts_store);
-static DEVICE_ATTR(blink, 0220, NULL, blink_store);
+static DEVICE_ATTR(led_mode, 0664, NULL, led_mode_store);
+static DEVICE_ATTR(strobe, 0664, NULL, led_strobe_type_store);
+static DEVICE_ATTR(pwm_us, 0664, NULL, pwm_us_store);
+static DEVICE_ATTR(pause_lo, 0664, pause_lo_show, pause_lo_store);
+static DEVICE_ATTR(pause_hi, 0664, NULL, pause_hi_store);
+static DEVICE_ATTR(start_idx, 0664, NULL, start_idx_store);
+static DEVICE_ATTR(ramp_step_ms, 0664, ramp_step_ms_show, ramp_step_ms_store);
+static DEVICE_ATTR(lut_flags, 0664, NULL, lut_flags_store);
+static DEVICE_ATTR(duty_pcts, 0664, NULL, duty_pcts_store);
+static DEVICE_ATTR(blink, 0664, blink_show, blink_store);
 static DEVICE_ATTR(rgb_blink, 0664, NULL, rgb_blink_store);
 static DEVICE_ATTR(on_off_ms, 0660, rgb_on_off_ms_show, rgb_on_off_ms_store);
 static DEVICE_ATTR(rgb_start, 0220, NULL, rgb_start_store);
@@ -4287,6 +4336,7 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 			goto fail_id_check;
 		}
 
+		mutex_init(&led->brightness_lock);
 		led->cdev.brightness_set    = qpnp_led_set;
 		led->cdev.brightness_get    = qpnp_led_get;
 
