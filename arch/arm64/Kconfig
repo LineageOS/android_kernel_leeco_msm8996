@@ -1056,3 +1056,21 @@ endif
 source "lib/Kconfig"
 
 source "arch/arm64/mm/Kconfig"
+
+menu "LeEco board selection"
+
+config MACH_X2
+	select ARCH_MSM8996
+	bool "x2"
+	help
+	  Support for the x2 variant
+
+config MACH_ZL1
+	select ARCH_MSM8996
+	select SND_SOC_WCD_MBHC_ZL1
+	select SND_SOC_MAX98927
+	bool "zl1"
+	help
+	  Support for the zl1 variant
+      
+endmenu
