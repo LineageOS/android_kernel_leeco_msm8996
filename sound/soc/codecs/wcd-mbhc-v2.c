@@ -62,7 +62,7 @@ static struct wake_lock mbhc_button_wakelock;
 static struct wcd_mbhc *g_mbhc;
 static struct delayed_work mbhc_pending_dwork;
 static struct delayed_work mbhc_in3p_button_dwork;
-  static int det_extn_cable_en;
+static int det_extn_cable_en;
 static int hph_irq = 0;
 static int headset_detect_enable = -1;
 static int headset_swap_backmic = -1;
@@ -1178,7 +1178,7 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	struct snd_soc_codec *codec;
 	enum wcd_mbhc_plug_type plug_type = MBHC_PLUG_TYPE_INVALID;
 	unsigned long timeout;
-	//u16 hs_comp_res, hphl_sch, mic_sch, btn_result;
+	u16 hs_comp_res, btn_result;
 	bool wrk_complete = false;
 	//int pt_gnd_mic_swap_cnt = 0;
 	//int no_gnd_mic_swap_cnt = 0;
@@ -2715,6 +2715,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	struct snd_soc_card *card = codec->component.card;
 	const char *hph_switch = "qcom,msm-mbhc-hphl-swh";
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
+	const char *hph_irq_det = "letv,hph_irq_detect";
 
 	pr_debug("%s: enter\n", __func__);
 
