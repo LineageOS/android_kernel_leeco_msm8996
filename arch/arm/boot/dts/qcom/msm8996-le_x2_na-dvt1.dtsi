@@ -10,14 +10,12 @@
  * GNU General Public License for more details.
  */
 
+#include "msm8996-le-common.dtsi"
 #include "msm8996-mtp.dtsi"
-#include "msm8996-pinctrl-x2.dtsi"
-#include "dsi-panel-truly-dualmipi-cmd-x2-dvt1.dtsi"
-#include "letv-tp-synaptics-dsx-i2c.dtsi"
-#include "letv-ft-hideep-i2c.dtsi"
-#include "dsi-panel-sharp-dualmipi-cmd.dtsi"
-#include "dsi-panel-sharp-dualmipi-video.dtsi"
-#include "letv-tp-atmel_mxt_ts.dtsi"
+#include "msm8996-pinctrl-le_x2_na.dtsi"
+#include "dsi-panel-sharp-dualmipi-cmd-le_x2_na-dvt1.dtsi"
+#include "dsi-panel-truly-dualmipi-cmd-le_x2-dvt2.dtsi"
+#include "letv-tp-atmel_mxt_ts-le_x2_na-dvt1.dtsi"
 #include "msm8996-camera-sensor-x2-dvt1.dtsi"
 
 &sdhc_2 {
@@ -25,7 +23,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_dual_truly_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_cmd>;
 	/delete-property/ vddio-supply;
 	qcom,platform-te-gpio = <&tlmm 97 0>;
 	qcom,platform-reset-gpio = <&tlmm 24 0>;
@@ -33,7 +31,7 @@
 };
 
 &mdss_dsi1 {
-	qcom,dsi-pref-prim-pan = <&dsi_dual_truly_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_cmd>;
 	/delete-property/ vddio-supply;
 	qcom,platform-te-gpio = <&tlmm 97 0>;
 	qcom,platform-reset-gpio = <&tlmm 24 0>;
@@ -92,7 +90,7 @@
 	};
 };
 
-&dsi_dual_truly_cmd {
+&dsi_dual_sharp_cmd {
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
@@ -139,14 +137,6 @@
 	/delete-node/ gpio@cb00; /* PM8996 GPIO 12 */
 	/delete-node/ gpio@cc00; /* PM8996 GPIO 13 */
 	/delete-node/ gpio@cd00; /* PM8996 GPIO 14 */
-
-	gpio@d500 { /* GPIO 22 */ /* cclogic cable interrupt gpio */
-		qcom,mode = <0>;
-		qcom,pull = <5>;
-		qcom,vin-sel = <2>;
-		qcom,src-sel = <0>;
-		status = "okay";
-	};
 };
 
 &slim_msm {
@@ -156,10 +146,7 @@
 		qcom,cdc-micbias3-mv = <1800>;
 		qcom,cdc-micbias4-mv = <1800>;
 
-		/delete-node/ wsa881x@20170211;
-		/delete-node/ wsa881x@20170212;
-		/delete-node/ wsa881x@21170213;
-		/delete-node/ wsa881x@21170214;
+		/delete-node/ swr_master;
 	};
 };
 
@@ -168,15 +155,6 @@
 		synaptics@20 {
 			status = "disabled";
 			synaptics,button-map = <158 139 102>;
-		};
-		synaptics_dsx@4b {
-			synaptics,report-pressure-hideep = <0>;
-		};
-	};
-	i2c@75b9000 {
-		hideep_z@6c {
-			status = "disabled";
-			hideep,project_name = "x2";
 		};
 	};
 
@@ -195,32 +173,52 @@
 			"AIF4 VI", "MCLK",
 			"RX_BIAS", "MCLK",
 			"MADINPUT", "MCLK",
+			"AMIC1", "MIC BIAS1",
+			"MIC BIAS1", "Handset Mic",
 			"AMIC2", "MIC BIAS2",
 			"MIC BIAS2", "Headset Mic",
 			"AMIC3", "MIC BIAS2",
-			"MIC BIAS2", "ANCRight Headset Mic",
-			"AMIC4", "MIC BIAS2",
-			"MIC BIAS2", "ANCLeft Headset Mic",
-			"AMIC1", "MIC BIAS1",
-			"MIC BIAS1", "Handset Mic",
+			"MIC BIAS2", "USB Type-c Back Mic",
 			"AMIC4", "MIC BIAS4",
 			"MIC BIAS4", "REC ANC Analog Mic",
 			"AMIC5", "MIC BIAS3",
 			"MIC BIAS3", "ANC Analog Mic",
-			"AMIC6", "MIC BIAS3",
-			"MIC BIAS3", "Analog Mic6",
-			"DMIC0", "MIC BIAS1",
-			"MIC BIAS1", "Digital Mic0",
-			"DMIC1", "MIC BIAS1",
-			"MIC BIAS1", "Digital Mic1",
-			"DMIC2", "MIC BIAS3",
-			"MIC BIAS3", "Digital Mic2",
-			"DMIC3", "MIC BIAS3",
-			"MIC BIAS3", "Digital Mic3",
-			"DMIC4", "MIC BIAS4",
-			"MIC BIAS4", "Digital Mic4",
-			"DMIC5", "MIC BIAS4",
-			"MIC BIAS4", "Digital Mic5";
+			"AMIC6", "MIC BIAS1",
+			"MIC BIAS1", "Main Mic2";
+
+		asoc-platform = <&pcm0>, <&pcm1>, <&pcm2>, <&voip>, <&voice>,
+				<&loopback>, <&compress>, <&hostless>,
+				<&afe>, <&lsm>, <&routing>, <&cpe>, <&compr>;
+		asoc-platform-names = "msm-pcm-dsp.0", "msm-pcm-dsp.1", "msm-pcm-dsp.2",
+				"msm-voip-dsp", "msm-pcm-voice", "msm-pcm-loopback",
+				"msm-compress-dsp", "msm-pcm-hostless", "msm-pcm-afe",
+				"msm-lsm-client", "msm-pcm-routing", "msm-cpe-lsm",
+				"msm-compr-dsp";
+		asoc-cpu = <&dai_pri_auxpcm>, <&dai_sec_auxpcm>, <&dai_hdmi>,
+				<&dai_pri_mi2s>, <&dai_sec_mi2s>,
+				<&dai_tert_mi2s>, <&dai_quat_mi2s>,
+				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
+				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
+				<&sb_4_rx>, <&sb_4_tx>, <&sb_5_tx>, <&afe_pcm_rx>,
+				<&afe_pcm_tx>, <&afe_proxy_rx>, <&afe_proxy_tx>,
+				<&incall_record_rx>, <&incall_record_tx>,
+				<&incall_music_rx>, <&incall_music2_rx>,
+				<&sb_5_rx>, <&sb_6_rx>;
+		asoc-cpu-names = "msm-dai-q6-auxpcm.1", "msm-dai-q6-auxpcm.2",
+				"msm-dai-q6-hdmi.8",
+				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
+				"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
+				"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
+				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
+				"msm-dai-q6-dev.16388", "msm-dai-q6-dev.16389",
+				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",
+				"msm-dai-q6-dev.16392", "msm-dai-q6-dev.16393",
+				"msm-dai-q6-dev.16395", "msm-dai-q6-dev.224",
+				"msm-dai-q6-dev.225", "msm-dai-q6-dev.241",
+				"msm-dai-q6-dev.240", "msm-dai-q6-dev.32771",
+				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
+				"msm-dai-q6-dev.32770", "msm-dai-q6-dev.16394",
+				"msm-dai-q6-dev.16396";
 
 		qcom,hdmi-audio-rx;
 		letv,smartpa-audio;
@@ -232,6 +230,64 @@
 		/delete-property/ qcom,us-euro-gpios;
 		/delete-property/ qcom,wsa-devs;
 		/delete-property/ qcom,wsa-aux-dev-prefix;
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_pri_mi2s: qcom,msm-dai-q6-mi2s-prim {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <0>;
+			qcom,msm-mi2s-rx-lines = <1>; /* SD0 (1 << 0) */
+			qcom,msm-mi2s-tx-lines = <2>; /* SD1 (1 << 1) */
+			qcom,msm-mi2s-slave = <0>;
+			qcom,msm-mi2s-ext-mclk = <0>;
+			/*pinctrl-names = "default", "idle";
+			pinctrl-0 = <&pri_mi2s_active &pri_mi2s_mclk_active &pri_mi2s_sd0_active &pri_mi2s_sd1_active>;
+			pinctrl-1 = <&pri_mi2s_sleep &pri_mi2s_mclk_sleep &pri_mi2s_sd0_sleep &pri_mi2s_sd1_sleep>;*/
+		};
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_sec_mi2s: qcom,msm-dai-q6-mi2s-sec {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <1>;
+			qcom,msm-mi2s-rx-lines = <2>; /* SD0 (1 << 0) | SD1 (1 << 1) */
+			qcom,msm-mi2s-tx-lines = <0>; /* None */
+			qcom,msm-mi2s-slave = <1>;
+			qcom,msm-mi2s-ext-mclk = <0>;
+			/*pinctrl-names = "default", "idle";
+			pinctrl-0 = <&sec_mi2s_active &sec_mi2s_mclk_active &sec_mi2s_sd0_active &sec_mi2s_sd1_active>;
+			pinctrl-1 = <&sec_mi2s_sleep &sec_mi2s_mclk_sleep &sec_mi2s_sd0_sleep &sec_mi2s_sd1_sleep>;*/
+		};
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_tert_mi2s: qcom,msm-dai-q6-mi2s-tert {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <2>;
+			qcom,msm-mi2s-rx-lines = <2>;
+			qcom,msm-mi2s-tx-lines = <1>;
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&tert_mi2s_active &tert_mi2s_sd0_active &tert_mi2s_sd1_active>;
+			pinctrl-1 = <&tert_mi2s_sleep &tert_mi2s_sd0_sleep &tert_mi2s_sd1_sleep>;
+		};
+	};
+
+	qcom,msm-dai-mi2s {
+		compatible = "qcom,msm-dai-mi2s";
+		dai_quat_mi2s: qcom,msm-dai-q6-mi2s-quat {
+			compatible = "qcom,msm-dai-q6-mi2s";
+			qcom,msm-dai-q6-mi2s-dev-id = <3>;
+			qcom,msm-mi2s-rx-lines = <7>; /* SD0 (1 << 0) | SD1 (1 << 1) | SD2 (1 << 2) */
+			qcom,msm-mi2s-tx-lines = <8>; /* SD2 (1 << 3) */
+			qcom,msm-mi2s-slave = <0>;
+			qcom,msm-mi2s-ext-mclk = <12288000>;
+			/*pinctrl-names = "default", "idle";
+			pinctrl-0 = <&quat_mi2s_active &quat_mi2s_mclk_active &quat_mi2s_sd0_active &quat_mi2s_sd1_active &quat_mi2s_sd2_active &quat_mi2s_sd3_active>;
+			pinctrl-1 = <&quat_mi2s_sleep &quat_mi2s_mclk_sleep &quat_mi2s_sd0_sleep &quat_mi2s_sd1_sleep &quat_mi2s_sd2_sleep &quat_mi2s_sd3_sleep>;*/
+		};
 	};
 
 	ir-remote {
@@ -260,19 +316,17 @@
 };
 
 &i2c_6 {
-	usb_cclogic@28 {
-		compatible = "analogix,ohio";
-		reg = <0x28>;
-		avdd33-supply = <&pm8994_l21>;
-		dvdd_io-supply = <&pm8994_s4>;
-		interrupt-extended = <&tlmm 73 0x3>,<&spmi_bus 0x0 0xd5 0x0>;
-		p-on-gpio = <&tlmm 81 0x0>;
-		reset-gpio = <&pmi8994_gpios 9 0x0>;
-		cbl-det-gpio = <&pm8994_gpios 22 0x0>;
+	usb_cclogic@08 {        /* The I2C bus that CCG2 connected to */
+		status = "ok";
+		compatible = "cypress,cyccg";
+		reg = <0x08>;                    /* CCG2 I2C address: 0x08*/
+		interrupts = <73 0>;            /* CCG2 interrupt line GPIO: 73*/
+		interrupt-parent = <&tlmm>;      /* CCG2 interrupt line GPIO controller */
 		intr-comm-gpio = <&tlmm 73 0x0>;
-		uart-sw-gpio = <&tlmm 132 0x0>;
-		uart-sw2-gpio = <&tlmm 21 0x0>;
+		reset-gpio = <&pmi8994_gpios 9 0x0>;
 		ad-sel-gpio = <&tlmm 25 0x0>;
+		uart-sw-gpio = <&tlmm 132 0x0>;
+		pmi8994_boost_5v-supply = <&pmi8994_boost_5v>;
 	};
 };
 
@@ -290,6 +344,10 @@
 		interrupts = <122 0x00>;
 		irq-gpio = <&tlmm 122 0x00>;
 		reset-gpio = <&tlmm 90 0x00>;
+	};
+
+	nq@28 {
+		status = "disabled";
 	};
 
 	at24@51 {
@@ -329,8 +387,15 @@
 /{
 	mtp_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
-		#include "batterydata-max-plus-3395mah.dtsi"
+		#include "batterydata-le-x2-3200mah.dtsi"
 	};
+};
+
+&pmi8994_charger {
+	qcom,float-voltage-mv = <4400>;
+	qcom,fastchg-current-ma = <4000>;
+	qcom,thermal-mitigation = <4000 3500 3000 2000 500>;
+	qcom,usb-thermal-mitigation = <3400 3000 2000 0>;
 };
 
 &uartblsp2dm1 {
@@ -352,6 +417,45 @@
                                 0x9F 0x1C
                                 0x00 0x18>;
 };
-&spi_11 {
-	status = "disabled";
+
+&usb3 {
+	qcom,usbin-vadc = <&pmi8994_vadc>;
+	qcom,usbtemp-vadc = <&pm8994_vadc>;
+};
+
+&pm8994_vadc {
+	chan@79 {
+		label = "usbtemp";
+		reg = <0x79>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&pm8994_adc_tm {
+	chan@79 {
+		label = "usbtemp";
+		reg = <0x79>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x88>;
+		qcom,thermal-node;
+	};
+};
+
+&soc {
+	qcom,sensor-information {
+		sensor_information36: qcom,sensor-information-36 {
+			qcom,sensor-type = "adc";
+			qcom,sensor-name = "usbtemp";
+		};
+	};
 };
