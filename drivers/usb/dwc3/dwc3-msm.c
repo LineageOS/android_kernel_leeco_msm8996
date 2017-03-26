@@ -2728,6 +2728,53 @@ static int dwc3_cpu_notifier_cb(struct notifier_block *nfb,
 
 static void dwc3_otg_sm_work(struct work_struct *w);
 
+#ifdef MHL_POWER_OUT
+struct platform_device *dwc3_mhl_t;
+struct dwc3_mhl *dwc3_mhl_n;
+
+bool start_init;
+
+int dwc3_otg_set_mhl_power(bool enable)
+{
+       int ret;
+       if (IS_ERR(dwc3_mhl_n->vbus_mhl)) {
+              pr_err("Failed to get dwc3_mhl_t vbus regulator");
+              return -ENODEV;
+       }
+       pr_err("%s: enable: %d\n", __func__, enable);
+       if (enable)
+              ret = regulator_enable(dwc3_mhl_n->vbus_mhl);
+       else
+              ret = regulator_disable(dwc3_mhl_n->vbus_mhl);
+
+       return ret;
+}
+EXPORT_SYMBOL(dwc3_otg_set_mhl_power);
+
+void dwc3_otg_start_mhl_power(void)
+{
+       if (start_init == true) {
+              pr_err("%s: returned caused by start_init == true...\n",
+                            __func__);
+              return;
+       }
+       pr_err("%s:\n", __func__);
+       if (dwc3_mhl_n == NULL) {
+              pr_err("%s: returned caused by dwc3_mhl_n == NULL...\n",
+                            __func__);
+              return;
+              }
+       start_init = true;
+       dwc3_mhl_n->vbus_mhl =
+                     devm_regulator_get(&dwc3_mhl_t->dev, "vbus_dwc3");
+       if (IS_ERR(dwc3_mhl_n->vbus_mhl)) {
+              pr_err("Failed to get dwc3_mhl_t vbus regulator");
+              return;
+       }
+}
+EXPORT_SYMBOL(dwc3_otg_start_mhl_power);
+#endif
+
 static int dwc3_msm_get_clk_gdsc(struct dwc3_msm *mdwc)
 {
 	int ret;
