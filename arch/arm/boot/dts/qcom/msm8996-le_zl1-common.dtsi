@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#include "msm8996-le-common.dtsi"
+
 &spmi_bus {
 	qcom,pmi8994@3 {
 		qcom,leds@d000 {
