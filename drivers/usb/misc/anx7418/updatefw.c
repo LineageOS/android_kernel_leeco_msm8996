@@ -2186,7 +2186,7 @@ static void ProgInit(void)
  */
 static void eeprom_burst_write(unsigned int eeprom_addr, const unsigned char *buf)
 {
-//	unchar c;
+	unchar c = 0;
 
 	/* eeprom address LSBs [7:0] */
 //	WriteReg(0x62, (eeprom_addr & 0xff));
@@ -2215,7 +2215,6 @@ static void eeprom_burst_write(unsigned int eeprom_addr, const unsigned char *bu
 	// wait for write done
 	//	msleep(1);
    	{
-    	unchar c;
     	do {
 			mdelay(1);
 	//		msleep(1);

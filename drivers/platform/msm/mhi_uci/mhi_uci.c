@@ -1073,7 +1073,7 @@ error_dts:
 static void process_rs232_state(struct uci_client *ctrl_client,
 				struct mhi_result *result)
 {
-	struct rs232_ctrl_msg *rs232_pkt;
+	struct rs232_ctrl_msg *rs232_pkt = NULL;
 	struct uci_client *client = NULL;
 	struct mhi_uci_ctxt_t *uci_ctxt = ctrl_client->uci_ctxt;
 	u32 msg_id;

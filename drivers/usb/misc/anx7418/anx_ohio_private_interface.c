@@ -1322,11 +1322,10 @@ u8 sel_voltage_pdo_index = 0x02;
 inline u8 build_rdo_from_source_caps(u8 obj_cnt, u8 *buf)
 {
 	u8 i = 0;
-	u16 pdo_h, pdo_l, pdo_h_tmp, pdo_l_tmp;
+	u16 pdo_h = 0, pdo_l = 0, pdo_h_tmp, pdo_l_tmp;
 	u16 max_request_ma;
-	u32 pdo_max, pdo_max_tmp;
+	u32 pdo_max = 0, pdo_max_tmp = 0;
 
-	pdo_max = 0;
 	obj_cnt &= 0x07;
 
 	/* find the max voltage pdo */
