@@ -1844,21 +1844,16 @@ static void sii6400_mhl_tx_vbus_control(struct sii6400_device_info *devinfo, boo
 
 	err("newstate %d received!VBUS_power_state=%d\n ",
 		power_state, devinfo->vbus_power_state);
+
 	if (power_state == devinfo->vbus_power_state)
 		return;
-	switch (power_state) {
-	case 0:
-		if (!dwc3_otg_set_mhl_power(0))
-			devinfo->vbus_power_state = 0;
-		break;
 
-	case 1:
+	if (power_state) {
 		if (!dwc3_otg_set_mhl_power(1))
 			devinfo->vbus_power_state = 1;
-		break;
-
-	default:
-		break;
+	} else {
+		if (!dwc3_otg_set_mhl_power(0))
+			devinfo->vbus_power_state = 0;
 	}
 }
 #endif

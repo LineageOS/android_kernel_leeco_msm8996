@@ -908,7 +908,7 @@ inline u8 interface_send_msg_timeout(u8 type, u8 *pbuf, u8 len, int timeout_ms)
 		front = tx_buf_front();
 
 		if (front != ((rear + 1 ) % MAX_SEND_BUF_SIZE)) {
-			if (front == front) {
+			if (front) {
 				tmp_len = MAX_SEND_BUF_SIZE - 1;
 			}
 			if (front > rear) {

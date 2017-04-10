@@ -1129,7 +1129,7 @@ static struct device_attribute anx_ohio_device_attrs[] = {
 	__ATTR(wrreg, S_IWUSR, NULL,
 	       anx_ohio_wr_reg),
 	__ATTR(rdoidx, S_IWUSR, NULL,
-	       anx_ohio_wr_reg),
+	       anx_ohio_select_rdo_index),
 	__ATTR(dumpreg, S_IRUGO, anx_ohio_dump_register,
 	       NULL),
 	__ATTR(prole, S_IRUGO, anx_ohio_get_power_role,
@@ -1137,8 +1137,6 @@ static struct device_attribute anx_ohio_device_attrs[] = {
 	__ATTR(drole, S_IRUGO, anx_ohio_get_data_role,
 	       NULL)
 };
-#else
-static struct device_attribute anx_ohio_device_attrs[] = {  };
 #endif
 
 ssize_t anx_ohio_updatefw_cmd(struct device *dev,
@@ -1237,7 +1235,10 @@ static struct device_attribute anx_ohio_cclogic_attrs[] = {
 
 static int create_sysfs_interfaces(struct device *dev)
 {
-	int i,j;
+	int i;
+#ifdef OHIO_DEBUG
+	int j;
+#endif
 	pr_info("ohio create system fs interface ...\n");
 	g_ohio_class = class_create(THIS_MODULE, "cclogic_class");
 	if (IS_ERR(g_ohio_class)) {
@@ -1250,9 +1251,11 @@ static int create_sysfs_interfaces(struct device *dev)
 		if (device_create_file(g_ohio_device, &anx_ohio_cclogic_attrs[i]))
 			goto error;
 
+#ifdef OHIO_DEBUG
 	for (j = 0; j < ARRAY_SIZE(anx_ohio_device_attrs); j++)
 		if (device_create_file(dev, &anx_ohio_device_attrs[j]))
 			goto error;
+#endif
 
 	if (device_create_file(dev, &anx_ohio_updatefw_attrs[0]))
 		goto error;
@@ -1260,10 +1263,12 @@ static int create_sysfs_interfaces(struct device *dev)
 	pr_info("%s: success\n", __func__);
 
 	return 0;
-error:
 
+error:
+#ifdef OHIO_DEBUG
 	for (; j >= 0; j--)
 		device_remove_file(dev, &anx_ohio_device_attrs[j]);
+#endif
 	for (; i >= 0; i--)
 		device_remove_file(dev, &anx_ohio_cclogic_attrs[i]);
 	device_destroy(g_ohio_class, dev->devt);
