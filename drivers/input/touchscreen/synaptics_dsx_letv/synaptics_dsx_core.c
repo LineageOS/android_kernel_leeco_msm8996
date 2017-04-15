@@ -64,7 +64,7 @@
 #define TYPE_B_PROTOCOL
 #endif
 
-#define WAKEUP_GESTURE false
+#define WAKEUP_GESTURE true
 
 #define SYNAPTICS_CLASS_NAME      "synaptics_fp"
 #define TP_STATUS_OK   1
@@ -1017,9 +1017,9 @@ static int synaptics_rmi4_f11_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			return 0;
 
 		if (detected_gestures) {
-			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
+			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, BUTTON_PRESSED);
 			input_sync(rmi4_data->input_dev);
-			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
+			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, BUTTON_RELEASED);
 			input_sync(rmi4_data->input_dev);
 			rmi4_data->suspend = false;
 		}
@@ -1191,9 +1191,9 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		gesture_type = rmi4_data->gesture_detection[0];
 
 		if (gesture_type && gesture_type != F12_UDG_DETECT) {
-			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
+			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, BUTTON_PRESSED);
 			input_sync(rmi4_data->input_dev);
-			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
+			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, BUTTON_RELEASED);
 			input_sync(rmi4_data->input_dev);
 			rmi4_data->suspend = false;
 		}
@@ -3195,10 +3195,13 @@ flash_prog_mode:
 		}
 	}
 
-	if (rmi4_data->f11_wakeup_gesture || rmi4_data->f12_wakeup_gesture)
+	if (rmi4_data->f11_wakeup_gesture || rmi4_data->f12_wakeup_gesture) {
+		pr_info("%s: Wakeup Gestures enabled", __func__);
 		rmi4_data->enable_wakeup_gesture = WAKEUP_GESTURE;
-	else
+	} else {
+		pr_info("%s: Wakeup Gestures disabled", __func__);
 		rmi4_data->enable_wakeup_gesture = false;
+	}
 
 	synaptics_rmi4_set_configured(rmi4_data);
 

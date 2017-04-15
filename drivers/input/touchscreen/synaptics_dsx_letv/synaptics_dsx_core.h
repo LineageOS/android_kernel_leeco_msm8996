@@ -124,6 +124,12 @@
 #define PINCTRL_STATE_SUSPEND   "pmx_ts_suspend"
 #define PINCTRL_STATE_RELEASE   "pmx_ts_release"
 
+enum {
+	BUTTON_RELEASED	= 0,
+	BUTTON_PRESSED	= 1,
+	BUTTON_CANCLED	= 0xff,
+};
+
 enum exp_fn {
 	RMI_DEV = 0,
 	RMI_FW_UPDATER,
