@@ -16,6 +16,7 @@
 #include "msm8996-v3.dtsi"
 #include "msm-pmi8996.dtsi"
 #include "msm8996-le_x2_na-evt.dtsi"
+#include "msm8996-le_x2-common.dtsi"
 
 / {
 	model = "Letv Technologies, Inc. MSM 8996 v3 + PMI8996 LE_X2_NA-EVT";
