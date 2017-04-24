@@ -15,6 +15,7 @@
 
 #include "msm8996-v3.dtsi"
 #include "msm8996-le_x2-pvt.dtsi"
+#include "msm8996-le_x2-common.dtsi"
 
 / {
 	model = "Letv Technologies, Inc. MSM 8996 v3 + PMI8994 LE_X2-PVT";
