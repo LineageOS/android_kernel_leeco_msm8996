@@ -28,6 +28,7 @@
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 
 static DEFINE_PER_CPU(struct od_cpu_dbs_info_s, od_cpu_dbs_info);
+static DEFINE_PER_CPU(struct od_dbs_tuners *, cached_tuners);
 
 static struct od_ops od_ops;
 
