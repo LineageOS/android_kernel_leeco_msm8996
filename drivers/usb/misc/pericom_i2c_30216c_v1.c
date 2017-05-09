@@ -534,6 +534,7 @@ static void pericom_30216c_irq_serice(struct work_struct *work)
 		pi5usb_set_msm_usb_host_mode(false);/*if not simulate disconnect, open*/
         cclogic_updata_port_state(0);/*"cc_state: none"*/
         cclogic_updata_port_polarity(0); /* no typec usb connected*/
+
         if (typec_set_cc_state) {
             pr_info("%s: clear typec_set_cc_state!\n", __func__);
             typec_set_cc_state = false;

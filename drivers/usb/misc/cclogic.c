@@ -25,7 +25,6 @@ static struct mutex typec_headset_lock;
 #define LETV_USB_AUDIO_PID_1  0x1532
 #define LETV_USB_AUDIO_PID_2  0x1534
 #define LETV_USB_AUDIO_PID_3  0x1604
-
 static const struct usb_device_id letv_usb_audio_id[] = {
 	{ USB_DEVICE(LETV_USB_AUDIO_VID, LETV_USB_AUDIO_PID_0) },
 	{ USB_DEVICE(LETV_USB_AUDIO_VID, LETV_USB_AUDIO_PID_1) },
