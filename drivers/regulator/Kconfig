@@ -730,6 +730,12 @@ config REGULATOR_TWL4030
 	  This driver supports the voltage regulators provided by
 	  this family of companion chips.
 
+config REGULATOR_TWL80125
+	tristate "TI TWL80125 PMIC"
+	help
+	  This driver supports the voltage regulators provided by
+	  this family of companion chips.
+
 config REGULATOR_VEXPRESS
 	tristate "Versatile Express regulators"
 	depends on VEXPRESS_CONFIG
@@ -897,12 +903,6 @@ config REGULATOR_KRYO
 	  can be configured for use when certain power constraints are met.
 	  Say yes to support management of LDO and BHS modes for the clusters in the
 	  CPU subsystem.
-
-config REGULATOR_TWL80125
-        bool "TWL80125 regulator driver"
-        depends on OF
-        help
-          CPU subsystem.
 
 endif
 
