@@ -155,7 +155,7 @@ endif # LCD_CLASS_DEVICE
 #
 config BACKLIGHT_CLASS_DEVICE
         tristate "Lowlevel Backlight controls"
-	default m
+	default y
 	help
 	  This framework adds support for low-level control of the LCD
           backlight. This includes support for brightness and power.
@@ -449,6 +449,7 @@ config BACKLIGHT_LM3697
 	  Say Y to enable the backlight driver for TI LM3697.
 	  Up to 3 backlight strings and 11 bit dimming is supported.
 	  PWM brightness control is also supported.
+ 
 
 endif # BACKLIGHT_CLASS_DEVICE
 

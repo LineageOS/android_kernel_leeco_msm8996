@@ -122,6 +122,7 @@ static inline void devm_dual_role_instance_unregister(struct device *dev,
 					       *dual_role){}
 static inline void *dual_role_get_drvdata(struct dual_role_phy_instance
 		*dual_role)
+
 {
 	return ERR_PTR(-ENOSYS);
 }
