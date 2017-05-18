@@ -25,7 +25,6 @@ obj-$(CONFIG_USB_USS720)		+= uss720.o
 obj-$(CONFIG_USB_SEVSEG)		+= usbsevseg.o
 obj-$(CONFIG_USB_YUREX)			+= yurex.o
 obj-$(CONFIG_USB_HSIC_USB3503)		+= usb3503.o
-
 obj-$(CONFIG_USB_SISUSBVGA)		+= sisusbvga/
 obj-$(CONFIG_ANALOGIX_OHIO)             += anx7418/
 obj-$(CONFIG_USB_LINK_LAYER_TEST)	+= lvstest.o
@@ -36,4 +35,3 @@ obj-$(CONFIG_USB_CCLOGIC_PTN5150)	+= ptn5150.o
 obj-$(CONFIG_USB_CCLOGIC_PER30216)	+= pericom_i2c_30216c_v1.o
 obj-$(CONFIG_USB_CCLOGIC_TUSB320)	+= tusb320.o
 obj-$(CONFIG_USB_CCLOGIC)		+= cclogic.o
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
