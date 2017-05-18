@@ -662,12 +662,9 @@ struct xt_table_info *xt_alloc_table_info(unsigned int size)
 	int cpu;
 	size_t sz = sizeof(*newinfo) + size;
 
-<<<<<<< HEAD
-=======
 	if (sz < sizeof(*newinfo))
 		return NULL;
 
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 	/* Pedantry: prevent them from hitting BUG() in vmalloc.c --RR */
 	if ((SMP_ALIGN(size) >> PAGE_SHIFT) + 2 > totalram_pages)
 		return NULL;
