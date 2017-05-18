@@ -49,11 +49,6 @@
 #include <linux/fb.h>
 #include <linux/notifier.h>
 #include <linux/cclogic.h>
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 
 #include "power.h"
 #include "core.h"
@@ -249,10 +244,7 @@ struct dwc3_msm {
 	int			pmic_id_irq;
 	struct qpnp_vadc_chip	*vadc_dev;
 	struct qpnp_vadc_chip	*usb_tm_dev;
-<<<<<<< HEAD
-=======
 	u8			dcd_retries;
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 	struct work_struct	bus_vote_w;
 	unsigned int		bus_vote;
 	u32			bus_perf_client;
@@ -2602,10 +2594,6 @@ static int get_prop_vph_pwr_now(struct dwc3_msm *mdwc)
 	}
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
@@ -2818,13 +2806,8 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_USB_OTG,
-<<<<<<< HEAD
-	POWER_SUPPLY_PROP_LE_USBIN_TEMP,
-	POWER_SUPPLY_PROP_VOLTAGE_NOW,
-=======
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_LE_USBIN_TEMP,
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 	POWER_SUPPLY_PROP_LE_VPH_VOLTAGE,
 };
 
@@ -3485,14 +3468,9 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 
 	if (mdwc->bus_perf_client)
 		msm_bus_scale_unregister_client(mdwc->bus_perf_client);
-<<<<<<< HEAD
-	if (!IS_ERR_OR_NULL(mdwc->vbus_reg))
-		regulator_disable(mdwc->vbus_reg);
-=======
 
 	msm_usb_vbus_set(mdwc, 0, false);
 
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 	disable_irq(mdwc->hs_phy_irq);
 	if (mdwc->ss_phy_irq)
 		disable_irq(mdwc->ss_phy_irq);
@@ -3514,10 +3492,6 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 #define VBUS_REG_CHECK_DELAY	(msecs_to_jiffies(1000))
 #define FLOATED_CHARGER_CHECK_DELAY_3S	   (msecs_to_jiffies(3000))
 #define FLOATED_CHARGER_CHECK_DELAY_5S	   (msecs_to_jiffies(5000))
-<<<<<<< HEAD
-=======
-
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 
 /**
  * dwc3_otg_start_host -  helper function for starting/stoping the host controller driver.
@@ -4162,10 +4136,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 ret:
 	return;
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 extern int cclogic_get_audio_mode(void);
 #ifdef CONFIG_PM_SLEEP
 int usb_vbus_suspend = 0;
@@ -4188,11 +4159,7 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 	ret = dwc3_msm_suspend(mdwc);
 	if (!ret)
 		atomic_set(&mdwc->pm_suspended, 1);
-<<<<<<< HEAD
-	
-=======
 
->>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 	if (mdwc->vbus_on && letv_audio_mode_supported(NULL) &&
 	    cclogic_get_audio_mode() == 0) {
 		_msm_usb_vbus_off(NULL);
