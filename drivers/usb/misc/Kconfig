@@ -258,9 +258,15 @@ config USB_LINK_LAYER_TEST
 	  Link Layer Test for host controllers.
 
 config USB_CCLOGIC
+<<<<<<< HEAD
         bool "USB cc logic"
         help
           This driver is for cc logic chip
+=======
+	bool "USB cc logic"
+	help
+	  This driver is for cc logic chip
+>>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
 
 config USB_CCLOGIC_PI5USB
 	bool "USB cc logic PI5USB"
