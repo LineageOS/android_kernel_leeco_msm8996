@@ -35,8 +35,5 @@ obj-$(CONFIG_USB_CYCCG)	        	+= cyccg.o
 obj-$(CONFIG_USB_CCLOGIC_PTN5150)	+= ptn5150.o
 obj-$(CONFIG_USB_CCLOGIC_PER30216)	+= pericom_i2c_30216c_v1.o
 obj-$(CONFIG_USB_CCLOGIC_TUSB320)	+= tusb320.o
-<<<<<<< HEAD
-obj-$(CONFIG_USB_CCLOGIC)               += cclogic.o
-=======
 obj-$(CONFIG_USB_CCLOGIC)		+= cclogic.o
 >>>>>>> 24eceb333bf43f46f7cc8be69a851474b2df81ed
