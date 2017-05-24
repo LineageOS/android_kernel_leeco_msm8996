@@ -2890,6 +2890,7 @@ void dwc3_otg_start_mhl_power(void)
        }
 }
 EXPORT_SYMBOL(dwc3_otg_start_mhl_power);
+
 #endif
 
 static int dwc3_msm_get_clk_gdsc(struct dwc3_msm *mdwc)
@@ -3284,6 +3285,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mdwc->detect_dpdm_floating = of_property_read_bool(node,
 				"qcom,detect-dpdm-floating");
 
+	mdwc->vbus_set_by_cclogic = of_property_read_bool(node,
+				"qcom,vbus_set_by_cclogic");
+
 	dwc3_set_notifier(&dwc3_msm_notify_event);
 
 	/* Assumes dwc3 is the only DT child of dwc3-msm */
@@ -3489,7 +3493,6 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 #define FLOATED_CHARGER_CHECK_DELAY_3S	   (msecs_to_jiffies(3000))
 #define FLOATED_CHARGER_CHECK_DELAY_5S	   (msecs_to_jiffies(5000))
 
-
 /**
  * dwc3_otg_start_host -  helper function for starting/stoping the host controller driver.
  *
@@ -3597,7 +3600,7 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 			return 0;
 		}
 		dev_dbg(mdwc->dev, "%s: turn off host\n", __func__);
-
+		
 		usb_unregister_atomic_notify(&mdwc->usbdev_nb);
 		if (!IS_ERR(mdwc->vbus_reg))
 			ret = regulator_disable(mdwc->vbus_reg);
@@ -4133,6 +4136,7 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 ret:
 	return;
 }
+
 extern int cclogic_get_audio_mode(void);
 #ifdef CONFIG_PM_SLEEP
 int usb_vbus_suspend = 0;

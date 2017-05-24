@@ -60,6 +60,8 @@
 #define CREATE_TRACE_POINTS
 #include "trace/lowmemorykiller.h"
 
+static uint32_t lmk_count = 0;
+
 static uint32_t lowmem_debug_level = 1;
 static short lowmem_adj[6] = {
 	0,
@@ -654,6 +656,7 @@ module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
 module_param_named(lmk_fast_run, lmk_fast_run, int, S_IRUGO | S_IWUSR);
+module_param_named(lmkcount, lmk_count, uint, S_IRUGO);
 
 module_init(lowmem_init);
 module_exit(lowmem_exit);

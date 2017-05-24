@@ -41,6 +41,11 @@
 #include "clock.h"
 #include "vdd-level-8994.h"
 
+#ifdef CONFIG_PVS_LEVEL_INTERFACE
+static char pvs_level[20] = {0};
+module_param_string(pvs_level, pvs_level, ARRAY_SIZE(pvs_level), S_IRUGO); 
+#endif
+
 enum {
 	APC0_PLL_BASE,
 	APC1_PLL_BASE,
@@ -1331,6 +1336,10 @@ static int cpu_clock_8996_driver_probe(struct platform_device *pdev)
 
 	snprintf(perfclspeedbinstr, ARRAY_SIZE(perfclspeedbinstr),
 			"qcom,perfcl-speedbin%d-v%d", perfclspeedbin, pvs_ver);
+	
+#ifdef CONFIG_PVS_LEVEL_INTERFACE
+	snprintf(pvs_level, ARRAY_SIZE(pvs_level), "%d-v%d", perfclspeedbin, pvs_ver);
+#endif
 
 	ret = of_get_fmax_vdd_class(pdev, &perfcl_clk.c, perfclspeedbinstr);
 	if (ret) {

@@ -4,4 +4,9 @@ config MSM_CLK_CONTROLLER_V2
 	   Generate clock data structures from definitions found in
 	   device tree.
 
+config PVS_LEVEL_INTERFACE
+	bool "Expose PVS level information in sys fs (Boeffla-Kernel)"
+	help
+		Allow PVS level to be shown in Boeffla-Config app
+
 source "drivers/clk/msm/mdss/Kconfig"
