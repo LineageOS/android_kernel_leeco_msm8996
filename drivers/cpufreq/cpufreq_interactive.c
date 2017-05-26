@@ -435,18 +435,6 @@ static u64 update_load(int cpu)
 	return now;
 }
 
-static unsigned int sl_busy_to_laf(struct cpufreq_interactive_policyinfo *ppol,
-				   unsigned long busy)
-{
-	int prev_load;
-	struct cpufreq_interactive_tunables *tunables =
-		ppol->policy->governor_data;
-
-	prev_load = mult_frac(ppol->policy->cpuinfo.max_freq * 100,
-				busy, tunables->timer_rate);
-	return prev_load;
-}
-
 #define NEW_TASK_RATIO 75
 #define PRED_TOLERANCE_PCT 10
 static void __cpufreq_interactive_timer(unsigned long data, bool is_notif)
