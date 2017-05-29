@@ -54,6 +54,8 @@
 #include <linux/writeback.h>
 #include <linux/shm.h>
 
+#include "sched/tune.h"
+
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
 #include <asm/pgtable.h>
@@ -728,11 +730,11 @@ void do_exit(long code)
 
 	exit_signals(tsk);  /* sets PF_EXITING */
 
-	sched_exit(tsk);
-
 	if (tsk->flags & PF_SU) {
 		su_exit();
 	}
+
+	schedtune_exit_task(tsk);
 
 	/*
 	 * tsk->flags are checked in the futex code to protect against

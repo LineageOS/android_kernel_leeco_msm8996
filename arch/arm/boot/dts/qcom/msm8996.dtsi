@@ -20,10 +20,6 @@
 	qcom,pmic-id = <0x20009 0x2000A 0x0 0x0>;
 	interrupt-parent = <&intc>;
 
-	chosen {
-		bootargs = "sched_enable_hmp=1 sched_enable_power_aware=1 app_setting.use_32bit_app_setting=1";
-	};
-
 	aliases {
 		sdhc1 = &sdhc_1; /* SDC1 eMMC slot */
 		sdhc2 = &sdhc_2; /* SDC2 SD card slot */
@@ -60,6 +56,7 @@
 			qcom,limits-info = <&mitigation_profile0>;
 			enable-method = "psci";
 			qcom,ea = <&ea0>;
+			sched-energy-costs = <&CPU_COST_0 &CLUSTER_COST_0>;
 			next-level-cache = <&L2_0>;
 			L2_0: l2-cache {
 			      compatible = "arm,arch-cache";
@@ -82,6 +79,7 @@
 			qcom,limits-info = <&mitigation_profile1>;
 			enable-method = "psci";
 			qcom,ea = <&ea1>;
+			sched-energy-costs = <&CPU_COST_0 &CLUSTER_COST_0>;
 			next-level-cache = <&L2_0>;
 			L1_D_1: l1-dcache {
 				compatible = "arm,arch-cache";
@@ -99,6 +97,7 @@
 			qcom,limits-info = <&mitigation_profile2>;
 			enable-method = "psci";
 			qcom,ea = <&ea2>;
+			sched-energy-costs = <&CPU_COST_1 &CLUSTER_COST_1>;
 			next-level-cache = <&L2_1>;
 			L2_1: l2-cache {
 			      compatible = "arm,arch-cache";
@@ -121,6 +120,7 @@
 			enable-method = "psci";
 			qcom,limits-info = <&mitigation_profile3>;
 			qcom,ea = <&ea3>;
+			sched-energy-costs = <&CPU_COST_1 &CLUSTER_COST_1>;
 			next-level-cache = <&L2_1>;
 			L1_D_101: l1-dcache {
 				compatible = "arm,arch-cache";
@@ -152,6 +152,123 @@
 				};
 			};
 		};
+		energy-costs {
+			CPU_COST_0: core-cost0 {
+				busy-cost-data = <
+					149 90
+					205 121
+					229 142
+					253 164
+					296 198
+					350 239
+					406 306
+					469 371
+					491 430
+					527 486
+					572 541
+					584 586
+					630 651
+					666 732
+					711 827
+					763 925
+					941 1661
+				>;
+				idle-cost-data = <
+			  		2 2 0
+				>;
+			};
+			CPU_COST_1: core-cost1 {
+				busy-cost-data = <
+					149 93
+					197 116
+					229 142
+					253 164
+					296 198
+					350 239
+					372 270
+					400 310
+					445 345
+					495 400
+					527 486
+					572 541
+					598 567
+					630 651
+					666 732
+					711 827
+					743 865
+					780 946
+					812 1040
+					850 1097
+					868 1209
+					914 1311
+					961 1441
+					988 1535
+					1024 1715
+				>;
+				idle-cost-data = <
+				      2 2 0
+				>;
+			};
+			CLUSTER_COST_0: cluster-cost0 {
+				busy-cost-data = <
+					149 4
+					205 4
+					229 4
+					253 4
+					296 4
+					350 8
+					406 9
+					460 16
+					491 21
+					527 22
+					572 29
+					584 32
+					630 42
+					666 49
+					711 41
+					763 52
+					941 67
+				>;
+				idle-cost-data = <
+					0
+					0
+				>;
+			};
+			CLUSTER_COST_1: cluster-cost1 {
+				busy-cost-data = <
+					149 4
+					197 4
+					229 4
+					253 4
+					296 4
+					350 4
+					372 7
+					400 10
+					445 15
+					495 16
+					527 21
+					572 22
+					598 29
+					630 32
+					666 42
+					711 49
+					743 41
+					780 52
+					812 62
+					850 69
+					868 75
+					914 81
+					961 90
+					988 93
+					1024 96
+				>;
+				idle-cost-data = <
+					0
+					0
+				>;
+			};
+		};
+
 	};
 
 	soc: soc { };
