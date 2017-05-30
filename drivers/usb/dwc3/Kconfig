@@ -100,11 +100,19 @@ config USB_DWC3_QCOM
 config USB_DWC3_MSM
 	tristate "DesignWare USB3.0 (DRD) Controller for MSM"
 	depends on ARCH_MSM
-	default USB_DWC3
 	help
 	  Support for DWC3 USB IPs found on Qualcomm MSM/APQ chipset series,
 	  including host, device and dual-role modes of operation.
 	  Say 'Y' or 'M' here if you have one such device
+
+config USB_DWC3_MSM_X2
+        tristate "DesignWare USB3.0 (DRD) Controller for MSM"
+        depends on ARCH_MSM
+        help
+          Support for DWC3 USB IPs found on Qualcomm MSM/APQ chipset series,
+          including host, device and dual-role modes of operation.
+          Say 'Y' or 'M' here if you have one such device
+
 
 comment "Debugging features"
 

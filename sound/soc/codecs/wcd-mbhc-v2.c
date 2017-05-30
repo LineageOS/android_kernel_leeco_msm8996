@@ -1178,7 +1178,11 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	struct snd_soc_codec *codec;
 	enum wcd_mbhc_plug_type plug_type = MBHC_PLUG_TYPE_INVALID;
 	unsigned long timeout;
-	u16 hs_comp_res, btn_result;
+#ifdef CONFIG_PRODUCT_LE_ZL1
+	u16 hs_comp_res, hphl_sch, mic_sch, btn_result;
+#else
+        u16 hs_comp_res, btn_result;
+#endif
 	bool wrk_complete = false;
 	//int pt_gnd_mic_swap_cnt = 0;
 	//int no_gnd_mic_swap_cnt = 0;
@@ -2718,7 +2722,9 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	struct snd_soc_card *card = codec->component.card;
 	const char *hph_switch = "qcom,msm-mbhc-hphl-swh";
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
+#ifdef CONFIG_PRODUCT_LE_X2
 	const char *hph_irq_det = "letv,hph_irq_detect";
+#endif
 
 	pr_debug("%s: enter\n", __func__);
 
