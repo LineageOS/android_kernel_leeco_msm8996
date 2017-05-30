@@ -679,7 +679,7 @@ static inline int get_pm_runtime_counter(struct device *dev)
 static inline int get_pm_runtime_counter(struct device *dev) { return -ENOSYS; }
 #endif
 
-#ifdef CONFIG_USB_DWC3_MSM
+#if defined(CONFIG_USB_DWC3_MSM) || defined(CONFIG_USB_DWC3_MSM_X2)
 int msm_ep_config(struct usb_ep *ep, struct usb_request *request);
 int msm_ep_unconfig(struct usb_ep *ep);
 void dwc3_tx_fifo_resize_request(struct usb_ep *ep, bool qdss_enable);
