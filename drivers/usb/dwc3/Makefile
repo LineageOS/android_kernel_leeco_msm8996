@@ -39,4 +39,5 @@ obj-$(CONFIG_USB_DWC3_PCI)		+= dwc3-pci.o
 obj-$(CONFIG_USB_DWC3_KEYSTONE)		+= dwc3-keystone.o
 obj-$(CONFIG_USB_DWC3_QCOM)		+= dwc3-qcom.o
 obj-$(CONFIG_USB_DWC3_MSM)		+= dwc3-msm.o dbm.o
+obj-$(CONFIG_USB_DWC3_MSM_X2)		+= dwc3-msm-x2.o dbm.o
 obj-$(CONFIG_USB_DWC3_ST)		+= dwc3-st.o

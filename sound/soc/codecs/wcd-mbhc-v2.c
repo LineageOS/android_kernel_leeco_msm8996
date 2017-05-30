@@ -2718,7 +2718,9 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 	struct snd_soc_card *card = codec->component.card;
 	const char *hph_switch = "qcom,msm-mbhc-hphl-swh";
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
+#ifdef CONFIG_PRODUCT_LE_X2
 	const char *hph_irq_det = "letv,hph_irq_detect";
+#endif
 
 	pr_debug("%s: enter\n", __func__);
 
