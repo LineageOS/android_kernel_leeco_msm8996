@@ -392,6 +392,28 @@ config IRQ_TIME_ACCOUNTING
 
 endchoice
 
+config SCHED_WALT
+	bool "Support window based load tracking"
+	depends on SMP
+	depends on FAIR_GROUP_SCHED
+	help
+	  This feature will allow the scheduler to maintain a tunable window
+	  based set of metrics for tasks and runqueues. These metrics can be
+	  used to guide task placement as well as task frequency requirements
+	  for cpufreq governors.
+
+config SCHED_WALT_DEFAULT
+	bool "Use window based load tracking for cpu and task util"
+	depends on SCHED_WALT
+	default N
+	help
+	  If Y, use WALT signals for cpu and task utilization in the
+	  scheduler. This guides task placement and capacity selection for
+	  cpufreq governors.
+	  If N, use the PELT signals for cpu and task utilization.
+
+	  If in doubt, say N here.
+
 config BSD_PROCESS_ACCT
 	bool "BSD Process Accounting"
 	help
@@ -992,6 +1014,23 @@ config RESOURCE_COUNTERS
 	  This option enables controller independent resource accounting
 	  infrastructure that works with cgroups.
 
+config CGROUP_SCHEDTUNE
+	bool "CFS tasks boosting cgroup subsystem (EXPERIMENTAL)"
+	depends on SCHED_TUNE
+	help
+	  This option provides the "schedtune" controller which improves the
+	  flexibility of the task boosting mechanism by introducing the support
+	  to define "per task" boost values.
+
+	  This new controller:
+	  1. allows only a two layers hierarchy, where the root defines the
+	     system-wide boost value and its direct childrens define each one a
+	     different "class of tasks" to be boosted with a different value
+	  2. supports up to 16 different task classes, each one which could be
+	     configured with a different boost value
+
+	  Say N if unsure.
+
 config MEMCG
 	bool "Memory Resource Controller for Control Groups"
 	depends on RESOURCE_COUNTERS
@@ -1155,22 +1194,17 @@ config DEBUG_BLK_CGROUP
 
 endif # CGROUPS
 
-config SCHED_HMP
-	bool "Scheduler support for heterogenous multi-processor systems"
-	depends on SMP && FAIR_GROUP_SCHED
+config PERFORMANCE_CLUSTER_CPU_MASK
+	hex "Performance cluster cpu mask"
+	default 0x0c
 	help
-	  This feature will let the scheduler optimize task placement on
-	  systems made of heterogeneous cpus i.e cpus that differ either
-	  in their instructions per-cycle capability or the maximum
-	  frequency they can attain.
+	   Allows kernel to know performance cluster cpu mask.
 
-config SCHED_HMP_CSTATE_AWARE
-	bool "CPU C-state aware scheduler"
-	depends on SCHED_HMP
+config POWER_CLUSTER_CPU_MASK
+	hex "Power cluster cpu mask"
+	default 0x03
 	help
-	  This feature will let the HMP scheduler optimize task placement
-	  with CPUs C-state. If this is enabled, scheduler places tasks
-	  onto the shallowest C-state CPU among the most power efficient CPUs.
+	   Allows kernel to know power cluster cpu mask.
 
 config SCHED_CORE_CTL
 	bool "QTI Core Control"
@@ -1181,15 +1215,6 @@ config SCHED_CORE_CTL
 	  online cores based on cpu load and utilization.
 
 	  If unsure, say N here.
-
-config SCHED_QHMP
-	bool "QHMP scheduler extensions"
-	depends on SCHED_HMP
-	help
-	  This options enables the QHMP scheduler extensions like
-	  small task classification for task packing, mostly_idle
-	  packing knobs and energy-aware task placements and load
-	  balancing.
 
 config CHECKPOINT_RESTORE
 	bool "Checkpoint/restore support" if EXPERT
@@ -1272,6 +1297,33 @@ config SCHED_AUTOGROUP
 	  of workloads isolates aggressive CPU burners (like build jobs) from
 	  desktop applications.  Task group autogeneration is currently based
 	  upon task session.
+
+config SCHED_TUNE
+	bool "Boosting for CFS tasks (EXPERIMENTAL)"
+	depends on SMP
+	help
+	  This option enables the system-wide support for task boosting.
+	  When this support is enabled a new sysctl interface is exposed to
+	  userspace via:
+	     /proc/sys/kernel/sched_cfs_boost
+	  which allows to set a system-wide boost value in range [0..100].
+
+	  The currently boosting strategy is implemented in such a way that:
+	  - a 0% boost value requires to operate in "standard" mode by
+	    scheduling all tasks at the minimum capacities required by their
+	    workload demand
+	  - a 100% boost value requires to push at maximum the task
+	    performances, "regardless" of the incurred energy consumption
+
+	  A boost value in between these two boundaries is used to bias the
+	  power/performance trade-off, the higher the boost value the more the
+	  scheduler is biased toward performance boosting instead of energy
+	  efficiency.
+
+	  Since this support exposes a single system-wide knob, the specified
+	  boost value is applied to all (CFS) tasks in the system.
+
+	  If unsure, say N.
 
 config SYSFS_DEPRECATED
 	bool "Enable deprecated sysfs features to support old userspace tools"
