@@ -109,6 +109,22 @@ struct cpufreq_policy {
 	 */
 	struct rw_semaphore	rwsem;
 
+
+	/*
+	 * Fast switch flags:
+	 * - fast_switch_possible should be set by the driver if it can
+	 *   guarantee that frequency can be changed on any CPU sharing the
+	 *   policy and that the change will affect all of the policy CPUs then.
+	 * - fast_switch_enabled is to be set by governors that support fast
+	 *   freqnency switching with the help of cpufreq_enable_fast_switch().
+	 */
+	bool                    fast_switch_possible;
+	bool                    fast_switch_enabled;
+
+	/* Cached frequency lookup from cpufreq_driver_resolve_freq. */
+	unsigned int cached_target_freq;
+	int cached_resolved_idx;
+
 	/* Synchronization for frequency transitions */
 	bool			transition_ongoing; /* Tracks transition status */
 	spinlock_t		transition_lock;
@@ -158,6 +174,7 @@ u64 get_cpu_idle_time(unsigned int cpu, u64 *wall, int io_busy);
 int cpufreq_get_policy(struct cpufreq_policy *policy, unsigned int cpu);
 int cpufreq_update_policy(unsigned int cpu);
 bool have_governor_per_policy(void);
+bool cpufreq_driver_is_slow(void);
 struct kobject *get_governor_parent_kobj(struct cpufreq_policy *policy);
 #else
 static inline unsigned int cpufreq_get(unsigned int cpu)
@@ -314,6 +331,14 @@ struct cpufreq_driver {
  * issuing a BUG_ON().
  */
 #define CPUFREQ_NEED_INITIAL_FREQ_CHECK	(1 << 5)
+
+/*
+ * Indicates that it is safe to call cpufreq_driver_target from
+ * non-interruptable context in scheduler hot paths.  Drivers must
+ * opt-in to this flag, as the safe default is that they might sleep
+ * or be too slow for hot path use.
+ */
+#define CPUFREQ_DRIVER_FAST		(1 << 6)
 
 int cpufreq_register_driver(struct cpufreq_driver *driver_data);
 int cpufreq_unregister_driver(struct cpufreq_driver *driver_data);
@@ -476,6 +501,8 @@ int cpufreq_driver_target(struct cpufreq_policy *policy,
 int __cpufreq_driver_target(struct cpufreq_policy *policy,
 				   unsigned int target_freq,
 				   unsigned int relation);
+unsigned int cpufreq_driver_resolve_freq(struct cpufreq_policy *policy,
+					 unsigned int target_freq);
 int cpufreq_register_governor(struct cpufreq_governor *governor);
 void cpufreq_unregister_governor(struct cpufreq_governor *governor);
 
@@ -504,7 +531,44 @@ extern struct cpufreq_governor cpufreq_gov_conservative;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE)
 extern struct cpufreq_governor cpufreq_gov_interactive;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_interactive)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_SCHED)
+extern struct cpufreq_governor cpufreq_gov_sched;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_sched)
+#elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL)
+extern struct cpufreq_governor cpufreq_gov_schedutil;
+#define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_schedutil)
 #endif
+
+static inline void cpufreq_policy_apply_limits(struct cpufreq_policy *policy)
+{
+	if (policy->max < policy->cur)
+		__cpufreq_driver_target(policy, policy->max, CPUFREQ_RELATION_H);
+	else if (policy->min > policy->cur)
+		__cpufreq_driver_target(policy, policy->min, CPUFREQ_RELATION_L);
+}
+
+/* Governor attribute set */
+struct gov_attr_set {
+	struct kobject kobj;
+	struct list_head policy_list;
+	struct mutex update_lock;
+	int usage_count;
+};
+
+/* sysfs ops for cpufreq governors */
+extern const struct sysfs_ops governor_sysfs_ops;
+
+void gov_attr_set_init(struct gov_attr_set *attr_set, struct list_head *list_node);
+void gov_attr_set_get(struct gov_attr_set *attr_set, struct list_head *list_node);
+unsigned int gov_attr_set_put(struct gov_attr_set *attr_set, struct list_head *list_node);
+
+/* Governor sysfs attribute */
+struct governor_attr {
+	struct attribute attr;
+	ssize_t (*show)(struct gov_attr_set *attr_set, char *buf);
+	ssize_t (*store)(struct gov_attr_set *attr_set, const char *buf,
+			 size_t count);
+};
 
 /*********************************************************************
  *                     FREQUENCY TABLE HELPERS                       *
@@ -638,6 +702,19 @@ int cpufreq_generic_init(struct cpufreq_policy *policy,
  *                         CPUFREQ STATS                             *
  *********************************************************************/
 
+#ifdef CONFIG_CPU_FREQ_STAT
+
 void acct_update_power(struct task_struct *p, cputime_t cputime);
 
+#else
+
+static inline void acct_update_power(struct task_struct *p, cputime_t cputime)
+{
+}
+
+#endif
+
+struct sched_domain;
+unsigned long cpufreq_scale_freq_capacity(struct sched_domain *sd, int cpu);
+unsigned long cpufreq_scale_max_freq_capacity(int cpu);
 #endif /* _LINUX_CPUFREQ_H */
