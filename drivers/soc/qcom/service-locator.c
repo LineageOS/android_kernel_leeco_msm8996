@@ -24,7 +24,6 @@
 #include <linux/device.h>
 #include <linux/delay.h>
 #include <linux/workqueue.h>
-#include <linux/debugfs.h>
 
 #include <soc/qcom/msm_qmi_interface.h>
 #include <soc/qcom/service-locator.h>
@@ -65,48 +64,6 @@ struct pd_qmi_data {
 DEFINE_MUTEX(service_init_mutex);
 struct pd_qmi_data service_locator;
 
-/* Please refer soc/qcom/service-locator.h for use about APIs defined here */
-
-static ssize_t show_service_locator_status(struct class *cl,
-						struct class_attribute *attr,
-						char *buf)
-{
-	return scnprintf(buf, PAGE_SIZE, "%x\n", locator_status);
-}
-
-static ssize_t store_service_locator_status(struct class *cl,
-						struct class_attribute *attr,
-						const char *buf, size_t size)
-{
-	u32 val;
-
-	if (kstrtos32(buf, 10, &val) < 0)
-		goto err;
-	if (val != LOCATOR_NOT_PRESENT && val != LOCATOR_PRESENT)
-		goto err;
-
-	mutex_lock(&service_init_mutex);
-	locator_status = val;
-	complete_all(&locator_status_known);
-	mutex_unlock(&service_init_mutex);
-	return size;
-err:
-	pr_err("Invalid input parameters\n");
-	return -EINVAL;
-}
-
-static struct class_attribute service_locator_class_attr[] = {
-	__ATTR(service_locator_status, S_IRUGO | S_IWUSR,
-			show_service_locator_status,
-			store_service_locator_status),
-	__ATTR_NULL,
-};
-
-static struct class service_locator_class  = {
-	.name = "service_locator",
-	.owner = THIS_MODULE,
-	.class_attrs = service_locator_class_attr,
-};
 
 static int service_locator_svc_event_notify(struct notifier_block *this,
 				      unsigned long code,
