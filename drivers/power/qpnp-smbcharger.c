@@ -10072,7 +10072,9 @@ static int smbchg_probe(struct spmi_device *spmi)
 
 	rerun_hvdcp_det_if_necessary(chip);
 
+#if !defined(CONFIG_PRODUCT_LE_X2) && !defined(CONFIG_PRODUCT_LE_ZL1)
 	update_usb_status(chip, is_usb_present(chip), false);
+#endif
 	dump_regs(chip);
 	create_debugfs_entries(chip);
 	dev_info(chip->dev,
