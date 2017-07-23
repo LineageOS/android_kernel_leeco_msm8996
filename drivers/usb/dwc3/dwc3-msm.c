@@ -44,6 +44,8 @@
 #include <linux/clk/msm-clk.h>
 #include <linux/msm-bus.h>
 #include <linux/irq.h>
+#include <linux/fb.h>
+#include <linux/cclogic.h>
 
 #include "power.h"
 #include "core.h"
@@ -2865,6 +2867,38 @@ static int dwc3_msm_get_clk_gdsc(struct dwc3_msm *mdwc)
 	return 0;
 }
 
+static int usbheadset_resume_pm_event(struct notifier_block *notifier,
+	   unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	struct dwc3_msm *mdwc = _msm_dwc;
+	ktime_t start, diff;
+	typec_port_state port_state;
+
+	if (!mdwc)
+		return 0;
+
+	start = ktime_get();
+
+	port_state = cclogic_get_port_state();
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
+		if (mdwc->in_host_mode && !mdwc->vbus_on && (TYPEC_PORT_DFP == port_state))
+			_msm_usb_vbus_on(NULL);
+	}
+
+	diff = ktime_sub(ktime_get(), start);
+	if (ktime_to_ms(diff) > 1000)
+		printk(KERN_EMERG "usbheadset_resume_pm_event timeout \
+		       %d ms\n", (int)ktime_to_ms(diff));
+
+	return 0;
+}
+
+static struct notifier_block usbheadset_pm_resume_notifier_block = {
+	.notifier_call = usbheadset_resume_pm_event,
+};
+
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node, *dwc3_node;
@@ -2882,6 +2916,15 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mdwc = devm_kzalloc(&pdev->dev, sizeof(*mdwc), GFP_KERNEL);
 	if (!mdwc)
 		return -ENOMEM;
+#ifdef MHL_POWER_OUT
+	dwc3_mhl_n = kzalloc(sizeof(struct dwc3_mhl), GFP_KERNEL);
+	if (!dwc3_mhl_n) {
+		dev_err(&pdev->dev, "not enough memory to dwc3_mhl_n\n");
+		return -ENOMEM;
+	}
+
+	dwc3_mhl_t = pdev;
+#endif
 
 	if (dma_set_mask_and_coherent(dev, DMA_BIT_MASK(64))) {
 		dev_err(&pdev->dev, "setting DMA mask to 64 failed.\n");
@@ -3120,6 +3163,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mdwc->disable_host_mode_pm = of_property_read_bool(node,
 				"qcom,disable-host-mode-pm");
 
+	mdwc->vbus_set_by_cclogic = of_property_read_bool(node,
+				"qcom,vbus_set_by_cclogic");
+
 	mdwc->detect_dpdm_floating = of_property_read_bool(node,
 				"qcom,detect-dpdm-floating");
 
@@ -3214,6 +3260,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	device_init_wakeup(mdwc->dev, 1);
 	pm_stay_awake(mdwc->dev);
+	fb_register_client(&usbheadset_pm_resume_notifier_block);
 
 	if (of_property_read_bool(node, "qcom,disable-dev-mode-pm"))
 		pm_runtime_get_noresume(mdwc->dev);
@@ -3918,7 +3965,9 @@ ret:
 	return;
 }
 
+extern int cclogic_get_audio_mode(void);
 #ifdef CONFIG_PM_SLEEP
+extern int letv_audio_mode_supported(void *data);
 static int dwc3_msm_pm_suspend(struct device *dev)
 {
 	int ret = 0;
@@ -3938,6 +3987,11 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 	if (!ret)
 		atomic_set(&mdwc->pm_suspended, 1);
 
+	if (mdwc->vbus_on && letv_audio_mode_supported(NULL) &&
+	    cclogic_get_audio_mode() == 0) {
+		_msm_usb_vbus_off(NULL);
+		mdelay(300);
+	}
 	return ret;
 }
 
