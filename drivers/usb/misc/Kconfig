@@ -257,11 +257,6 @@ config USB_LINK_LAYER_TEST
 	  Layer Test Device. Say Y only when you want to conduct USB Super Speed
 	  Link Layer Test for host controllers.
 
-config USB_CCLOGIC
-	bool "USB cc logic"
-	help
-	  This driver is for cc logic chip
-
 config USB_CCLOGIC_PI5USB
 	bool "USB cc logic PI5USB"
 	help

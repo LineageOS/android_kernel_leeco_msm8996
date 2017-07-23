@@ -316,7 +316,6 @@ struct device_node *of_batterydata_get_best_profile(
 {
 	struct batt_ids batt_ids;
 	struct device_node *node, *best_node = NULL;
-	struct device_node *default_node = NULL;
 	struct power_supply *psy;
 	const char *battery_type = NULL;
 	union power_supply_propval ret = {0, };
@@ -337,7 +336,6 @@ struct device_node *of_batterydata_get_best_profile(
 	}
 
 	batt_id_kohm = ret.intval / 1000;
-	pr_info("battery_id_ohm : %d (kohm) \n",batt_id_kohm);
 
 	/* read battery id range percentage for best profile */
 	rc = of_property_read_u32(batterydata_container_node,
@@ -352,7 +350,6 @@ struct device_node *of_batterydata_get_best_profile(
 		}
 	}
 
-	default_node = of_get_next_child(batterydata_container_node, NULL);
 	/*
 	 * Find the battery data with a battery id resistor closest to this one
 	 */
@@ -390,23 +387,19 @@ struct device_node *of_batterydata_get_best_profile(
 		}
 	}
 
-	if (best_node == NULL ) {
-		if(default_node != NULL) {
-			best_node = default_node;
-			pr_info("No battery data found,use default battery data\n");
-		}else {
-			pr_err("No battery data found\n");
-			return best_node;
-		}
-	}else {
-		/* check that profile id is in range of the measured batt_id */
-		if (abs(best_id_kohm - batt_id_kohm) >
-				((best_id_kohm * id_range_pct) / 100)) {
-			pr_err("out of range: profile id %d batt id %d pct %d",
-				best_id_kohm, batt_id_kohm, id_range_pct);
-			return NULL;
-		}
+	if (best_node == NULL) {
+		pr_err("No battery data found\n");
+		return best_node;
 	}
+
+	/* check that profile id is in range of the measured batt_id */
+	if (abs(best_id_kohm - batt_id_kohm) >
+			((best_id_kohm * id_range_pct) / 100)) {
+		pr_err("out of range: profile id %d batt id %d pct %d",
+			best_id_kohm, batt_id_kohm, id_range_pct);
+		return NULL;
+	}
+
 	rc = of_property_read_string(best_node, "qcom,battery-type",
 							&battery_type);
 	if (!rc)
@@ -442,7 +435,6 @@ int of_batterydata_read_data(struct device_node *batterydata_container_node,
 	/*
 	 * Find the battery data with a battery id resistor closest to this one
 	 */
-	best_node = of_get_next_child(batterydata_container_node, NULL);
 	for_each_child_of_node(batterydata_container_node, node) {
 		rc = of_batterydata_read_batt_id_kohm(node,
 						"qcom,batt-id-kohm",

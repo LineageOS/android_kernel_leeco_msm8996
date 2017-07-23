@@ -799,16 +799,8 @@ static int set_config(struct usb_composite_dev *cdev,
 	     usb_speed_string(gadget->speed),
 	     number, c ? c->label : "unconfigured");
 
-	if (!c) {
-		if (strncmp(g_boot_mode, "charger", 7) == 0) {
-			/* Allow 900mA to draw with Super-Speed */
-			if (gadget->speed == USB_SPEED_SUPER)
-				power = SSUSB_GADGET_VBUS_DRAW;
-			else
-				power = CONFIG_USB_GADGET_VBUS_DRAW;
-		}
+	if (!c)
 		goto done;
-	}
 
 	usb_gadget_set_state(gadget, USB_STATE_CONFIGURED);
 	cdev->config = c;
