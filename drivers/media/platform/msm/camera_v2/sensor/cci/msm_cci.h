@@ -124,6 +124,7 @@ struct msm_camera_cci_master_info {
 	struct mutex mutex_q[NUM_QUEUES];
 	struct completion report_q[NUM_QUEUES];
 	atomic_t done_pending[NUM_QUEUES];
+	spinlock_t lock_q[NUM_QUEUES];
 };
 
 struct msm_cci_clk_params_t {
