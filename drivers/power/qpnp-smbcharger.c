@@ -254,6 +254,14 @@ struct smbchg_chip {
 	struct work_struct		usb_set_online_work;
 	struct delayed_work		vfloat_adjust_work;
 	struct delayed_work		hvdcp_det_work;
+#ifdef CONFIG_VENDOR_LEECO
+	struct delayed_work	    	letv_pd_set_vol_cur_work;
+	struct delayed_work		pd_charger_init_work;
+	struct delayed_work	    	first_detect_float_work;
+	struct delayed_work		weak_charger_timeout_work;
+	struct delayed_work		batt_cool_warm_monitor;
+	struct delayed_work		vbus_monitor;
+#endif
 	spinlock_t			sec_access_lock;
 	struct mutex			therm_lvl_lock;
 	struct mutex			usb_set_online_lock;
@@ -475,6 +483,38 @@ module_param_named(
 	wipower_dcin_hyst_uv, wipower_dcin_hyst_uv,
 	int, S_IRUSR | S_IWUSR
 );
+
+#ifdef CONFIG_VENDOR_LEECO
+enum le_pd_type {
+	LE_PD_TYPE_UNKNOWN = 0,
+	LE_PD_TYPE_EV_24ACN,
+	LE_PD_TYPE_EV_24AEU,
+	LE_PD_TYPE_EV_24AIN,
+	LE_PD_TYPE_EV_24AUK,
+};
+
+struct le_pd_type_info {
+	const char* name;
+	int type;
+	u32 ver;
+};
+
+static struct le_pd_type_info le_pd_type_val[] = {
+	{ "EV_24ACN", LE_PD_TYPE_EV_24ACN, 0x1121 },
+	{ "EV_24AEU", LE_PD_TYPE_EV_24AEU, 0x1221 },
+	{ "EV_24AIN", LE_PD_TYPE_EV_24AIN, 0x1321 },
+	{ "EV_24AUK", LE_PD_TYPE_EV_24AUK, 0x1421 },
+	{ NULL, LE_PD_TYPE_UNKNOWN, 0 },
+};
+
+extern void letv_pd_set_adjust_charger_parameter(int voltage, int mA);
+static int le_pd_type_flag = 0;
+static int pd_init_ma = 0;
+struct smbchg_chip *pd_smbchg_chip;
+static bool delay_pd_state = false;
+static int pd_det_flag = 0;
+static int pd_init_voltage = 0;
+#endif
 
 #define pr_smb(reason, fmt, ...)				\
 	do {							\
@@ -1142,6 +1182,69 @@ static int get_prop_batt_voltage_now(struct smbchg_chip *chip)
 	return uv;
 }
 
+#ifdef CONFIG_VENDOR_LEECO
+int get_charger_charging_current(void)
+{
+	int cur;
+	if (!pd_smbchg_chip)
+		return -1;
+	cur = (get_prop_batt_current_now(pd_smbchg_chip)) / 1000;
+	return cur;
+}
+EXPORT_SYMBOL(get_charger_charging_current);
+
+int get_battery_voltage(void)
+{
+	int vol;
+	if (!pd_smbchg_chip)
+		return -1;
+	vol = get_prop_batt_voltage_now(pd_smbchg_chip) / 1000;
+	return vol;
+}
+EXPORT_SYMBOL(get_battery_voltage);
+
+int get_charging_status(void)
+{
+	int charging_type;
+
+	if (!pd_smbchg_chip)
+		return -1;
+
+	if (get_prop_batt_status(pd_smbchg_chip)
+			== POWER_SUPPLY_STATUS_CHARGING) {
+		charging_type = get_prop_charge_type(pd_smbchg_chip);
+		printk("charging type=");
+		switch (charging_type)
+		{
+		case POWER_SUPPLY_CHARGE_TYPE_NONE:
+			printk("none charger");
+			break;
+		case POWER_SUPPLY_CHARGE_TYPE_TAPER:
+			printk("taper charger");
+			break;
+		case POWER_SUPPLY_CHARGE_TYPE_FAST:
+			printk("fast charger");
+			break;
+		case POWER_SUPPLY_CHARGE_TYPE_TRICKLE:
+			printk("trickle charger");
+			break;
+		default:
+			break;
+		}
+	} else if (get_prop_batt_status(pd_smbchg_chip)
+			== POWER_SUPPLY_STATUS_FULL) {
+		charging_type = 5;
+		printk("full charger,");
+	} else {
+		charging_type = 0;
+		printk("not charging,");
+	}
+	printk(" = ");
+	return charging_type;
+}
+EXPORT_SYMBOL(get_charging_status);
+#endif
+
 #define DEFAULT_BATT_VOLTAGE_MAX_DESIGN	4200000
 static int get_prop_batt_voltage_max_design(struct smbchg_chip *chip)
 {
@@ -1423,6 +1526,61 @@ static const int aicl_rerun_period_schg_lite[] = {
 	180,
 	360,
 };
+
+#ifdef CONFIG_VENDOR_LEECO
+static const int Vol_raw[] = {
+	3000,
+	3200,
+	3400,
+	3600,
+	3800,
+	4000,
+	4200,
+	4400,
+	4600,
+	4800,
+	5000,
+	5200,
+	5400,
+	5600,
+	5800,
+	6000,
+	6200,
+	6400,
+	6600,
+	6800,
+	7000,
+	7200,
+	7400,
+	7600,
+	7800,
+	8000,
+	8200,
+	8400,
+	8600,
+	8800,
+	9000,
+};
+
+static const int mA_raw[] = {
+	0,
+	2000,
+	2200,
+	2400,
+	2600,
+	2800,
+	3000,
+	3200,
+	3400,
+	3600,
+	3800,
+	4000,
+	4200,
+	4400,
+	4600,
+	4800,
+};
+#endif
 
 static void use_pmi8994_tables(struct smbchg_chip *chip)
 {
@@ -8424,6 +8582,84 @@ static void rerun_hvdcp_det_if_necessary(struct smbchg_chip *chip)
 		}
 	}
 }
+
+#ifdef CONFIG_VENDOR_LEECO
+/*
+  *This function called by pd for notice charger voltage and mA
+  */
+#define PD_CHARGER_INIT_WORK_DELAY 7000
+int letv_pd_notice_charger_in_parameter(int voltage, int mA)
+{
+	int i;
+
+	pr_smb(PR_STATUS, "pd detected: vol: %d, cur: %d\n", voltage, mA);
+	i = find_smaller_in_array(Vol_raw,
+			voltage, ARRAY_SIZE(Vol_raw));
+	if (i < 0) {
+		pr_err("voltage set by pd is error\n");
+		goto out;
+	}
+	pd_init_voltage = voltage;
+
+	i = find_smaller_in_array(mA_raw,
+			mA, ARRAY_SIZE(mA_raw));
+	if (i < 0) {
+		pr_err("current set by pd is error\n");
+		goto out;
+	}
+	pd_init_ma = mA;
+
+	if (NULL == pd_smbchg_chip) {
+		pr_smb(PR_STATUS, "pd insert but charger not reday, return\n");
+		delay_pd_state = true;
+		return 0;
+	}
+
+	pd_det_flag = 1;
+	schedule_delayed_work(
+		&pd_smbchg_chip->pd_charger_init_work,
+		msecs_to_jiffies(PD_CHARGER_INIT_WORK_DELAY));
+
+	return 0;
+out:
+	le_pd_type_flag = 0;
+	pd_init_voltage = 0;
+	pd_init_ma = 0;
+	return -1;
+}
+EXPORT_SYMBOL(letv_pd_notice_charger_in_parameter);
+
+/*
+  *function for letv pd notice charger pd version and
+  *start adjusting voltage work.
+  */
+int letv_pd_notice_ver_just_vol(unsigned char *pd_ver, int size)
+{
+	int i, length;
+	u32 pd_version = ((u32)pd_ver[0] << 24) |
+				((u32)pd_ver[1] << 16) |
+				((u32)pd_ver[2] << 8) |
+				(u32)pd_ver[3];
+
+	length = sizeof(le_pd_type_val)/sizeof(le_pd_type_val[0]);
+	for (i = 0; le_pd_type_val[i].name; i++) {
+		if (pd_version == le_pd_type_val[i].ver) {
+			le_pd_type_flag = le_pd_type_val[i].type;
+			pr_smb(PR_STATUS, "le pd type: %d\n", le_pd_type_flag);
+			break;
+		}
+		else
+			continue;
+	}
+	if (i == (length-1)) {
+		pr_smb(PR_STATUS, "notice charger is not leshi pd\n");
+		le_pd_type_flag = 0;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(letv_pd_notice_ver_just_vol);
+#endif
 
 static int smbchg_probe(struct spmi_device *spmi)
 {

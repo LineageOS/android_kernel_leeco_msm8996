@@ -44,6 +44,10 @@
 #include <linux/clk/msm-clk.h>
 #include <linux/msm-bus.h>
 #include <linux/irq.h>
+#ifdef CONFIG_VENDOR_LEECO
+#include <linux/fb.h>
+#include <linux/cclogic.h>
+#endif
 
 #include "power.h"
 #include "core.h"
@@ -58,6 +62,10 @@
 
 #define MICRO_5V    5000000
 #define MICRO_9V    9000000
+
+#ifdef CONFIG_VENDOR_LEECO
+static struct dwc3_msm *_msm_dwc;
+#endif
 
 /* AHB2PHY register offsets */
 #define PERIPH_SS_AHB2PHY_TOP_CFG 0x10
@@ -275,6 +283,11 @@ struct dwc3_msm {
 	struct pm_qos_request   pm_qos_req_dma;
 	struct delayed_work     perf_vote_work;
 	enum dwc3_perf_mode	curr_mode;
+
+#ifdef CONFIG_VENDOR_LEECO
+	bool			vbus_set_by_cclogic;
+	int			vbus_on;
+#endif
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -2446,6 +2459,71 @@ static void dwc3_pwr_event_handler(struct dwc3_msm *mdwc)
 	dwc3_msm_write_reg(mdwc->base, PWR_EVNT_IRQ_STAT_REG, irq_clear);
 }
 
+#ifdef CONFIG_VENDOR_LEECO
+static int _msm_usb_vbus_on(struct dwc3_msm *_mdwc)
+{
+	struct dwc3_msm	*mdwc = (_mdwc ? _mdwc : _msm_dwc);
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(mdwc))
+		return -ENODEV;
+
+	if (!IS_ERR_OR_NULL(mdwc->vbus_reg) && !mdwc->vbus_on) {
+		ret = regulator_enable(mdwc->vbus_reg);
+		dev_info(mdwc->dev, "VBUS ON\n");
+	}
+
+	if (!ret)
+		mdwc->vbus_on = 1;
+	else
+		dev_info(mdwc->dev, "VBUS ON FAILED %d\n", ret);
+
+	return 0;
+}
+
+static int _msm_usb_vbus_off(struct dwc3_msm *_mdwc)
+{
+	struct dwc3_msm	*mdwc = (_mdwc ? _mdwc : _msm_dwc);
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(mdwc))
+		return -ENODEV;
+
+	if (!IS_ERR_OR_NULL(mdwc->vbus_reg) && mdwc->vbus_on) {
+		ret = regulator_disable(mdwc->vbus_reg);
+		dev_info(mdwc->dev, "VBUS OFF\n");
+	}
+
+	if (!ret)
+		mdwc->vbus_on = 0;
+	else
+		dev_info(mdwc->dev, "VBUS OFF FAILED %d\n", ret);
+
+	return 0;
+
+}
+
+int msm_usb_vbus_set(struct dwc3_msm *_mdwc, bool on, bool ext_call)
+{
+	struct dwc3_msm *mdwc = (_mdwc ? _mdwc : _msm_dwc);
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(mdwc))
+		return -ENODEV;
+
+	if ((ext_call ^ mdwc->vbus_set_by_cclogic))
+		return 0;
+
+	if (on)
+		ret = _msm_usb_vbus_on(mdwc);
+	else
+		ret = _msm_usb_vbus_off(mdwc);
+
+	return ret;
+}
+EXPORT_SYMBOL(msm_usb_vbus_set);
+#endif
+
 static irqreturn_t msm_dwc3_pwr_irq_thread(int irq, void *_mdwc)
 {
 	struct dwc3_msm *mdwc = _mdwc;
@@ -2462,6 +2540,49 @@ static irqreturn_t msm_dwc3_pwr_irq_thread(int irq, void *_mdwc)
 
 	return IRQ_HANDLED;
 }
+
+#ifdef CONFIG_VENDOR_LEECO
+int pi5usb_set_msm_usb_host_mode(bool mode)
+{
+        struct dwc3_msm *mdwc = NULL;
+        struct dwc3 *dwc = NULL;
+
+        if (NULL == _msm_dwc)
+                return -ENODEV;
+
+        mdwc = _msm_dwc;
+        dwc = platform_get_drvdata(mdwc->dwc3);
+
+        dev_err(mdwc->dev, "%s = %s_mode.\n", __func__, mode?"host":"device");
+
+        if (mode) {
+                /* host mode:bsv=0,id=0 */
+                //mdwc->ext_xceiv.id = false;
+		mdwc->id_state = DWC3_ID_GROUND;
+        } else {
+                /* device mode:bsv=1,id=1 */
+                //mdwc->ext_xceiv.id = true;
+		mdwc->id_state = DWC3_ID_FLOAT;
+
+        }
+
+        if (atomic_read(&dwc->in_lpm)) {
+                dev_dbg(mdwc->dev, "%s: calling resume_work\n", __func__);
+        	dwc3_resume_work(&mdwc->resume_work.work);
+        } else {
+                dev_dbg(mdwc->dev, "%s: notifying xceiv event\n", __func__);
+                //if (mdwc->otg_xceiv)
+                //        mdwc->ext_xceiv.notify_ext_events(mdwc->otg_xceiv->otg,
+                //                                        DWC3_EVENT_XCEIV_STATE);
+
+		dwc3_ext_event_notify(mdwc);
+
+        }
+
+        return mode;
+}
+EXPORT_SYMBOL(pi5usb_set_msm_usb_host_mode);
+#endif
 
 static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 {

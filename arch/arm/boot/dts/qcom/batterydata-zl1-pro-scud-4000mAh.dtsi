@@ -1,0 +1,52 @@
+qcom,letv_zl1_scud_4000mah {
+	qcom,fcc-mah = <4000>;
+	qcom,chg-term-ua = <170000>;
+
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <4000>;
+	qcom,batt-id-kohm = <10>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "letv_zl1_scud";
+	qcom,chg-rslow-comp-c1 = <2730925>;
+	qcom,chg-rslow-comp-c2 = <2908456>;
+	qcom,chg-rs-to-rslow = <757130>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0x017A>;
+	qcom,gui-version = "PMI8996GUI - 1.1.0.0";
+
+	qcom,fg-profile-data = [
+		 E3 83 DE 7C
+		 1C 81 3F 77
+		 5B 83 A4 67
+		 FB 83 E0 8E
+		 6C 82 D8 93
+		 6E B5 0C C1
+		 52 17 11 88
+		 DB 7E 89 82
+		 F1 7C 4C 83
+		 82 71 F1 6E
+		 26 74 54 82
+		 77 99 B7 BC
+		 87 C9 5E 0D
+		 DD 0F CA 59
+		 14 70 EE FC
+		 F7 37 5F 3C
+		 3F 21 00 00
+		 9D 45 D9 33
+		 3E 2D 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 43 6A E4 68
+		 75 71 8B 83
+		 90 6F E8 62
+		 F4 4B 9E 79
+		 87 6D 60 60
+		 82 75 7E 99
+		 1A 95 61 88
+		 5F A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
+

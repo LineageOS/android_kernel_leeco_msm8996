@@ -1,0 +1,4 @@
+#include "msm8996-le_zl1-dvt1.dtsi"
+
+/* Add PVT different HW configs below */
+

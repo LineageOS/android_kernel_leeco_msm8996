@@ -1,0 +1,17 @@
+#include "msm8996-le_x2_na-dvt1.dtsi"
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_cmd>;
+	vddio-supply = <&pm8994_l14>;
+	qcom,platform-te-gpio = <&tlmm 97 0>;
+	qcom,platform-reset-gpio = <&tlmm 24 0>;
+	/delete-property/ qcom,platform-bklight-en-gpio;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_cmd>;
+	vddio-supply = <&pm8994_l14>;
+	qcom,platform-te-gpio = <&tlmm 97 0>;
+	qcom,platform-reset-gpio = <&tlmm 24 0>;
+	/delete-property/ qcom,platform-bklight-en-gpio;
+};

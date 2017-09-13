@@ -1,0 +1,339 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/delete-node/ &firmware;
+
+&peripheral_mem {
+	/delete-property/ reg;
+	reg = <0 0x8ea00000 0 0x2b00000>;
+};
+
+/ {
+	aliases {
+		i2c9 = &i2c_9;
+		i2c11 = &i2c_11;
+	};
+
+	reserved-memory {
+		ramoops_mem: ramoops_region@91500000 {
+			compatible = "shared-dma-pool";
+			no-map;
+			reg = <0 0x91500000 0 0x00100000>;
+			label = "ramoops_mem";
+		};
+	};
+
+	firmware: firmware {
+		android {
+			compatible = "android,firmware";
+			fstab {
+				compatible = "android,fstab";
+				 system {
+					compatible = "android,system";
+					dev = "/dev/block/platform/soc/624000.ufshc/by-name/system";
+					type = "ext4";
+					mnt_flags = "ro,barrier=1,discard";
+					fsmgr_flags = "wait";
+					status = "ok";
+				};
+
+			};
+		};
+	};
+};
+
+&soc {
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+		android,ramoops-buffer-start = <0x91500000>;
+		android,ramoops-buffer-size =  <0x100000>;
+		android,ramoops-console-size = <0x60000>;
+		android,ramoops-record-size = <0x10000>;
+		android,ramoops-ftrace-size = <0x10000>;
+		android,ramoops-pmsg-size = <0x20000>;
+		android,ramoops-dump-oops = <0x1>;
+		memory-region = <&ramoops_mem>;
+	};
+
+	i2c_9: i2c@75b7000 { /* BLSP2 QUP2 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x75b7000 0x1000>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 103 0>;
+		dmas = <&dma_blsp2 16 32 0x20000020 0x20>,
+			<&dma_blsp2 17 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <84>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup3_i2c_apps_clk>;
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_9_active>;
+		pinctrl-1 = <&i2c_9_sleep>;
+	};
+
+	i2c_11: i2c@75b9000 {/* BLSP2 QUP4 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x75b9000 0x1000>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 105 0>;
+		dmas = <&dma_blsp2 20 64 0x20000020 0x20>,
+			<&dma_blsp2 21 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <84>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup5_i2c_apps_clk>;
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_11_active>;
+		pinctrl-1 = <&i2c_11_sleep>;
+	};
+
+	spi_11: spi@75B9000 { /* BLSP2 QUP5 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x075B9000 0x600>,
+			  <0x07584000 0x2b000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 105 0>, <0 239 0>;
+		spi-max-frequency = <35000000>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <20>;
+		qcom,bam-producer-pipe-index = <21>;
+		qcom,master-id = <84>;
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_11_mosi_active &spi_11_miso_active &spi_11_cs1_clk_active>;
+		pinctrl-1 = <&spi_11_mosi_sleep &spi_11_miso_sleep &spi_11_cs1_clk_sleep>;
+
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup5_spi_apps_clk>;
+	};
+
+	qcom,sensor-information {
+		sensor_information36: qcom,sensor-information-36 {
+			qcom,sensor-type =  "adc";
+			qcom,sensor-name = "xo_therm_buf";
+		};
+		sensor_information37: qcom,sensor-information-37 {
+			qcom,sensor-type =  "adc";
+			qcom,sensor-name = "battery";
+		};
+	};
+
+	qcom,msm-imem@66bf000 {
+		dload-type@1c {
+			compatible = "qcom,msm-imem-dload-type";
+			reg = <0x1c 4>;
+		};
+
+		sleep_light@b38 {
+			compatible = "qcom,msm-imem-sleep_light";
+			reg = <0xb38 8>;
+		};
+	};
+
+};
+
+&i2c_8 {
+	qcom,disable-dma = <1>;
+};
+
+&tlmm {
+		i2c_9 {
+			i2c_9_active: i2c_9_active {
+				mux {
+					pins = "gpio51", "gpio52";
+					function = "blsp_i2c9";
+				};
+	
+				config {
+					pins = "gpio51", "gpio52";
+					drive-strength = <2>;
+					bias-disable;
+				};
+			};
+	
+			i2c_9_sleep: i2c_9_sleep {
+				mux {
+					pins = "gpio51", "gpio52";
+					function = "blsp_i2c9";
+				};
+	
+				config {
+					pins = "gpio51", "gpio52";
+					drive-strength = <2>;
+					bias-disable;
+				};
+			};
+		};
+	
+		i2c_11 {
+				i2c_11_active: i2c_11_active {
+				mux {
+					pins = "gpio60", "gpio61";
+					function = "blsp_i2c11";
+				};
+	
+				config {
+					pins = "gpio60", "gpio61";
+					drive-strength = <2>;
+					bias-disable;
+				};
+			};
+	
+			i2c_11_sleep: i2c_11_sleep {
+				mux {
+					pins = "gpio60", "gpio61";
+					function = "blsp_i2c11";
+				};
+	
+				config {
+					pins = "gpio60", "gpio61";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+		};
+	
+		spi_11 {
+			spi_11_mosi_active: spi_mosi_active {
+				mux {
+					pins = "gpio58";
+					function = "blsp_spi11";
+				};
+	
+				config {
+					pins = "gpio58";
+					drive-strength = <6>;
+					bias-disable;
+				};
+			};
+	
+			spi_11_mosi_sleep: spi_mosi_sleep {
+				mux {
+					pins = "gpio58";
+					function = "blsp_spi11";
+				};
+	
+				config {
+					pins = "gpio58";
+					drive-strength = <6>;
+					bias-pull-down;
+				};
+			};
+			spi_11_miso_active: spi_miso_active {
+				mux {
+					pins = "gpio59";
+					function = "blsp_spi11";
+				};
+	
+				config {
+					pins = "gpio59";
+					drive-strength = <6>;
+					bias-disable;
+				};
+			};
+	
+			spi_11_miso_sleep: spi_miso_sleep {
+				mux {
+					pins = "gpio59";
+					function = "blsp_spi11";
+				};
+	
+				config {
+					pins = "gpio59";
+					drive-strength = <6>;
+					bias-pull-down;
+				};
+			};
+
+			spi_11_cs1_clk_active: spi_cs1_clk_active {
+				mux {
+					pins = "gpio60", "gpio61";
+					function = "blsp_spi11";
+				};
+				config {
+					pins = "gpio60", "gpio61";
+					drive-strength = <2>;
+					bias-disable = <0>;
+				};
+				};
+	
+			spi_11_cs1_clk_sleep: spi_cs1_clk_sleep {
+				mux {
+					pins = "gpio60", "gpio61";
+					function = "blsp_spi11";
+				};
+				config {
+					pins = "gpio60", "gpio61";
+					drive-strength = <2>;
+					bias-disable = <0>;
+				};
+			};
+		};
+
+		uart_console_sleep: uart_console_sleep {
+			mux {
+				pins = "gpio4", "gpio5";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio4", "gpio5";
+				drive-strength = <6>;
+				bias-pull-down;
+				output-low;
+			};
+		};
+
+};
+
+&usb3 {
+	qcom,vbus_set_by_cclogic;
+};
+
+&spi_0_active {
+	config {
+		/delete-property/ bias-disable;
+		bias-pull-up;
+	};
+};
+
+&spi_0_sleep {
+	config {
+		/delete-property/ bias-disable;
+		bias-pull-up;
+	};
+};
+
+&qcom_seecom {
+	/delete-property/ qcom,qsee-reentrancy-support;
+};

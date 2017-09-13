@@ -1,0 +1,7 @@
+config FB_MSM_MDSS_HDMI_DP_ANX7816
+	tristate "Analogix Slimport transmitter COLORADO3 support"
+	help
+        	Slimport Transmitter is a HD video transmitter chip
+		over micro-USB connector for smartphone device.
+
+

@@ -31,3 +31,12 @@ obj-$(CONFIG_USB_SISUSBVGA)		+= sisusbvga/
 obj-$(CONFIG_USB_LINK_LAYER_TEST)	+= lvstest.o
 
 obj-$(CONFIG_USB_QTI_KS_BRIDGE)		+= ks_bridge.o
+
+obj-$(CONFIG_ANALOGIX_OHIO)             += anx7418/
+obj-$(CONFIG_USB_CCLOGIC_PI5USB)	+= pi5usb30216a.o
+obj-$(CONFIG_USB_CCLOGIC_TUSB302L)	+= tusb302l.o
+obj-$(CONFIG_USB_CYCCG)	        	+= cyccg.o
+obj-$(CONFIG_USB_CCLOGIC_PTN5150)	+= ptn5150.o
+obj-$(CONFIG_USB_CCLOGIC_PER30216)	+= pericom_i2c_30216c_v1.o
+obj-$(CONFIG_USB_CCLOGIC_TUSB320)	+= tusb320.o
+obj-$(CONFIG_USB_CCLOGIC)		+= cclogic.o

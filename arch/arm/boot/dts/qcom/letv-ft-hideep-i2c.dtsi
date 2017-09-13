@@ -1,0 +1,21 @@
+&soc {
+	i2c@75b9000 {
+		status = "ok";
+		hideep_z@6c {
+			compatible = "hideep3d,hideep_3d";
+			status = "ok";
+			reg = <0x6c>;
+			interrupt-parent = <&tlmm>;
+			interrupts = <58 0x2008>;
+			/*disable hideep regulator*/
+			/*vdd_ana-supply = <&pm8994_l22>;*/
+			/*vdd_io-supply = <&pm8994_l14>;*/
+			hideep3d,reset-gpio = <&tlmm 59 0x00>;
+			hideep,irq-gpio = <&tlmm 58 0x2008>;
+			hideep,i2c-pull-up = <1>;
+			pinctrl-names = "pmx_ft_active", "pmx_ft_suspend";
+			pinctrl-0 = <&ft_active>;
+			pinctrl-1 = <&ft_suspend>;
+		};
+	};
+};
