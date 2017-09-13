@@ -1,0 +1,20 @@
+config SND_SOC_WCD_MBHC_ZL1
+	bool "ZL1 specific wcd-mbhc-v2-zl1.c used"
+	help
+	  Selects ZL1 specific wcd-mbhc-v2-zl1.c file instead of default wcd-mbhc-v2.c
+
+config PRODUCT_LE_X2
+	bool "Product set to LE X2"
+	default n
+	---help---
+	  This option is meant to be selected automatically by AndroidKernel.mk.
+	  Once selected, X2 specific configs/code will take effect.
+
+config PRODUCT_LE_ZL1
+	bool "Product set to LE ZL1"
+	select SND_SOC_WCD_MBHC_ZL1
+	select SND_SOC_MAX98927
+	default n
+	---help---
+	  This option is meant to be selected automatically by AndroidKernel.mk.
+	  Once selected, ZL1 specific configs/code will take effect.

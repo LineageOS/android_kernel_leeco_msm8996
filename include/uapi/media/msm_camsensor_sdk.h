@@ -43,12 +43,11 @@
 #define MAX_ACTUATOR_INIT_SET     120
 #define MAX_I2C_REG_SET           12
 
+#define MAX_NAME_SIZE             32
 #define MAX_LED_TRIGGERS          3
 
 #define MSM_EEPROM_MEMORY_MAP_MAX_SIZE  80
 #define MSM_EEPROM_MAX_MEM_MAP_CNT      8
-
-#define MSM_SENSOR_BYPASS_VIDEO_NODE    1
 
 enum msm_sensor_camera_id_t {
 	CAMERA_0,
@@ -116,15 +115,6 @@ enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_MAX,
 };
 
-enum msm_ir_cut_filter_gpio_t {
-	IR_CUT_FILTER_GPIO_P = 0,
-	IR_CUT_FILTER_GPIO_M,
-	IR_CUT_FILTER_GPIO_MAX,
-};
-#define IR_CUT_FILTER_GPIO_P IR_CUT_FILTER_GPIO_P
-#define IR_CUT_FILTER_GPIO_M IR_CUT_FILTER_GPIO_M
-#define R_CUT_FILTER_GPIO_MAX IR_CUT_FILTER_GPIO_MAX
-
 enum msm_camera_vreg_name_t {
 	CAM_VDIG,
 	CAM_VIO,
@@ -182,6 +172,8 @@ enum msm_flash_driver_type {
 	FLASH_DRIVER_PMIC,
 	FLASH_DRIVER_I2C,
 	FLASH_DRIVER_GPIO,
+	FLASH_DRIVER_LM3643,
+	FLASH_DRIVER_LM3648,
 	FLASH_DRIVER_DEFAULT
 };
 
@@ -192,28 +184,6 @@ enum msm_flash_cfg_type_t {
 	CFG_FLASH_LOW,
 	CFG_FLASH_HIGH,
 };
-
-enum msm_ir_led_cfg_type_t {
-	CFG_IR_LED_INIT = 0,
-	CFG_IR_LED_RELEASE,
-	CFG_IR_LED_OFF,
-	CFG_IR_LED_ON,
-};
-#define CFG_IR_LED_INIT CFG_IR_LED_INIT
-#define CFG_IR_LED_RELEASE CFG_IR_LED_RELEASE
-#define CFG_IR_LED_OFF CFG_IR_LED_OFF
-#define CFG_IR_LED_ON CFG_IR_LED_ON
-
-enum msm_ir_cut_cfg_type_t {
-	CFG_IR_CUT_INIT = 0,
-	CFG_IR_CUT_RELEASE,
-	CFG_IR_CUT_OFF,
-	CFG_IR_CUT_ON,
-};
-#define CFG_IR_CUT_INIT CFG_IR_CUT_INIT
-#define CFG_IR_CUT_RELEASE CFG_IR_CUT_RELEASE
-#define CFG_IR_CUT_OFF CFG_IR_CUT_OFF
-#define CFG_IR_CUT_ON CFG_IR_CUT_ON
 
 enum msm_sensor_output_format_t {
 	MSM_SENSOR_BAYER,
@@ -285,6 +255,8 @@ struct msm_sensor_id_info_t {
 	unsigned short sensor_id_reg_addr;
 	unsigned short sensor_id;
 	unsigned short sensor_id_mask;
+	unsigned char module_id;
+	unsigned char vcm_id;
 };
 
 struct msm_camera_sensor_slave_info {
@@ -302,7 +274,6 @@ struct msm_camera_sensor_slave_info {
 	unsigned char  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
 	enum msm_sensor_output_format_t output_format;
-	uint8_t bypass_video_node_creation;
 };
 
 struct msm_camera_i2c_reg_array {

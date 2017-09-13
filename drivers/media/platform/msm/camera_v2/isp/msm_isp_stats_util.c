@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -68,8 +68,7 @@ static int msm_isp_stats_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 	pingpong_bit = (~(pingpong_status >> stats_pingpong_offset) & 0x1);
 
 	rc = vfe_dev->buf_mgr->ops->get_buf(vfe_dev->buf_mgr,
-			vfe_dev->pdev->id, bufq_handle,
-			MSM_ISP_INVALID_BUF_INDEX, &buf);
+			vfe_dev->pdev->id, bufq_handle, &buf);
 	if (rc == -EFAULT) {
 		msm_isp_halt_send_error(vfe_dev, ISP_EVENT_BUF_FATAL_ERROR);
 		return rc;
@@ -250,9 +249,6 @@ static int32_t msm_isp_stats_buf_divert(struct vfe_device *vfe_dev,
 			*comp_stats_type_mask |=
 				1 << stream_info->stats_type;
 		}
-		stats_event->pd_stats_idx = 0xF;
-		if (stream_info->stats_type == MSM_ISP_STATS_BF)
-			stats_event->pd_stats_idx = vfe_dev->pd_buf_idx;
 	}
 
 	return rc;
@@ -631,7 +627,7 @@ int msm_isp_stats_reset(struct vfe_device *vfe_dev)
 	struct msm_vfe_stats_shared_data *stats_data = &vfe_dev->stats_data;
 	struct msm_isp_timestamp timestamp;
 
-	msm_isp_get_timestamp(&timestamp, vfe_dev);
+	msm_isp_get_timestamp(&timestamp);
 
 	for (i = 0; i < MSM_ISP_STATS_MAX; i++) {
 		stream_info = &stats_data->stream_info[i];
@@ -683,23 +679,18 @@ static int msm_isp_start_stats_stream(struct vfe_device *vfe_dev,
 			stream_cfg_cmd->num_streams);
 		return -EINVAL;
 	}
-	mutex_lock(&vfe_dev->buf_mgr->lock);
-
 	num_stats_comp_mask =
 		vfe_dev->hw_info->stats_hw_info->num_stats_comp_mask;
 	rc = vfe_dev->hw_info->vfe_ops.stats_ops.check_streams(
 		stats_data->stream_info);
-	if (rc < 0) {
-		mutex_unlock(&vfe_dev->buf_mgr->lock);
+	if (rc < 0)
 		return rc;
-	}
 
 	for (i = 0; i < stream_cfg_cmd->num_streams; i++) {
 		idx = STATS_IDX(stream_cfg_cmd->stream_handle[i]);
 
 		if (idx >= vfe_dev->hw_info->stats_hw_info->num_stats_type) {
 			pr_err("%s Invalid stats index %d", __func__, idx);
-			mutex_unlock(&vfe_dev->buf_mgr->lock);
 			return -EINVAL;
 		}
 
@@ -715,13 +706,11 @@ static int msm_isp_start_stats_stream(struct vfe_device *vfe_dev,
 			pr_err("%s: comp grp %d exceed max %d\n",
 				__func__, stream_info->composite_flag,
 				num_stats_comp_mask);
-			mutex_unlock(&vfe_dev->buf_mgr->lock);
 			return -EINVAL;
 		}
 		rc = msm_isp_init_stats_ping_pong_reg(vfe_dev, stream_info);
 		if (rc < 0) {
 			pr_err("%s: No buffer for stream%d\n", __func__, idx);
-			mutex_unlock(&vfe_dev->buf_mgr->lock);
 			return rc;
 		}
 		if (!stream_info->composite_flag)
@@ -746,7 +735,6 @@ static int msm_isp_start_stats_stream(struct vfe_device *vfe_dev,
 			stats_data->num_active_stream);
 
 	}
-	mutex_unlock(&vfe_dev->buf_mgr->lock);
 
 	if (vfe_dev->axi_data.src_info[VFE_PIX_0].active) {
 		rc = msm_isp_stats_wait_for_cfg_done(vfe_dev);
@@ -772,7 +760,7 @@ static int msm_isp_stop_stats_stream(struct vfe_device *vfe_dev,
 	struct msm_vfe_stats_shared_data *stats_data = &vfe_dev->stats_data;
 	struct msm_isp_timestamp timestamp;
 
-	msm_isp_get_timestamp(&timestamp, vfe_dev);
+	msm_isp_get_timestamp(&timestamp);
 
 	num_stats_comp_mask =
 		vfe_dev->hw_info->stats_hw_info->num_stats_comp_mask;

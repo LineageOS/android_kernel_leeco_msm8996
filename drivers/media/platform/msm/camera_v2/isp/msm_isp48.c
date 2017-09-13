@@ -47,18 +47,8 @@ static uint8_t stats_pingpong_offset_map[] = {
 	11, /* AEC_BG */
 };
 
-static uint8_t stats_wm_index[] = {
-	 7, /* HDR_BE */
-	11, /* BG(AWB_BG) */
-	 9, /* BF */
-	 8, /* HDR_BHIST */
-	13, /* RS */
-	14, /* CS */
-	15, /* IHIST */
-	12, /* BHIST (SKIN_BHIST) */
-	10, /* AEC_BG */
-};
-
+#define VFE48_NUM_STATS_TYPE 9
+#define VFE48_NUM_STATS_COMP 2
 #define VFE48_SRC_CLK_DTSI_IDX 3
 
 static struct msm_vfe_stats_hardware_info msm_vfe48_stats_hw_info = {
@@ -69,9 +59,8 @@ static struct msm_vfe_stats_hardware_info msm_vfe48_stats_hw_info = {
 		1 << MSM_ISP_STATS_RS	| 1 << MSM_ISP_STATS_CS    |
 		1 << MSM_ISP_STATS_AEC_BG,
 	.stats_ping_pong_offset = stats_pingpong_offset_map,
-	.stats_wm_index = stats_wm_index,
-	.num_stats_type = VFE47_NUM_STATS_TYPE,
-	.num_stats_comp_mask = VFE47_NUM_STATS_COMP,
+	.num_stats_type = VFE48_NUM_STATS_TYPE,
+	.num_stats_comp_mask = VFE48_NUM_STATS_COMP,
 };
 
 static void msm_vfe48_axi_enable_wm(void __iomem *vfe_base,
@@ -79,29 +68,13 @@ static void msm_vfe48_axi_enable_wm(void __iomem *vfe_base,
 {
 	uint32_t val;
 
+	val = msm_camera_io_r(vfe_base + 0xCEC);
 	if (enable)
-		val = (0x2 << (2 * wm_idx));
+		val |= (0x3 << (2 * wm_idx));
 	else
-		val = (0x1 << (2 * wm_idx));
+		val &= ~(0x3 << (2 * wm_idx));
 
 	msm_camera_io_w_mb(val, vfe_base + 0xCEC);
-}
-
-static void msm_vfe48_enable_stats_wm(struct vfe_device *vfe_dev,
-		uint32_t stats_mask, uint8_t enable)
-{
-	int i;
-
-	for (i = 0; i < VFE47_NUM_STATS_TYPE; i++) {
-		if (!(stats_mask & 0x1)) {
-			stats_mask >>= 1;
-			continue;
-		}
-		stats_mask >>= 1;
-		msm_vfe48_axi_enable_wm(vfe_dev->vfe_base,
-			vfe_dev->hw_info->stats_hw_info->stats_wm_index[i],
-			enable);
-	}
 }
 
 static void msm_vfe48_deinit_bandwidth_mgr(
@@ -227,8 +200,6 @@ struct msm_vfe_hardware_info vfe48_hw_info = {
 	.vfe_ops = {
 		.irq_ops = {
 			.read_irq_status = msm_vfe47_read_irq_status,
-			.read_irq_status_and_clear =
-				msm_vfe47_read_irq_status_and_clear,
 			.process_camif_irq = msm_vfe47_process_input_irq,
 			.process_reset_irq = msm_vfe47_process_reset_irq,
 			.process_halt_irq = msm_vfe47_process_halt_irq,
@@ -238,7 +209,6 @@ struct msm_vfe_hardware_info vfe48_hw_info = {
 			.process_stats_irq = msm_isp_process_stats_irq,
 			.process_epoch_irq = msm_vfe47_process_epoch_irq,
 			.config_irq = msm_vfe47_config_irq,
-			.process_eof_irq = msm_isp47_process_eof_irq,
 		},
 		.axi_ops = {
 			.reload_wm = msm_vfe47_axi_reload_wm,
@@ -248,8 +218,6 @@ struct msm_vfe_hardware_info vfe48_hw_info = {
 			.clear_comp_mask = msm_vfe47_axi_clear_comp_mask,
 			.cfg_wm_irq_mask = msm_vfe47_axi_cfg_wm_irq_mask,
 			.clear_wm_irq_mask = msm_vfe47_axi_clear_wm_irq_mask,
-			.clear_irq_mask =
-				msm_vfe47_axi_clear_irq_mask,
 			.cfg_framedrop = msm_vfe47_cfg_framedrop,
 			.clear_framedrop = msm_vfe47_clear_framedrop,
 			.cfg_wm_reg = msm_vfe47_axi_cfg_wm_reg,
@@ -308,7 +276,6 @@ struct msm_vfe_hardware_info vfe48_hw_info = {
 			.get_pingpong_status = msm_vfe47_get_pingpong_status,
 			.update_cgc_override =
 				msm_vfe47_stats_update_cgc_override,
-			.enable_stats_wm = msm_vfe48_enable_stats_wm,
 		},
 		.platform_ops = {
 			.get_platform_data = msm_vfe47_get_platform_data,

@@ -3,6 +3,7 @@
 #
 menuconfig TOUCHSCREEN_SYNAPTICS_DSX_v21
 	bool "Synaptics DSX touchscreen"
+	depends on !VENDOR_LEECO
 	default y
 	help
 	  Say Y here if you have a Synaptics DSX touchscreen connected

@@ -17,6 +17,15 @@
 #include "msm_sd.h"
 #include "msm_ois.h"
 #include "msm_cci.h"
+#include "msm_camera_io_util.h"
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+
+#include <linux/workqueue.h>
+#include <linux/kernel.h>
+#include "ois_interface.h"
 
 DEFINE_MSM_MUTEX(msm_ois_mutex);
 /*#define MSM_OIS_DEBUG*/
@@ -26,6 +35,7 @@ DEFINE_MSM_MUTEX(msm_ois_mutex);
 #else
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 #endif
+#define OISDBG(fmt, args...) pr_err(fmt, ##args)
 
 static struct v4l2_file_operations msm_ois_v4l2_subdev_fops;
 static int32_t msm_ois_power_up(struct msm_ois_ctrl_t *o_ctrl);
@@ -151,6 +161,7 @@ static int32_t msm_ois_data_config(struct msm_ois_ctrl_t *o_ctrl,
 	return rc;
 }
 
+/*
 static int32_t msm_ois_write_settings(struct msm_ois_ctrl_t *o_ctrl,
 	uint16_t size, struct reg_settings_ois_t *settings)
 {
@@ -268,53 +279,25 @@ static int32_t msm_ois_vreg_control(struct msm_ois_ctrl_t *o_ctrl,
 	}
 	return rc;
 }
+*/
 
 static int32_t msm_ois_power_down(struct msm_ois_ctrl_t *o_ctrl)
 {
 	int32_t rc = 0;
-	enum msm_sensor_power_seq_gpio_t gpio;
-
 	CDBG("Enter\n");
-	if (o_ctrl->ois_state != OIS_DISABLE_STATE) {
 
+	/* TODO: Identation needs to be revised for GCC6. */
+        oiscontrol_interface(&o_ctrl->i2c_client,
+                o_ctrl->project_name, OIS_POWERDOWN);
+
+	if (o_ctrl->ois_state != OIS_DISABLE_STATE) {
+/*
 		rc = msm_ois_vreg_control(o_ctrl, 0);
 		if (rc < 0) {
 			pr_err("%s failed %d\n", __func__, __LINE__);
 			return rc;
 		}
-
-		for (gpio = SENSOR_GPIO_AF_PWDM; gpio < SENSOR_GPIO_MAX;
-			gpio++) {
-			if (o_ctrl->gconf &&
-				o_ctrl->gconf->gpio_num_info &&
-				o_ctrl->gconf->
-					gpio_num_info->valid[gpio] == 1) {
-				gpio_set_value_cansleep(
-					o_ctrl->gconf->gpio_num_info
-						->gpio_num[gpio],
-					GPIOF_OUT_INIT_LOW);
-
-				if (o_ctrl->cam_pinctrl_status) {
-					rc = pinctrl_select_state(
-						o_ctrl->pinctrl_info.pinctrl,
-						o_ctrl->pinctrl_info.
-							gpio_state_suspend);
-					if (rc < 0)
-						pr_err("ERR:%s:%d cannot set pin to suspend state: %d",
-							__func__, __LINE__, rc);
-					devm_pinctrl_put(
-						o_ctrl->pinctrl_info.pinctrl);
-				}
-				o_ctrl->cam_pinctrl_status = 0;
-				rc = msm_camera_request_gpio_table(
-					o_ctrl->gconf->cam_gpio_req_tbl,
-					o_ctrl->gconf->cam_gpio_req_tbl_size,
-					0);
-				if (rc < 0)
-					pr_err("ERR:%s:Failed in selecting state in ois power down: %d\n",
-						__func__, rc);
-			}
-		}
+*/
 
 		o_ctrl->i2c_tbl_index = 0;
 		o_ctrl->ois_state = OIS_OPS_INACTIVE;
@@ -347,8 +330,9 @@ static int msm_ois_init(struct msm_ois_ctrl_t *o_ctrl)
 static int32_t msm_ois_control(struct msm_ois_ctrl_t *o_ctrl,
 	struct msm_ois_set_info_t *set_info)
 {
-	struct reg_settings_ois_t *settings = NULL;
+/*  struct reg_settings_ois_t *settings = NULL;*/
 	int32_t rc = 0;
+	int32_t type = 0;
 	struct msm_camera_cci_client *cci_client = NULL;
 	CDBG("Enter\n");
 
@@ -365,8 +349,10 @@ static int32_t msm_ois_control(struct msm_ois_ctrl_t *o_ctrl,
 			set_info->ois_params.i2c_addr;
 	}
 	o_ctrl->i2c_client.addr_type = MSM_CAMERA_I2C_WORD_ADDR;
-
-
+	type = set_info->ois_params.setting_size;
+	rc = oiscontrol_interface(&o_ctrl->i2c_client,
+		o_ctrl->project_name, type);
+/*
 	if (set_info->ois_params.setting_size > 0 &&
 		set_info->ois_params.setting_size
 		< MAX_OIS_REG_SETTINGS) {
@@ -396,7 +382,7 @@ static int32_t msm_ois_control(struct msm_ois_ctrl_t *o_ctrl,
 			return -EFAULT;
 		}
 	}
-
+*/
 	CDBG("Exit\n");
 
 	return rc;
@@ -573,7 +559,8 @@ static int msm_ois_close(struct v4l2_subdev *sd,
 	int rc = 0;
 	struct msm_ois_ctrl_t *o_ctrl =  v4l2_get_subdevdata(sd);
 	CDBG("Enter\n");
-	if (!o_ctrl) {
+	if (!o_ctrl || !o_ctrl->i2c_client.i2c_func_tbl) {
+		/* check to make sure that init happens before release */
 		pr_err("failed\n");
 		return -EINVAL;
 	}
@@ -631,50 +618,40 @@ static long msm_ois_subdev_ioctl(struct v4l2_subdev *sd,
 static int32_t msm_ois_power_up(struct msm_ois_ctrl_t *o_ctrl)
 {
 	int rc = 0;
-	enum msm_sensor_power_seq_gpio_t gpio;
-
 	CDBG("%s called\n", __func__);
-
+	OISDBG("===>>> OIS power up");
+/*
 	rc = msm_ois_vreg_control(o_ctrl, 1);
 	if (rc < 0) {
 		pr_err("%s failed %d\n", __func__, __LINE__);
 		return rc;
 	}
+*/
 
-	for (gpio = SENSOR_GPIO_AF_PWDM;
-		gpio < SENSOR_GPIO_MAX; gpio++) {
-		if (o_ctrl->gconf && o_ctrl->gconf->gpio_num_info &&
-			o_ctrl->gconf->gpio_num_info->valid[gpio] == 1) {
-			rc = msm_camera_request_gpio_table(
-				o_ctrl->gconf->cam_gpio_req_tbl,
-				o_ctrl->gconf->cam_gpio_req_tbl_size, 1);
-			if (rc < 0) {
-				pr_err("ERR:%s:Failed in selecting state for ois: %d\n",
-					__func__, rc);
-				return rc;
-			}
-			if (o_ctrl->cam_pinctrl_status) {
-				rc = pinctrl_select_state(
-					o_ctrl->pinctrl_info.pinctrl,
-					o_ctrl->pinctrl_info.gpio_state_active);
-				if (rc < 0)
-					pr_err("ERR:%s:%d cannot set pin to active state: %d",
-						__func__, __LINE__, rc);
-			}
-
-			gpio_set_value_cansleep(
-				o_ctrl->gconf->gpio_num_info->gpio_num[gpio],
-				1);
-		}
-	}
-
+	rc = 1;
 	o_ctrl->ois_state = OIS_ENABLE_STATE;
+	CDBG("Exit\n");
+	return rc;
+}
+
+static int32_t msm_ois_power(struct v4l2_subdev *sd, int on)
+{
+	int rc = 0;
+	struct msm_ois_ctrl_t *o_ctrl = v4l2_get_subdevdata(sd);
+	CDBG("Enter\n");
+	mutex_lock(o_ctrl->ois_mutex);
+	if (on)
+		rc = msm_ois_power_up(o_ctrl);
+	else
+		rc = msm_ois_power_down(o_ctrl);
+	mutex_unlock(o_ctrl->ois_mutex);
 	CDBG("Exit\n");
 	return rc;
 }
 
 static struct v4l2_subdev_core_ops msm_ois_subdev_core_ops = {
 	.ioctl = msm_ois_subdev_ioctl,
+	.s_power = msm_ois_power,
 };
 
 static struct v4l2_subdev_ops msm_ois_subdev_ops = {
@@ -879,6 +856,14 @@ static int32_t msm_ois_platform_probe(struct platform_device *pdev)
 		pr_err("failed rc %d\n", rc);
 		goto release_memory;
 	}
+	rc = of_property_read_string((&pdev->dev)->of_node, "qcom,proj-name",
+		&msm_ois_t->project_name);
+	printk("qcom,project-name %s, rc %d\n", msm_ois_t->project_name, rc);
+	if (rc < 0) {
+		kfree(msm_ois_t);
+		pr_err("failed rc %d\n", rc);
+		return rc;
+	}
 
 	if (of_find_property((&pdev->dev)->of_node,
 			"qcom,cam-vreg-name", NULL)) {
@@ -888,22 +873,6 @@ static int32_t msm_ois_platform_probe(struct platform_device *pdev)
 		if (rc < 0) {
 			pr_err("failed rc %d\n", rc);
 			goto release_memory;
-		}
-	}
-
-	rc = msm_sensor_driver_get_gpio_data(&(msm_ois_t->gconf),
-		(&pdev->dev)->of_node);
-	if (-ENODEV == rc) {
-		pr_notice("No valid OIS GPIOs data\n");
-	} else if (rc < 0) {
-		pr_err("Error OIS GPIO\n");
-	} else {
-		msm_ois_t->cam_pinctrl_status = 1;
-		rc = msm_camera_pinctrl_init(
-			&(msm_ois_t->pinctrl_info), &(pdev->dev));
-		if (rc < 0) {
-			pr_err("ERR: Error in reading OIS pinctrl\n");
-			msm_ois_t->cam_pinctrl_status = 0;
 		}
 	}
 

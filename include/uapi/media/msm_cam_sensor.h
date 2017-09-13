@@ -14,7 +14,7 @@
 #define MSM_SENSOR_MCLK_24HZ  24000000
 
 #define MAX_SENSOR_NAME 32
-#define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
+#define MAX_ACTUATOR_AF_TOTAL_STEPS 2048
 
 #define MAX_OIS_MOD_NAME_SIZE 32
 #define MAX_OIS_NAME_SIZE 32
@@ -51,6 +51,19 @@ enum flash_type {
 	GPIO_FLASH
 };
 
+enum msm_ois_state_type_t {
+	OIS_INIT_S = 10,
+	OIS_ENABLE_S,
+	OIS_DISABLE_S,
+	OIS_MOVIE_MODE_S,
+	OIS_STILL_MODE_S,
+	OIS_CENTERING_ON_S,
+	OIS_CENTERING_OFF_S,
+	OIS_PANTILT_ON_S,
+	OIS_CALIBRATION_S,
+	OIS_POWERDOWN,
+};
+
 enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_FULL,
 	MSM_SENSOR_RES_QTR,
@@ -60,6 +73,7 @@ enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_5,
 	MSM_SENSOR_RES_6,
 	MSM_SENSOR_RES_7,
+	MSM_SENSOR_RES_8,
 	MSM_SENSOR_INVALID_RES,
 };
 
@@ -83,8 +97,6 @@ enum sensor_sub_module_t {
 	SUB_MODULE_CSIPHY_3D,
 	SUB_MODULE_OIS,
 	SUB_MODULE_EXT,
-	SUB_MODULE_IR_LED,
-	SUB_MODULE_IR_CUT,
 	SUB_MODULE_MAX,
 };
 
@@ -288,21 +300,11 @@ struct msm_eeprom_info_t {
 	struct msm_eeprom_memory_map_array *mem_map_array;
 };
 
-struct msm_ir_led_cfg_data_t {
-	enum msm_ir_led_cfg_type_t cfg_type;
-	int32_t pwm_duty_on_ns;
-	int32_t pwm_period_ns;
-};
-
-struct msm_ir_cut_cfg_data_t {
-	enum msm_ir_cut_cfg_type_t cfg_type;
-};
-
 struct msm_eeprom_cfg_data {
 	enum eeprom_cfg_type_t cfgtype;
 	uint8_t is_supported;
 	union {
-		char eeprom_name[MAX_SENSOR_NAME];
+		char eeprom_name[MAX_EEPROM_NAME];
 		struct eeprom_get_t get_data;
 		struct eeprom_read_t read_data;
 		struct eeprom_write_t write_data;
@@ -508,6 +510,7 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 	} cfg;
+	char actuator_name[32];
 };
 
 enum msm_camera_led_config_t {
@@ -597,12 +600,6 @@ struct sensor_init_cfg_data {
 
 #define VIDIOC_MSM_OIS_CFG_DOWNLOAD \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_ois_cfg_download_data)
-
-#define VIDIOC_MSM_IR_LED_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_led_cfg_data_t)
-
-#define VIDIOC_MSM_IR_CUT_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t)
 
 #endif
 

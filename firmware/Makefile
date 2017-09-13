@@ -31,6 +31,19 @@ fw-shipped-$(CONFIG_ADAPTEC_STARFIRE) += adaptec/starfire_rx.bin \
 					 adaptec/starfire_tx.bin
 fw-shipped-$(CONFIG_ATARI_DSP56K) += dsp56k/bootstrap.bin
 fw-shipped-$(CONFIG_ATM_AMBASSADOR) += atmsar11.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_ATMEL_MXT_LETV) += mXT640T_V16AA.fw \
+						   mXT640T_V30AE.fw
+fw-shipped-$(CONFIG_TOUCHKEY_ATMEGA48A_LETV) += Letv_max1_tk_58_0A_1.3_0A.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV) += letv_x2_hideep3d_auto.bin
+ifdef CONFIG_PRODUCT_LE_X2
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_LETV) += synaptics/startup_fw_update_X2-02-01.img \
+								 synaptics/startup_fw_update_X2-03-02.img \
+								 synaptics/startup_fw_update_X2-05-01.img
+endif
+ifdef CONFIG_PRODUCT_LE_ZL1
+fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_LETV) += synaptics/startup_fw_update_ZL1-0A-01.img \
+								 synaptics/startup_fw_update_ZL1-03-01.img
+endif
 fw-shipped-$(CONFIG_BNX2X) += bnx2x/bnx2x-e1-6.2.9.0.fw \
 			      bnx2x/bnx2x-e1h-6.2.9.0.fw \
 			      bnx2x/bnx2x-e2-6.2.9.0.fw
