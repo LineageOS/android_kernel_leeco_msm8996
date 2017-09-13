@@ -1,0 +1,52 @@
+qcom,letv_zl1_lishen_4000mah {
+	qcom,fcc-mah = <4000>;
+	qcom,chg-term-ua = <170000>;
+
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <4000>;
+	qcom,batt-id-kohm = <68>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "letv_zl1_lishen";
+	qcom,chg-rslow-comp-c1 = <2912595>;
+	qcom,chg-rslow-comp-c2 = <3624753>;
+	qcom,chg-rs-to-rslow = <728776>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0xFA4B>;
+	qcom,gui-version = "PMI8996GUI - 1.1.0.0";
+
+	qcom,fg-profile-data = [
+		 DC 83 9E 7C
+		 E5 80 D6 76
+		 62 83 A0 6F
+		 1D 89 46 94
+		 EB 81 44 9B
+		 2A BE 12 CB
+		 55 0F 02 88
+		 9E 7D 8C 81
+		 F3 77 4C 83
+		 21 71 64 39
+		 CA 7D 75 82
+		 56 98 BE B6
+		 0B C3 58 0F
+		 08 10 47 5A
+		 14 70 EE FC
+		 CD 3F 46 3F
+		 23 41 00 00
+		 FE 46 DD 38
+		 1E 2A 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 50 6A F2 68
+		 2C 78 C0 8A
+		 E8 74 CA 69
+		 8B 61 1D 81
+		 02 74 C3 68
+		 AC 6F 97 A9
+		 1B 16 61 85
+		 5F A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
+

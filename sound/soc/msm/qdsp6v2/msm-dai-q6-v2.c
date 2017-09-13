@@ -3017,6 +3017,14 @@ static int msm_dai_q6_mi2s_prepare(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_SND_SOC_MAX98927
+    if (AFE_PORT_ID_TERTIARY_MI2S_TX == port_id &&
+        dai_data->port_config.i2s.bit_width == 24)
+    {
+        dai_data->port_config.i2s.bit_width = 32;
+    }
+#endif
+
 	dev_dbg(dai->dev, "%s: dai id %d, afe port id = 0x%x\n"
 		"dai_data->channels = %u sample_rate = %u\n", __func__,
 		dai->id, port_id, dai_data->channels, dai_data->rate);
@@ -3302,7 +3310,11 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_96000 |
 			SNDRV_PCM_RATE_192000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+#ifdef CONFIG_SND_SOC_MAX98927
+			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+#else
+  			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+#endif
 			.rate_min =     8000,
 			.rate_max =     192000,
 		},
@@ -3326,7 +3338,11 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.aif_name = "TERT_MI2S_RX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+#ifdef CONFIG_SND_SOC_MAX98927
+			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+#else
+  			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+#endif
 			.rate_min =     8000,
 			.rate_max =     48000,
 		},
@@ -3335,7 +3351,11 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.aif_name = "TERT_MI2S_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
 			SNDRV_PCM_RATE_16000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+#ifdef CONFIG_SND_SOC_MAX98927
+			.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
+#else
+  			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+#endif
 			.rate_min =     8000,
 			.rate_max =     48000,
 		},

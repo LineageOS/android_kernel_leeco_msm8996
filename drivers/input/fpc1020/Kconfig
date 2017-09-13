@@ -1,0 +1,5 @@
+config INPUT_FPC1020
+	tristate "fpc1020 driver support"
+	help
+	  Say Y here if you want to support pfc1020 etc...
+
