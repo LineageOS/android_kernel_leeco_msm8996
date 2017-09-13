@@ -456,9 +456,15 @@ static int diag_usb_write_ext(struct diag_usb_info *usb_info,
 			return -ENOMEM;
 		}
 
+#ifdef CONFIG_VENDOR_LEECO
+		spin_lock_irqsave(&usb_info->write_lock, flags);
+#endif
 		diag_ws_on_read(DIAG_WS_MUX, len);
 		err = usb_diag_write(usb_info->hdl, req);
 		diag_ws_on_copy(DIAG_WS_MUX);
+#ifdef CONFIG_VENDOR_LEECO
+		spin_unlock_irqrestore(&usb_info->write_lock, flags);
+#endif
 		if (err) {
 			pr_err_ratelimited("diag: In %s, error writing to usb channel %s, err: %d\n",
 					   __func__, usb_info->name, err);

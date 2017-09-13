@@ -118,6 +118,9 @@ snd-soc-wcd9320-objs := wcd9320.o wcd9320-tables.o
 snd-soc-wcd9330-objs := wcd9330.o wcd9330-tables.o
 snd-soc-wcd9335-objs := wcd9335.o
 bg-codec-objs := bg_codec.o pktzr.o
+snd-soc-es9018-objs := es9018.o
+snd-soc-tfa98xx-objs := tfa_debug.o tfa9888_init.o tfa9897_init.o tfa9891_init.o tfa9890_init.o
+snd-soc-tfa98xx-objs += tfa9887B_init.o tfa9887_init.o tfa98xx.o tfa_dsp.o tfa_container.o
 snd-soc-wcd9xxx-objs := wcd9xxx-resmgr.o wcd9xxx-mbhc.o wcd9xxx-common.o
 snd-soc-wcd9xxx-v2-objs := wcd9xxx-common-v2.o wcd9xxx-resmgr-v2.o
 audio-ext-clock-objs := audio-ext-clk.o
@@ -191,6 +194,10 @@ obj-$(CONFIG_SND_SOC_MSM_HDMI_DBA_CODEC_RX) := msm_hdmi_dba_codec_rx.o
 snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
 snd-soc-tas2552-objs := tas2552.o
+snd-soc-es9018-objs := es9018.o
+snd-soc-tfa98xx-objs := tfa_debug.o tfa9888_init.o tfa9897_init.o tfa9891_init.o tfa9890_init.o
+snd-soc-tfa98xx-objs += tfa9887B_init.o tfa9887_init.o tfa98xx.o tfa_dsp.o tfa_container.o
+snd-soc-max98927-objs := max98927.o
 
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
 obj-$(CONFIG_SND_SOC_AB8500_CODEC)	+= snd-soc-ab8500-codec.o
@@ -311,6 +318,8 @@ obj-$(CONFIG_SND_SOC_WCD9306)	+= snd-soc-wcd9306.o
 obj-$(CONFIG_SND_SOC_WCD9320)	+= snd-soc-wcd9320.o
 obj-$(CONFIG_SND_SOC_WCD9330)	+= snd-soc-wcd9330.o
 obj-$(CONFIG_SND_SOC_WCD9335)	+= snd-soc-wcd9335.o
+obj-$(CONFIG_SND_SOC_ES9018)	+= snd-soc-es9018.o
+obj-$(CONFIG_SND_SOC_TFA98XX)	+=snd-soc-tfa98xx.o
 obj-$(CONFIG_SND_HWDEP) += wcdcal-hwdep.o
 obj-$(CONFIG_AUDIO_EXT_CLK)	+= audio-ext-clock.o
 obj-$(CONFIG_SND_SOC_WCD9XXX)   += snd-soc-wcd9xxx.o
@@ -380,3 +389,10 @@ obj-$(CONFIG_SND_SOC_MSM_STUB)  += snd-soc-msm-stub.o
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
+obj-$(CONFIG_SND_SOC_ES9018)	+= snd-soc-es9018.o
+obj-$(CONFIG_SND_SOC_TFA98XX)	+=snd-soc-tfa98xx.o
+obj-$(CONFIG_SND_SOC_MAX98927)	+= snd-soc-max98927.o
+
+# TODO: Fix enum-conversion for TFA98XX driver.
+subdir-ccflags-y += \
+	-Wno-enum-conversion

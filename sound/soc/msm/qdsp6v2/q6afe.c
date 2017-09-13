@@ -119,6 +119,9 @@ struct afe_ctl {
 	struct aanc_data aanc_info;
 	struct mutex afe_cmd_lock;
 	int set_custom_topology;
+#ifdef CONFIG_SND_SOC_MAX98927
+        uint8_t *dsm_payload;
+#endif
 };
 
 #define MAD_SLIMBUS_PORT_COUNT ((SLIMBUS_PORT_LAST - SLIMBUS_0_RX) + 1)
@@ -255,6 +258,34 @@ static int32_t sp_make_afe_callback(uint32_t *payload, uint32_t payload_size)
 			atomic_set(&this_afe.state, -1);
 		}
 	}
+
+#ifdef CONFIG_SND_SOC_MAX98927
+	if(AFE_PARAM_ID_DSM_CFG == param_id) {
+		u8* payload_u8 = (u8 *)payload;
+		if (payload_size < sizeof(this_afe.calib_data)) {
+			pr_err("%s: Error: received size %d, calib_data size %zu\n",
+				__func__, payload_size,
+				sizeof(this_afe.calib_data));
+			return -EINVAL;
+		}
+
+		memcpy(&this_afe.calib_data, payload, sizeof(this_afe.calib_data));
+
+		if (this_afe.dsm_payload) {
+			int header_size = sizeof(struct afe_dsm_resp_header);
+			/*copy dsm params to the get buffer*/
+			memcpy(this_afe.dsm_payload, payload_u8 + header_size, payload_size - header_size);
+		}
+
+		if (!this_afe.calib_data.status) {
+			atomic_set(&this_afe.state, 0);
+		} else {
+			pr_debug("%s: calib resp status: %d", __func__,
+				  this_afe.calib_data.status);
+			atomic_set(&this_afe.state, -1);
+		}
+	}
+#endif
 
 	return 0;
 }
@@ -3263,7 +3294,11 @@ int afe_loopback(u16 enable, u16 rx_port, u16 tx_port)
 				  sizeof(struct afe_port_param_data_v2);
 
 	lb_cmd.dst_port_id = rx_port;
+#ifdef CONFIG_VENDOR_LEECO
+	lb_cmd.routing_mode = LB_MODE_EC_REF_VOICE_AUDIO;
+#else
 	lb_cmd.routing_mode = LB_MODE_DEFAULT;
+#endif
 	lb_cmd.enable = (enable ? 1 : 0);
 	lb_cmd.loopback_cfg_minor_version = AFE_API_VERSION_LOOPBACK_CONFIG;
 
@@ -5671,6 +5706,114 @@ int afe_spk_prot_feed_back_cfg(int src_port, int dst_port,
 fail_cmd:
 	return ret;
 }
+
+#ifdef CONFIG_SND_SOC_MAX98927
+/*Be careful, payload must has enough header rooms before pointer payload*/
+int afe_dsm_setget_params(uint8_t *payload, int size, int dir)
+{
+	int ret = -EINVAL;
+	int index = 0, port = AFE_DSM_RX_PORT_ID;
+    uint32_t *pkg_header = NULL;
+
+	if (!payload) {
+		pr_err("%s: Invalid params\n", __func__);
+		goto fail_cmd;
+	}
+	ret = q6audio_validate_port(port);
+	if (ret < 0) {
+		pr_err("%s: invalid port 0x%x ret %d\n", __func__, port, ret);
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+
+	index = q6audio_get_port_index(port);
+
+    if (dir)
+    {
+        struct afe_dsm_get_header *get_header;
+
+        get_header = (struct afe_dsm_get_header *) (payload - sizeof(struct afe_dsm_get_header));
+
+    	get_header->hdr.hdr_field =
+    	    APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+    	    APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+    	get_header->hdr.pkt_size = size + sizeof(struct afe_dsm_get_header);
+    	get_header->hdr.src_port = 0;
+    	get_header->hdr.dest_port = 0;
+    	get_header->hdr.token = index;
+    	get_header->hdr.opcode =  AFE_PORT_CMD_GET_PARAM_V2;
+    	get_header->get_param.mem_map_handle = 0;
+    	get_header->get_param.module_id = AFE_MODULE_DSM_RX;
+    	get_header->get_param.param_id = AFE_PARAM_ID_DSM_CFG;
+    	get_header->get_param.payload_address_lsw = 0;
+    	get_header->get_param.payload_address_msw = 0;
+    	get_header->get_param.payload_size = size + sizeof(struct afe_port_param_data_v2);
+    	get_header->get_param.port_id = q6audio_get_port_id(port);
+    	get_header->pdata.module_id = AFE_MODULE_DSM_RX;
+    	get_header->pdata.param_id = AFE_PARAM_ID_DSM_CFG;
+    	get_header->pdata.param_size = size;
+
+        this_afe.dsm_payload = payload;
+        pkg_header = (uint32_t *) get_header;
+    }
+    else
+    {
+        struct afe_dsm_set_header *set_header;
+
+        set_header = (struct afe_dsm_set_header *)(payload - sizeof(struct afe_dsm_set_header));
+
+	    set_header->hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+				APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+	    set_header->hdr.pkt_size = size + sizeof(struct afe_dsm_set_header);
+	    set_header->hdr.src_port = 0;
+	    set_header->hdr.dest_port = 0;
+	    set_header->hdr.token = index;
+	    set_header->hdr.opcode = AFE_PORT_CMD_SET_PARAM_V2;
+        set_header->set_param.mem_map_handle = 0;
+        set_header->set_param.payload_address_lsw = 0;
+        set_header->set_param.payload_address_msw = 0;
+	    set_header->set_param.port_id = q6audio_get_port_id(port);
+	    set_header->set_param.payload_size = size + sizeof(struct afe_port_param_data_v2);
+        set_header->pdata.module_id = AFE_MODULE_DSM_RX;
+	    set_header->pdata.param_id = AFE_PARAM_ID_DSM_CFG;
+	    set_header->pdata.param_size = size;
+
+        pkg_header = (uint32_t *)set_header;
+    }
+
+    /*Send/Receive the apr pkg*/
+	atomic_set(&this_afe.status, 0);
+	atomic_set(&this_afe.state, 1);
+	ret = apr_send_pkt(this_afe.apr, pkg_header);
+	if (ret < 0) {
+		pr_err("%s: get param port 0x%x param id[0x%x]failed %d\n",
+			   __func__, port, AFE_PARAM_ID_DSM_CFG, ret);
+		goto fail_cmd;
+	}
+	ret = wait_event_timeout(this_afe.wait[index],
+		(atomic_read(&this_afe.state) == 0),
+		msecs_to_jiffies(TIMEOUT_MS));
+	if (!ret) {
+		pr_err("%s: wait_event timeout\n", __func__);
+		ret = -EINVAL;
+		goto fail_cmd;
+	}
+	if (atomic_read(&this_afe.status) > 0) {
+		pr_err("%s: config cmd failed [%s]\n",
+			__func__, adsp_err_get_err_str(
+			atomic_read(&this_afe.status)));
+		ret = adsp_err_get_lnx_err_code(
+				atomic_read(&this_afe.status));
+		goto fail_cmd;
+	}
+
+	ret = 0;
+
+fail_cmd:
+    this_afe.dsm_payload = NULL;
+	return ret;
+}
+#endif
 
 static int get_cal_type_index(int32_t cal_type)
 {

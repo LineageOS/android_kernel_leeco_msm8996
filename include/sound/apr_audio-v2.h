@@ -8329,6 +8329,31 @@ struct afe_spkr_prot_calib_get_resp {
 	struct asm_calib_res_cfg res_cfg;
 } __packed;
 
+#ifdef CONFIG_SND_SOC_MAX98927
+#define AFE_RX_TOPOLOGY_ID_DSM                              0x10001060
+#define AFE_MODULE_DSM_TX                                   0x10001061
+#define AFE_MODULE_DSM_RX                                   0x10001062
+#define AFE_PARAM_ID_DSM_CFG                                0x10001066
+#define AFE_PARAM_ID_DSM_ENABLE                             0x10001068
+#define AFE_DSM_RX_PORT_ID                                  AFE_PORT_ID_TERTIARY_MI2S_RX
+
+struct afe_dsm_set_header {
+	struct apr_hdr hdr;
+	struct afe_port_cmd_set_param_v2 set_param;
+	struct afe_port_param_data_v2 pdata;
+} __packed;
+
+struct afe_dsm_get_header {
+	struct apr_hdr hdr;
+	struct afe_port_cmd_get_param_v2 get_param;
+	struct afe_port_param_data_v2 pdata;
+} __packed;
+
+struct afe_dsm_resp_header {
+	uint32_t status;
+	struct afe_port_param_data_v2 pdata;
+} __packed;
+#endif
 
 /* SRS TRUMEDIA start */
 /* topology */
@@ -8929,7 +8954,7 @@ struct afe_clk_set {
 	 * for enable and disable clock.
 	 *	"clk_freq_in_hz", "clk_attri", and "clk_root"
 	 *	are ignored in disable clock case.
-	 *	@values 
+	 *	@values
 	 *	- 0 -- Disabled
 	 *	- 1 -- Enabled  @tablebulletend
 	 */

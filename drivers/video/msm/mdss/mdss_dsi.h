@@ -483,6 +483,20 @@ struct mdss_dsi_ctrl_pdata {
 	u32 status_error_count;
 	u32 max_status_error_count;
 
+#ifdef CONFIG_VENDOR_LEECO
+	struct dsi_panel_cmds status_cmds1;
+	u32 status_cmds_rlen1;
+	u32 *status_value1;
+	struct dsi_panel_cmds status_on_cmds1;
+	bool enable_reg_check1;
+
+	struct dsi_panel_cmds status_cmds2;
+	u32 status_cmds_rlen2;
+	u32 *status_value2;
+	struct dsi_panel_cmds status_on_cmds2;
+	bool enable_reg_check2;
+#endif
+
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
 
@@ -516,6 +530,11 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_buf tx_buf;
 	struct dsi_buf rx_buf;
 	struct dsi_buf status_buf;
+#ifdef CONFIG_VENDOR_LEECO
+	struct dsi_buf status_buf1;
+	struct dsi_buf status_buf2;
+#endif
+
 	int status_mode;
 	int rx_len;
 	int cur_max_pkt_size;

@@ -28,6 +28,7 @@ obj-$(CONFIG_INPUT_DA9055_ONKEY)	+= da9055_onkey.o
 obj-$(CONFIG_INPUT_DM355EVM)		+= dm355evm_keys.o
 obj-$(CONFIG_INPUT_DRV260X_HAPTICS)	+= drv260x.o
 obj-$(CONFIG_INPUT_DRV2667_HAPTICS)	+= drv2667.o
+obj-$(CONFIG_INPUT_DRV2604L_HAPTICS)	+= drv2604l.o
 obj-$(CONFIG_INPUT_GP2A)		+= gp2ap002a00f.o
 obj-$(CONFIG_INPUT_GPIO_BEEPER)		+= gpio-beeper.o
 obj-$(CONFIG_INPUT_GPIO_TILT_POLLED)	+= gpio_tilt_polled.o
@@ -86,3 +87,4 @@ endif
 obj-$(CONFIG_INPUT_IDEAPAD_SLIDEBAR)	+= ideapad_slidebar.o
 obj-$(CONFIG_INPUT_PIXART_OTS_PAT9125_SWITCH)	+= ots_pat9125/
 obj-$(CONFIG_STMVL53L0X)	+= vl53l0x/
+obj-$(CONFIG_INPUT_NXU810)	+= nxu8010_driver.o
