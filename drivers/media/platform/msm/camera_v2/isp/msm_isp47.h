@@ -13,26 +13,9 @@
 #ifndef __MSM_ISP47_H__
 #define __MSM_ISP47_H__
 
-#define VFE47_NUM_STATS_COMP 2
-#define VFE47_NUM_STATS_TYPE 9
-/* composite mask order */
-enum msm_vfe47_stats_comp_idx {
-	STATS_COMP_IDX_HDR_BE = 0,
-	STATS_COMP_IDX_BG,
-	STATS_COMP_IDX_BF,
-	STATS_COMP_IDX_HDR_BHIST,
-	STATS_COMP_IDX_RS,
-	STATS_COMP_IDX_CS,
-	STATS_COMP_IDX_IHIST,
-	STATS_COMP_IDX_BHIST,
-	STATS_COMP_IDX_AEC_BG,
-};
-
 extern struct msm_vfe_hardware_info vfe47_hw_info;
 
 void msm_vfe47_read_irq_status(struct vfe_device *vfe_dev,
-	uint32_t *irq_status0, uint32_t *irq_status1);
-void msm_vfe47_read_irq_status_and_clear(struct vfe_device *vfe_dev,
 	uint32_t *irq_status0, uint32_t *irq_status1);
 void msm_vfe47_enable_camif_error(struct vfe_device *vfe_dev,
 			int enable);
@@ -42,8 +25,6 @@ void msm_vfe47_process_reg_update(struct vfe_device *vfe_dev,
 void msm_vfe47_process_epoch_irq(struct vfe_device *vfe_dev,
 	uint32_t irq_status0, uint32_t irq_status1,
 	struct msm_isp_timestamp *ts);
-void msm_isp47_process_eof_irq(struct vfe_device *vfe_dev,
-	uint32_t irq_status0);
 void msm_vfe47_reg_update(struct vfe_device *vfe_dev,
 	enum msm_vfe_input_src frame_src);
 long msm_vfe47_reset_hardware(struct vfe_device *vfe_dev,
@@ -60,7 +41,6 @@ void msm_vfe47_axi_cfg_wm_irq_mask(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info);
 void msm_vfe47_axi_clear_wm_irq_mask(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info);
-void msm_vfe47_axi_clear_irq_mask(struct vfe_device *vfe_dev);
 void msm_vfe47_cfg_framedrop(void __iomem *vfe_base,
 	struct msm_vfe_axi_stream *stream_info, uint32_t framedrop_pattern,
 	uint32_t framedrop_period);
@@ -100,11 +80,10 @@ void msm_vfe47_axi_clear_wm_xbar_reg(
 	struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info, uint8_t plane_idx);
 void msm_vfe47_cfg_axi_ub_equal_default(
-	struct vfe_device *vfe_dev, enum msm_vfe_input_src frame_src);
+	struct vfe_device *vfe_dev);
 void msm_vfe47_cfg_axi_ub_equal_slicing(
 	struct vfe_device *vfe_dev);
-void msm_vfe47_cfg_axi_ub(struct vfe_device *vfe_dev,
-	enum msm_vfe_input_src frame_src);
+void msm_vfe47_cfg_axi_ub(struct vfe_device *vfe_dev);
 void msm_vfe47_read_wm_ping_pong_addr(
 	struct vfe_device *vfe_dev);
 void msm_vfe47_update_ping_pong_addr(

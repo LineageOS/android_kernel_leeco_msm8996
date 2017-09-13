@@ -27,5 +27,9 @@ obj-$(CONFIG_INPUT_MISC)	+= misc/
 obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
 obj-$(CONFIG_INPUT_KEYRESET)	+= keyreset.o
 obj-$(CONFIG_INPUT_KEYCOMBO)	+= keycombo.o
+
+obj-$(CONFIG_INPUT_FPC1020)	+= fpc1020/
+obj-$(CONFIG_INPUT_GP5XX8)	+= goodixfp/
+
 obj-$(CONFIG_SENSORS_HALL)	+= hall_sensor.o
 obj-y	+= sensors/smi130/

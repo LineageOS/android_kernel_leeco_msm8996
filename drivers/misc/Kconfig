@@ -613,6 +613,21 @@ config MEMORY_STATE_TIME
 	help
 	  Memory time statistics exported to /sys/kernel/memory_state_time
 
+config IR_MAXQ616
+	tristate "MAXQ616 Infrared Remote Control driver"
+	depends on OF_GPIO
+	default n
+	help
+	  The MAXQ616 is a low-power microcontroller designed for low-power
+	  applications including universal remote controls and consumer
+	  electronics.
+
+	  The device combines a powerful 16-bit RISC microcontroller and
+	  integrated peripherals including a universal synchronous/asynchronous
+	  receiver-transmitter (USART).
+
+	  If unsure, say N.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

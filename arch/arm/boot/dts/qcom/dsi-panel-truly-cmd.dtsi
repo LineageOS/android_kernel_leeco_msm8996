@@ -1,0 +1,118 @@
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	dsi_truly_video: qcom,mdss_dsi_truly_video{
+		qcom,mdss-dsi-panel-name = "mdss_dsi_truly_video";
+		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <1080>;
+		qcom,mdss-dsi-panel-height = <1920>;
+		qcom,mdss-dsi-h-front-porch = <60>;
+		qcom,mdss-dsi-h-back-porch = <40>;
+		qcom,mdss-dsi-h-pulse-width = <20>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-back-porch = <9>;
+		qcom,mdss-dsi-v-front-porch = <3>;
+		qcom,mdss-dsi-v-pulse-width = <5>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-h-sync-pulse = <0>;
+		qcom,mdss-dsi-traffic-mode = "non_burst_sync_event";
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-lane-2-state;
+		qcom,mdss-dsi-lane-3-state;
+
+		qcom,mdss-dsi-panel-timings = [db 34 22 00 64 66 28 38 2b 03
+									04 00];
+		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
+		qcom,mdss-dsi-t-clk-post = <0x03>;
+		qcom,mdss-dsi-t-clk-pre = <0x29>;
+		qcom,mdss-dsi-bl-max-level = <4095>;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-te-pin-select = <1>;
+		qcom,mdss-dsi-wr-mem-start = <0x2c>;
+		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
+		qcom,mdss-dsi-te-dcs-command = <1>;
+		qcom,mdss-dsi-te-check-enable;
+		qcom,mdss-dsi-te-using-te-pin;
+		qcom,ulps-enabled;
+		qcom,mdss-dsi-on-command = [
+23 01 00 00 0a 00 02 B0 00                     //Manufacturer command access protect
+29 01 00 00 0a 00 06 B3 04 10 00 00 00  //Number of source outputs
+29 01 00 00 0a 00 03 B4 0c 00                 //Interface ID setting
+29 01 00 00 0a 00 04 B6 3b d3 00            //DIS control
+23 01 00 00 0a 00 02 C0 00                      //Panel driving setting
+15 01 00 00 0a 00 02 36 98                      //Set address mode
+23 01 00 00 0a 00 02 CC 04
+//Forward
+29 01 00 00 0a 00 20 C1 84 00 10 EF 8B F1 FF FF DF 9C C5 9A 73 8D AD 63 FE FF FF CB F8 01 00 AA 40 00 C2 01 08 00 01
+29 01 00 00 0a 00 0a CB 0D FE 1F 2C 00 00 00 00 00
+//Displaying setting2
+29 01 00 00 0a 00 0b C2 01 F7 80 04 63 00 60 00 01 30
+//Displaying setting3
+29 01 00 00 0a 00 07 C3 55 01 00 01 00 00
+//Source Timing setting
+29 01 00 00 0a 00 12 C4 70 00 00 00 00 00 00 00 00 02 01 00 05 01 00 00 00
+//LTPS Timing setting
+29 01 00 00 0a 00 0f C6 59 07 4a 07 4a 01 0E 01 02 01 02 09 15 07
+//For zoom gamma
+//20150928  ÐÞžÄµÍœ×¹ý¶É²»ŸùÔÈiverry
+29 01 00 00 0a 00 1f C7 00 13 1D 29 39 46 4F 5C 3F 46 51 5D 67 6D 7A 00 13 1D 29 39 46 4F 5C 3F 46 51 5D 67 6D 7A
+//Gamma setting
+29 01 00 00 0a 00 14 C8 00 00 FE 01 08 E7 00 00 FD 02 03 A8 00 00 FC E7 E9 C9 00
+//Vertical Blank Control
+29 01 00 00 0a 00 09 C9 1F 68 1F 68 4C 4C C4 11							                                                           
+
+//Power Setting
+29 01 00 00 0a 00 11 D0 33 01 91 0B D9 19 19 00 00 00 19 99 00 00 00 00
+//Power Setting for Internal Power
+29 01 00 00 0a 00 1d D3 1B 3B BB AD A5 33 33 33 00 80 AD A8 5B 5B 33 33 33 F7 F2 1F 7D 7C FF 0F 99 00 FF FF
+//Driving Option Setting
+29 01 00 00 0a 00 04 D4 57 33 03
+//VCOM Setting
+//20150928ÐÞžÄflicker
+29 01 00 00 0a 00 0c D5 66 00 00 01 33 01 33 00 43 00 43
+//NVM Load Setting
+29 01 00 00 0a 00 02 BE 04
+29 01 00 00 0a 00 11 CF 40 10 00 00 00 00 32 00 00 00 00 00 00 00 00 00
+29 01 00 00 0a 00 06 DE 00 00 3F FF 10
+29 01 00 00 0a 00 02 E9 00
+29 01 00 00 0a 00 02 F2 00
+23 01 00 00 0a 00 02 D6 01//81 150814
+39 01 00 00 0a 00 02 35 00//set TE
+//	{0x39, 0, 0, 0,0, 2,{0x51,0xff}},//set PWM high
+//	{0x39, 0, 0, 0,0, 2,{0x53,0x2c}},//
+//	{0x39, 0, 0, 0,20, 2,{0x55,0x01}},//open PWM
+05 01 00 00 10 00 01 29                //SET DISLAY ON
+05 01 00 00 78 00 01 11];
+					/* write control brightness */
+
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command = [05 01 00 00 32 00 02 28 00
+					05 01 00 00 78 00 02 10 00];
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+		qcom,mdss-tear-check-sync-cfg-height = <2580>;
+	};
+};

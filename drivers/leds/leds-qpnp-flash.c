@@ -1245,7 +1245,7 @@ int qpnp_flash_led_prepare(struct led_trigger *trig, int options,
 	struct led_classdev *led_cdev = trigger_to_lcdev(trig);
 	struct flash_node_data *flash_node;
 	struct qpnp_flash_led *led;
-	int rc;
+	int rc = 0;
 
 	if (!led_cdev) {
 		pr_err("Invalid led_trigger provided\n");
@@ -1303,7 +1303,11 @@ static void qpnp_flash_led_work(struct work_struct *work)
 	struct qpnp_flash_led *led =
 			dev_get_drvdata(&flash_node->spmi_dev->dev);
 	union power_supply_propval psy_prop;
+#ifdef CONFIG_VENDOR_LEECO
+	int rc, brightness = flash_node->cdev.brightness;
+#else
 	int rc, brightness;
+#endif
 	int max_curr_avail_ma = 0;
 	int total_curr_ma = 0;
 	int i;
