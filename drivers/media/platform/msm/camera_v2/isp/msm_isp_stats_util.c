@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -68,8 +68,7 @@ static int msm_isp_stats_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 	pingpong_bit = (~(pingpong_status >> stats_pingpong_offset) & 0x1);
 
 	rc = vfe_dev->buf_mgr->ops->get_buf(vfe_dev->buf_mgr,
-			vfe_dev->pdev->id, bufq_handle,
-			MSM_ISP_INVALID_BUF_INDEX, &buf);
+			vfe_dev->pdev->id, bufq_handle, &buf);
 	if (rc == -EFAULT) {
 		msm_isp_halt_send_error(vfe_dev, ISP_EVENT_BUF_FATAL_ERROR);
 		return rc;
@@ -250,9 +249,6 @@ static int32_t msm_isp_stats_buf_divert(struct vfe_device *vfe_dev,
 			*comp_stats_type_mask |=
 				1 << stream_info->stats_type;
 		}
-		stats_event->pd_stats_idx = 0xF;
-		if (stream_info->stats_type == MSM_ISP_STATS_BF)
-			stats_event->pd_stats_idx = vfe_dev->pd_buf_idx;
 	}
 
 	return rc;
@@ -631,7 +627,7 @@ int msm_isp_stats_reset(struct vfe_device *vfe_dev)
 	struct msm_vfe_stats_shared_data *stats_data = &vfe_dev->stats_data;
 	struct msm_isp_timestamp timestamp;
 
-	msm_isp_get_timestamp(&timestamp, vfe_dev);
+	msm_isp_get_timestamp(&timestamp);
 
 	for (i = 0; i < MSM_ISP_STATS_MAX; i++) {
 		stream_info = &stats_data->stream_info[i];
@@ -764,7 +760,7 @@ static int msm_isp_stop_stats_stream(struct vfe_device *vfe_dev,
 	struct msm_vfe_stats_shared_data *stats_data = &vfe_dev->stats_data;
 	struct msm_isp_timestamp timestamp;
 
-	msm_isp_get_timestamp(&timestamp, vfe_dev);
+	msm_isp_get_timestamp(&timestamp);
 
 	num_stats_comp_mask =
 		vfe_dev->hw_info->stats_hw_info->num_stats_comp_mask;
@@ -888,31 +884,22 @@ int msm_isp_update_stats_stream(struct vfe_device *vfe_dev, void *arg)
 	struct msm_vfe_axi_stream_cfg_update_info *update_info = NULL;
 	struct msm_isp_sw_framskip *sw_skip_info = NULL;
 
-	if (update_cmd->num_streams > MSM_ISP_STATS_MAX) {
-		pr_err("%s: Invalid num_streams %d\n",
-			__func__, update_cmd->num_streams);
-		return -EINVAL;
-	}
-
 	/*validate request*/
 	for (i = 0; i < update_cmd->num_streams; i++) {
-		update_info = (struct msm_vfe_axi_stream_cfg_update_info *)
-				&update_cmd->update_info[i];
+		update_info = &update_cmd->update_info[i];
 		/*check array reference bounds*/
 		if (STATS_IDX(update_info->stream_handle)
 			>= vfe_dev->hw_info->stats_hw_info->num_stats_type) {
 			pr_err("%s: stats idx %d out of bound!", __func__,
-			STATS_IDX(update_info->stream_handle));
+				STATS_IDX(update_info->stream_handle));
 			return -EINVAL;
 		}
 	}
 
 	for (i = 0; i < update_cmd->num_streams; i++) {
-		update_info = (struct msm_vfe_axi_stream_cfg_update_info *)
-				&update_cmd->update_info[i];
+		update_info = &update_cmd->update_info[i];
 		stream_info = &stats_data->stream_info[
-			STATS_IDX(
-			update_info->stream_handle)];
+				STATS_IDX(update_info->stream_handle)];
 		if (stream_info->stream_handle !=
 			update_info->stream_handle) {
 			pr_err("%s: stats stream handle %x %x mismatch!\n",
@@ -926,8 +913,7 @@ int msm_isp_update_stats_stream(struct vfe_device *vfe_dev, void *arg)
 			uint32_t framedrop_period =
 				msm_isp_get_framedrop_period(
 				   update_info->skip_pattern);
-			if (update_info->skip_pattern ==
-				SKIP_ALL)
+			if (update_info->skip_pattern == SKIP_ALL)
 				stream_info->framedrop_pattern = 0x0;
 			else
 				stream_info->framedrop_pattern = 0x1;
@@ -938,8 +924,7 @@ int msm_isp_update_stats_stream(struct vfe_device *vfe_dev, void *arg)
 			break;
 		}
 		case UPDATE_STREAM_SW_FRAME_DROP: {
-			sw_skip_info =
-			&update_info->sw_skip_info;
+			sw_skip_info = &update_info->sw_skip_info;
 			if (!stream_info->sw_skip.stream_src_mask)
 				stream_info->sw_skip = *sw_skip_info;
 
