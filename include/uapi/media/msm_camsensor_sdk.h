@@ -43,6 +43,9 @@
 #define MAX_ACTUATOR_INIT_SET     120
 #define MAX_I2C_REG_SET           12
 
+#ifdef CONFIG_VENDOR_LEECO
+#define MAX_NAME_SIZE             32
+#endif
 #define MAX_LED_TRIGGERS          3
 
 #define MSM_EEPROM_MEMORY_MAP_MAX_SIZE  80
@@ -182,6 +185,10 @@ enum msm_flash_driver_type {
 	FLASH_DRIVER_PMIC,
 	FLASH_DRIVER_I2C,
 	FLASH_DRIVER_GPIO,
+#ifdef CONFIG_VENDOR_LEECO
+	FLASH_DRIVER_LM3643,
+	FLASH_DRIVER_LM3648,
+#endif
 	FLASH_DRIVER_DEFAULT
 };
 
@@ -285,6 +292,10 @@ struct msm_sensor_id_info_t {
 	unsigned short sensor_id_reg_addr;
 	unsigned short sensor_id;
 	unsigned short sensor_id_mask;
+#ifdef CONFIG_VENDOR_LEECO
+	unsigned char module_id;
+	unsigned char vcm_id;
+#endif
 };
 
 struct msm_camera_sensor_slave_info {
@@ -302,7 +313,9 @@ struct msm_camera_sensor_slave_info {
 	unsigned char  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
 	enum msm_sensor_output_format_t output_format;
+#ifndef CONFIG_VENDOR_LEECO
 	uint8_t bypass_video_node_creation;
+#endif
 };
 
 struct msm_camera_i2c_reg_array {
