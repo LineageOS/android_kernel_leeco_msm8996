@@ -14,7 +14,12 @@
 #define MSM_SENSOR_MCLK_24HZ  24000000
 
 #define MAX_SENSOR_NAME 32
+#ifdef CONFIG_VENDOR_LEECO
+/* 11bit for af move range*/
+#define MAX_ACTUATOR_AF_TOTAL_STEPS 2048
+#else
 #define MAX_ACTUATOR_AF_TOTAL_STEPS 1024
+#endif
 
 #define MAX_OIS_MOD_NAME_SIZE 32
 #define MAX_OIS_NAME_SIZE 32
@@ -51,6 +56,21 @@ enum flash_type {
 	GPIO_FLASH
 };
 
+#ifdef CONFIG_VENDOR_LEECO
+enum msm_ois_state_type_t {
+	OIS_INIT_S = 10,
+	OIS_ENABLE_S,
+	OIS_DISABLE_S,
+	OIS_MOVIE_MODE_S,
+	OIS_STILL_MODE_S,
+	OIS_CENTERING_ON_S,
+	OIS_CENTERING_OFF_S,
+	OIS_PANTILT_ON_S,
+	OIS_CALIBRATION_S,
+	OIS_POWERDOWN,
+};
+#endif
+
 enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_FULL,
 	MSM_SENSOR_RES_QTR,
@@ -60,6 +80,9 @@ enum msm_sensor_resolution_t {
 	MSM_SENSOR_RES_5,
 	MSM_SENSOR_RES_6,
 	MSM_SENSOR_RES_7,
+#ifdef CONFIG_VENDOR_LEECO
+        MSM_SENSOR_RES_8,
+#endif
 	MSM_SENSOR_INVALID_RES,
 };
 
@@ -83,8 +106,10 @@ enum sensor_sub_module_t {
 	SUB_MODULE_CSIPHY_3D,
 	SUB_MODULE_OIS,
 	SUB_MODULE_EXT,
+#ifndef CONFIG_VENDOR_LEECO
 	SUB_MODULE_IR_LED,
 	SUB_MODULE_IR_CUT,
+#endif
 	SUB_MODULE_MAX,
 };
 
@@ -434,8 +459,13 @@ struct msm_actuator_params_t {
 	uint16_t init_setting_size;
 	uint32_t i2c_addr;
 	enum i2c_freq_mode_t i2c_freq_mode;
+#ifdef CONFIG_VENDOR_LEECO
+	enum msm_actuator_addr_type i2c_addr_type;
+	enum msm_actuator_data_type i2c_data_type;
+#else
 	enum msm_camera_i2c_reg_addr_type i2c_addr_type;
 	enum msm_camera_i2c_data_type i2c_data_type;
+#endif
 	struct msm_actuator_reg_params_t *reg_tbl_params;
 	struct reg_settings_t *init_settings;
 	struct park_lens_data_t park_lens;
@@ -508,6 +538,9 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 	} cfg;
+#ifdef CONFIG_VENDOR_LEECO
+	char actuator_name[32];
+#endif
 };
 
 enum msm_camera_led_config_t {

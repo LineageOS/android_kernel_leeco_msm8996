@@ -306,6 +306,30 @@ enum msm_stream_rdi_input_type {
 	MSM_CAMERA_RDI_MAX,
 };
 
+#ifdef CONFIG_VENDOR_LEECO
+struct msm_vfe_axi_stream_request_cmd {
+	uint32_t session_id;
+	uint32_t stream_id;
+	uint32_t vt_enable;
+	uint32_t output_format;/*Planar/RAW/Misc*/
+	enum msm_vfe_axi_stream_src stream_src; /*CAMIF/IDEAL/RDIs*/
+	struct msm_vfe_axi_plane_cfg plane_cfg[MAX_PLANES_PER_STREAM];
+
+	uint32_t burst_count;
+	uint32_t hfr_mode;
+	uint8_t frame_base;
+
+	uint32_t init_frame_drop; /*MAX 31 Frames*/
+	enum msm_vfe_frame_skip_pattern frame_skip_pattern;
+	uint8_t buf_divert; /* if TRUE no vb2 buf done. */
+	/*Return values*/
+	uint32_t axi_stream_handle;
+	uint32_t controllable_output;
+	uint32_t burst_len;
+	/* Flag indicating memory input stream */
+	enum msm_stream_memory_input_t memory_input;
+};
+#else
 struct msm_vfe_axi_stream_request_cmd {
 	uint32_t session_id;
 	uint32_t stream_id;
@@ -351,6 +375,7 @@ struct msm_vfe32_axi_stream_request_cmd {
 	/* Flag indicating memory input stream */
 	enum msm_stream_memory_input_t memory_input;
 };
+#endif
 
 struct msm_vfe_axi_stream_release_cmd {
 	uint32_t stream_handle;
@@ -378,7 +403,9 @@ struct msm_vfe_axi_stream_cfg_cmd {
 	uint32_t stream_handle[VFE_AXI_SRC_MAX];
 	enum msm_vfe_axi_stream_cmd cmd;
 	uint8_t sync_frame_id_src;
+#ifndef CONFIG_VENDOR_LEECO
 	enum msm_vfe_hw_state hw_state;
+#endif
 };
 
 enum msm_vfe_axi_stream_update_type {
@@ -391,8 +418,10 @@ enum msm_vfe_axi_stream_update_type {
 	UPDATE_STREAM_ADD_BUFQ,
 	UPDATE_STREAM_REMOVE_BUFQ,
 	UPDATE_STREAM_SW_FRAME_DROP,
+#ifndef CONFIG_VENDOR_LEECO
 	UPDATE_STREAM_REQUEST_FRAMES_VER2,
 	UPDATE_STREAM_OFFLINE_AXI_CONFIG,
+#endif
 };
 #define UPDATE_STREAM_REQUEST_FRAMES_VER2 UPDATE_STREAM_REQUEST_FRAMES_VER2
 
@@ -446,6 +475,10 @@ struct msm_vfe_restart_fe_cmd {
 struct msm_vfe_axi_stream_update_cmd {
 	uint32_t num_streams;
 	enum msm_vfe_axi_stream_update_type update_type;
+#ifdef CONFIG_VENDOR_LEECO
+	struct msm_vfe_axi_stream_cfg_update_info
+					update_info[MSM_ISP_STATS_MAX];
+#else
 	/*
 	 * For backward compatibility, ensure 1st member of any struct
 	 * in union below is uint32_t stream_handle.
@@ -455,6 +488,7 @@ struct msm_vfe_axi_stream_update_cmd {
 					update_info[MSM_ISP_STATS_MAX];
 		struct msm_vfe_axi_stream_cfg_update_info_req_frm req_frm_ver2;
 	};
+#endif
 };
 
 struct msm_vfe_smmu_attach_cmd {
@@ -502,7 +536,9 @@ enum msm_vfe_reg_cfg_type {
 	VFE_HW_UPDATE_UNLOCK,
 	SET_WM_UB_SIZE,
 	SET_UB_POLICY,
+#ifndef CONFIG_VENDOR_LEECO
 	GET_VFE_HW_LIMIT,
+#endif
 };
 
 struct msm_vfe_cfg_cmd2 {
@@ -711,9 +747,13 @@ enum msm_isp_event_idx {
 	ISP_PING_PONG_MISMATCH = 12,
 	ISP_REG_UPDATE_MISSING = 13,
 	ISP_BUF_FATAL_ERROR = 14,
+#ifdef CONFIG_VENDOR_LEECO
+	ISP_EVENT_MAX         = 15
+#else
 	ISP_EVENT_MAX         = 15,
 	ISP_WM_BUS_OVERFLOW = 16,
 	ISP_CAMIF_ERROR     = 17
+#endif
 };
 
 #define ISP_EVENT_OFFSET          8
@@ -768,7 +808,9 @@ struct msm_isp_fetch_eng_event {
 struct msm_isp_stats_event {
 	uint32_t stats_mask;                        /* 4 bytes */
 	uint8_t stats_buf_idxs[MSM_ISP_STATS_MAX];  /* 11 bytes */
+#ifndef CONFIG_VENDOR_LEECO
 	uint8_t pd_stats_idx;
+#endif
 };
 
 struct msm_isp_stream_ack {
@@ -827,6 +869,7 @@ struct msm_isp_sof_info {
 	uint16_t stats_get_buf_fail_mask;
 	/* delta between master and slave */
 	struct msm_isp_ms_delta_info ms_delta_info;
+#ifndef CONFIG_VENDOR_LEECO
 	/*
 	 * mask with AXI_SRC in paused state. In PAUSED
 	 * state there is no Buffer output. So this mask is used
@@ -835,6 +878,7 @@ struct msm_isp_sof_info {
 	uint16_t axi_updating_mask;
 	/* extended mask with bufq_handle for regs not updated */
 	uint32_t reg_update_fail_mask_ext;
+#endif
 };
 #define AXI_UPDATING_MASK 1
 #define REG_UPDATE_FAIL_MASK_EXT 1
@@ -925,6 +969,86 @@ struct msm_isp_ahb_clk_cfg {
 #define V4L2_PIX_FMT_SGBRG14 v4l2_fourcc('G', 'B', '1', '4') /* 14 GBGB.RGRG.*/
 #define V4L2_PIX_FMT_SGRBG14 v4l2_fourcc('B', 'A', '1', '4') /* 14 GRGR.BGBG.*/
 #define V4L2_PIX_FMT_SRGGB14 v4l2_fourcc('R', 'G', '1', '4') /* 14 RGRG.GBGB.*/
+
+#ifdef CONFIG_VENDOR_LEECO
+#define VIDIOC_MSM_VFE_REG_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE, struct msm_vfe_cfg_cmd2)
+
+#define VIDIOC_MSM_ISP_REQUEST_BUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+1, struct msm_isp_buf_request)
+
+#define VIDIOC_MSM_ISP_ENQUEUE_BUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+2, struct msm_isp_qbuf_info)
+
+#define VIDIOC_MSM_ISP_RELEASE_BUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+3, struct msm_isp_buf_request)
+
+#define VIDIOC_MSM_ISP_REQUEST_STREAM \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+4, struct msm_vfe_axi_stream_request_cmd)
+
+#define VIDIOC_MSM_ISP_CFG_STREAM \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+5, struct msm_vfe_axi_stream_cfg_cmd)
+
+#define VIDIOC_MSM_ISP_RELEASE_STREAM \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+6, struct msm_vfe_axi_stream_release_cmd)
+
+#define VIDIOC_MSM_ISP_INPUT_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+7, struct msm_vfe_input_cfg)
+
+#define VIDIOC_MSM_ISP_SET_SRC_STATE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+8, struct msm_vfe_axi_src_state)
+
+#define VIDIOC_MSM_ISP_REQUEST_STATS_STREAM \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+9, \
+	struct msm_vfe_stats_stream_request_cmd)
+
+#define VIDIOC_MSM_ISP_CFG_STATS_STREAM \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+10, struct msm_vfe_stats_stream_cfg_cmd)
+
+#define VIDIOC_MSM_ISP_RELEASE_STATS_STREAM \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+11, \
+	struct msm_vfe_stats_stream_release_cmd)
+
+#define VIDIOC_MSM_ISP_REG_UPDATE_CMD \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+12, enum msm_vfe_input_src)
+
+#define VIDIOC_MSM_ISP_UPDATE_STREAM \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+13, struct msm_vfe_axi_stream_update_cmd)
+
+#define VIDIOC_MSM_VFE_REG_LIST_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+14, struct msm_vfe_cfg_cmd_list)
+
+#define VIDIOC_MSM_ISP_SMMU_ATTACH \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+15, struct msm_vfe_smmu_attach_cmd)
+
+#define VIDIOC_MSM_ISP_UPDATE_STATS_STREAM \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+16, struct msm_vfe_axi_stream_update_cmd)
+
+#define VIDIOC_MSM_ISP_AXI_HALT \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+17, struct msm_vfe_axi_halt_cmd)
+
+#define VIDIOC_MSM_ISP_AXI_RESET \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+18, struct msm_vfe_axi_reset_cmd)
+
+#define VIDIOC_MSM_ISP_AXI_RESTART \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+19, struct msm_vfe_axi_restart_cmd)
+
+#define VIDIOC_MSM_ISP_FETCH_ENG_START \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+20, struct msm_vfe_fetch_eng_start)
+
+#define VIDIOC_MSM_ISP_DEQUEUE_BUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+21, struct msm_isp_qbuf_info)
+
+#define VIDIOC_MSM_ISP_SET_DUAL_HW_MASTER_SLAVE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+22, struct msm_isp_set_dual_hw_ms_cmd)
+
+#define VIDIOC_MSM_ISP_MAP_BUF_START_FE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+23, struct msm_vfe_fetch_eng_start)
+
+#define VIDIOC_MSM_ISP_UNMAP_BUF \
+	_IOWR('V', BASE_VIDIOC_PRIVATE+24, struct msm_isp_unmap_buf_req)
+
+#else
 
 enum msm_isp_ioctl_cmd_code {
 	MSM_VFE_REG_CFG = BASE_VIDIOC_PRIVATE,
@@ -1072,6 +1196,7 @@ enum msm_isp_ioctl_cmd_code {
 #define VIDIOC_MSM_ISP_UNMAP_BUF \
 	_IOWR('V', MSM_ISP_UNMAP_BUF, \
 		struct msm_isp_unmap_buf_req)
+#endif
 
 #define VIDIOC_MSM_ISP_FETCH_ENG_MULTI_PASS_START \
 	_IOWR('V', MSM_ISP_FETCH_ENG_MULTI_PASS_START, \
