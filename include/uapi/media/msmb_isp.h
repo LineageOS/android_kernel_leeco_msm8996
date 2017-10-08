@@ -306,6 +306,30 @@ enum msm_stream_rdi_input_type {
 	MSM_CAMERA_RDI_MAX,
 };
 
+#ifdef CONFIG_VENDOR_LEECO
+struct msm_vfe_axi_stream_request_cmd {
+	uint32_t session_id;
+	uint32_t stream_id;
+	uint32_t vt_enable;
+	uint32_t output_format;/*Planar/RAW/Misc*/
+	enum msm_vfe_axi_stream_src stream_src; /*CAMIF/IDEAL/RDIs*/
+	struct msm_vfe_axi_plane_cfg plane_cfg[MAX_PLANES_PER_STREAM];
+
+	uint32_t burst_count;
+	uint32_t hfr_mode;
+	uint8_t frame_base;
+
+	uint32_t init_frame_drop; /*MAX 31 Frames*/
+	enum msm_vfe_frame_skip_pattern frame_skip_pattern;
+	uint8_t buf_divert; /* if TRUE no vb2 buf done. */
+	/*Return values*/
+	uint32_t axi_stream_handle;
+	uint32_t controllable_output;
+	uint32_t burst_len;
+	/* Flag indicating memory input stream */
+	enum msm_stream_memory_input_t memory_input;
+};
+#else
 struct msm_vfe_axi_stream_request_cmd {
 	uint32_t session_id;
 	uint32_t stream_id;
@@ -351,6 +375,7 @@ struct msm_vfe32_axi_stream_request_cmd {
 	/* Flag indicating memory input stream */
 	enum msm_stream_memory_input_t memory_input;
 };
+#endif
 
 struct msm_vfe_axi_stream_release_cmd {
 	uint32_t stream_handle;
