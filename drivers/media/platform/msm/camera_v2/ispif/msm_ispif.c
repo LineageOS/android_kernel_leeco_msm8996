@@ -1102,9 +1102,12 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 	int rc = 0;
 
 	rc = msm_ispif_reset_hw(ispif);
-	if (!rc) rc = msm_ispif_reset(ispif);
-	if (!rc) rc = msm_ispif_config(ispif, params);
-	if (!rc) rc = msm_ispif_start_frame_boundary(ispif, params);
+	if (!rc)
+		rc = msm_ispif_reset(ispif);
+	if (!rc)
+		rc = msm_ispif_config(ispif, params);
+	if (!rc)
+		rc = msm_ispif_start_frame_boundary(ispif, params);
 
 	if (!rc)
 		pr_info("ISPIF restart Successful\n");

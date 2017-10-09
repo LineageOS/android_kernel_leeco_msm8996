@@ -13,17 +13,17 @@
 
 /dts-v1/;
 
-#include "sdm450.dtsi"
-#include "msm-pmi8950.dtsi"
+#include "msm8953.dtsi"
+#include "msm-pmi8940.dtsi"
 #include "msm8953-mtp.dtsi"
-#include "msm8953-pmi8950.dtsi"
+#include "msm8953-pmi8940.dtsi"
 #include "msm8953-camera-sensor-mtp.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. SDM450 + PMI8950 MTP";
-	compatible = "qcom,sdm450-mtp", "qcom,sdm450", "qcom,mtp";
+	model = "Qualcomm Technologies, Inc. MSM8953 + PMI8940 MTP";
+	compatible = "qcom,msm8953-mtp", "qcom,msm8953", "qcom,mtp";
 	qcom,board-id= <8 0>;
-	qcom,pmic-id = <0x010016 0x010011 0x0 0x0>;
+	qcom,pmic-id = <0x010016 0x020040 0x0 0x0>;
 };
 
 /{
@@ -34,11 +34,11 @@
 	};
 };
 
-&pmi8950_fg {
+&pmi8940_fg {
 	qcom,battery-data = <&mtp_batterydata>;
 };
 
-&pmi8950_charger {
+&pmi8940_charger {
 	qcom,battery-data = <&mtp_batterydata>;
 	qcom,chg-led-sw-controls;
 	qcom,chg-led-support;
