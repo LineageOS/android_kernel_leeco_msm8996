@@ -337,3 +337,18 @@
 &qcom_seecom {
 	/delete-property/ qcom,qsee-reentrancy-support;
 };
+
+&pm8994_l17 {
+	/delete-property/ regulator-max-microvolt;
+	regulator-max-microvolt = <2800000>;
+};
+
+&pm8994_l27 {
+	/delete-property/ regulator-max-microvolt;
+	regulator-max-microvolt = <1200000>;
+};
+
+&pm8994_l29 {
+	/delete-property/ regulator-max-microvolt;
+	regulator-max-microvolt = <3050000>;
+};
