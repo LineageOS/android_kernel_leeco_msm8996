@@ -17,7 +17,6 @@
 #include "msm-pmi8996.dtsi"
 #include "msm8996-le_zl1-evt.dtsi"
 
-
 / {
 	model = "Letv Technologies, Inc. MSM 8996 v3 + PMI8996 LE_ZL1-EVT";
 	compatible = "qcom,msm8996-mtp", "qcom,msm8996", "qcom,mtp";
