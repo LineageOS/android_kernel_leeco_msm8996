@@ -24,6 +24,7 @@
         qcom,parallel-allowed-lowering-ma = <500>;
         qcom,aicl-rerun-period-s = <180>;
 };
+
 &pmi8994_fg {
         qcom,warm-bat-decidegc = <450>;
         qcom,hot-bat-decidegc = <500>;
