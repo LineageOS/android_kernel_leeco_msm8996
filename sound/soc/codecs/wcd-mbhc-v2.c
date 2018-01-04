@@ -1390,7 +1390,7 @@ restart_correct_detect:
 		goto correct_plug_type;
 	}
 
-	if ((plug_type == MBHC_PLUG_TYPE_HEADSET) &&
+	if ((plug_type == MBHC_PLUG_TYPE_HEADSET &&
 	     plug_type == MBHC_PLUG_TYPE_HIGH_HPH) &&
 #else
 	if ((plug_type == MBHC_PLUG_TYPE_HEADSET ||
