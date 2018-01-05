@@ -407,6 +407,7 @@ struct arm_smmu_device {
 	char				*bus_client_name;
 
 	enum tz_smmu_device_id		sec_id;
+	int				regulator_defer;
 };
 
 struct arm_smmu_cfg {
@@ -801,11 +802,19 @@ static int arm_smmu_unrequest_bus(struct arm_smmu_device *smmu)
 
 static int arm_smmu_disable_regulators(struct arm_smmu_device *smmu)
 {
+	int ret = 0;
+
 	arm_smmu_unprepare_clocks(smmu);
 	arm_smmu_unrequest_bus(smmu);
-	if (!smmu->gdsc)
-		return 0;
-	return regulator_disable(smmu->gdsc);
+
+	if (smmu->gdsc) {
+		ret = regulator_disable_deferred(smmu->gdsc,
+						 smmu->regulator_defer);
+		WARN(ret, "%s: Regulator disable failed\n",
+			dev_name(smmu->dev));
+	}
+
+	return ret;
 }
 
 static int arm_smmu_enable_regulators(struct arm_smmu_device *smmu)
@@ -1099,6 +1108,7 @@ static void arm_smmu_secure_pool_destroy(struct arm_smmu_domain *smmu_domain)
 	list_for_each_entry_safe(it, i, &smmu_domain->secure_pool_list, list) {
 		arm_smmu_unprepare_pgtable(smmu_domain, it->addr, it->size);
 		/* pages will be freed later (after being unassigned) */
+		list_del(&it->list);
 		kfree(it);
 	}
 }
@@ -1760,9 +1770,19 @@ static void arm_smmu_destroy_domain_context(struct iommu_domain *domain)
 	cb_base = ARM_SMMU_CB_BASE(smmu) + ARM_SMMU_CB(smmu, cfg->cbndx);
 	writel_relaxed(0, cb_base + ARM_SMMU_CB_SCTLR);
 
-	arm_smmu_tlb_inv_context(smmu_domain);
-
 	arm_smmu_disable_clocks(smmu_domain->smmu);
+
+	if (smmu_domain->pgtbl_ops) {
+		free_io_pgtable_ops(smmu_domain->pgtbl_ops);
+		/* unassign any freed page table memory */
+		if (arm_smmu_is_master_side_secure(smmu_domain)) {
+			arm_smmu_secure_domain_lock(smmu_domain);
+			arm_smmu_secure_pool_destroy(smmu_domain);
+			arm_smmu_unassign_table(smmu_domain);
+			arm_smmu_secure_domain_unlock(smmu_domain);
+		}
+		smmu_domain->pgtbl_ops = NULL;
+	}
 
 free_irqs:
 	if (cfg->irptndx != INVALID_IRPTNDX) {
@@ -3308,6 +3328,12 @@ static int arm_smmu_init_regulators(struct arm_smmu_device *smmu)
 
 	if (!of_get_property(dev->of_node, "vdd-supply", NULL))
 		return 0;
+
+	if (!of_property_read_u32(dev->of_node,
+				  "qcom,deferred-regulator-disable-delay",
+				  &(smmu->regulator_defer)))
+		dev_info(dev, "regulator defer delay %d\n",
+			smmu->regulator_defer);
 
 	smmu->gdsc = devm_regulator_get(dev, "vdd");
 	if (IS_ERR(smmu->gdsc))

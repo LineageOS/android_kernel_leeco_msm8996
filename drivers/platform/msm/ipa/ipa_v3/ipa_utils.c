@@ -1263,38 +1263,46 @@ int ipa3_get_clients_from_rm_resource(
 		clients->names[i++] = IPA_CLIENT_USB_DPL_CONS;
 		break;
 	case IPA_RM_RESOURCE_HSIC_CONS:
-		clients->names[i++] = IPA_CLIENT_HSIC1_CONS;
+		if (ipa3_get_ep_mapping(IPA_CLIENT_HSIC1_CONS) != -1)
+			clients->names[i++] = IPA_CLIENT_HSIC1_CONS;
 		break;
 	case IPA_RM_RESOURCE_WLAN_CONS:
 		clients->names[i++] = IPA_CLIENT_WLAN1_CONS;
 		clients->names[i++] = IPA_CLIENT_WLAN2_CONS;
 		clients->names[i++] = IPA_CLIENT_WLAN3_CONS;
-		clients->names[i++] = IPA_CLIENT_WLAN4_CONS;
+		if (ipa3_get_ep_mapping(IPA_CLIENT_WLAN4_CONS) != -1)
+			clients->names[i++] = IPA_CLIENT_WLAN4_CONS;
 		break;
 	case IPA_RM_RESOURCE_MHI_CONS:
-		clients->names[i++] = IPA_CLIENT_MHI_CONS;
+		if (ipa3_get_ep_mapping(IPA_CLIENT_MHI_CONS) != -1)
+			clients->names[i++] = IPA_CLIENT_MHI_CONS;
 		break;
 	case IPA_RM_RESOURCE_ODU_ADAPT_CONS:
 		clients->names[i++] = IPA_CLIENT_ODU_EMB_CONS;
-		clients->names[i++] = IPA_CLIENT_ODU_TETH_CONS;
+		if (ipa3_get_ep_mapping(IPA_CLIENT_ODU_TETH_CONS) != -1)
+			clients->names[i++] = IPA_CLIENT_ODU_TETH_CONS;
 		break;
 	case IPA_RM_RESOURCE_ETHERNET_CONS:
-		clients->names[i++] = IPA_CLIENT_ETHERNET_CONS;
+		if (ipa3_get_ep_mapping(IPA_CLIENT_ETHERNET_CONS) != -1)
+			clients->names[i++] = IPA_CLIENT_ETHERNET_CONS;
 		break;
 	case IPA_RM_RESOURCE_USB_PROD:
 		clients->names[i++] = IPA_CLIENT_USB_PROD;
 		break;
 	case IPA_RM_RESOURCE_HSIC_PROD:
-		clients->names[i++] = IPA_CLIENT_HSIC1_PROD;
+		if (ipa3_get_ep_mapping(IPA_CLIENT_HSIC1_PROD) != -1)
+			clients->names[i++] = IPA_CLIENT_HSIC1_PROD;
 		break;
 	case IPA_RM_RESOURCE_MHI_PROD:
-		clients->names[i++] = IPA_CLIENT_MHI_PROD;
+		if (ipa3_get_ep_mapping(IPA_CLIENT_MHI_PROD) != -1)
+			clients->names[i++] = IPA_CLIENT_MHI_PROD;
 		break;
 	case IPA_RM_RESOURCE_ODU_ADAPT_PROD:
 		clients->names[i++] = IPA_CLIENT_ODU_PROD;
 		break;
 	case IPA_RM_RESOURCE_ETHERNET_PROD:
-		clients->names[i++] = IPA_CLIENT_ETHERNET_PROD;
+		if (ipa3_get_ep_mapping(IPA_CLIENT_ETHERNET_PROD) != -1)
+			clients->names[i++] = IPA_CLIENT_ETHERNET_PROD;
 		break;
 	default:
 		break;
@@ -1327,17 +1335,33 @@ bool ipa3_should_pipe_be_suspended(enum ipa_client_type client)
 	if (ep->keep_ipa_awake)
 		return false;
 
+	if (client == IPA_CLIENT_MHI_CONS &&
+		(ipa3_get_ep_mapping(IPA_CLIENT_MHI_CONS) != -1))
+		return true;
+
+	if (client == IPA_CLIENT_HSIC1_CONS &&
+		(ipa3_get_ep_mapping(IPA_CLIENT_HSIC1_CONS) != -1))
+		return true;
+
+	if (client == IPA_CLIENT_WLAN4_CONS &&
+		(ipa3_get_ep_mapping(IPA_CLIENT_WLAN4_CONS) != -1))
+		return true;
+
+	if (client == IPA_CLIENT_ODU_TETH_CONS &&
+		(ipa3_get_ep_mapping(IPA_CLIENT_ODU_TETH_CONS) != -1))
+		return true;
+
+	if (client == IPA_CLIENT_ETHERNET_CONS &&
+		(ipa3_get_ep_mapping(IPA_CLIENT_ETHERNET_CONS) != -1))
+		return true;
+
+
 	if (client == IPA_CLIENT_USB_CONS     ||
 	    client == IPA_CLIENT_USB_DPL_CONS ||
-	    client == IPA_CLIENT_MHI_CONS     ||
-	    client == IPA_CLIENT_HSIC1_CONS   ||
 	    client == IPA_CLIENT_WLAN1_CONS   ||
 	    client == IPA_CLIENT_WLAN2_CONS   ||
 	    client == IPA_CLIENT_WLAN3_CONS   ||
-	    client == IPA_CLIENT_WLAN4_CONS   ||
-	    client == IPA_CLIENT_ODU_EMB_CONS ||
-	    client == IPA_CLIENT_ODU_TETH_CONS ||
-	    client == IPA_CLIENT_ETHERNET_CONS)
+	    client == IPA_CLIENT_ODU_EMB_CONS)
 		return true;
 
 	return false;
@@ -1786,7 +1810,7 @@ u8 ipa3_get_qmb_master_sel(enum ipa_client_type client)
 
 void ipa3_set_client(int index, enum ipacm_client_enum client, bool uplink)
 {
-	if (client >= IPACM_CLIENT_MAX || client < IPACM_CLIENT_USB) {
+	if (client > IPACM_CLIENT_MAX || client < IPACM_CLIENT_USB) {
 		IPAERR("Bad client number! client =%d\n", client);
 	} else if (index >= IPA3_MAX_NUM_PIPES || index < 0) {
 		IPAERR("Bad pipe index! index =%d\n", index);
@@ -5727,10 +5751,15 @@ bool ipa3_is_client_handle_valid(u32 clnt_hdl)
  */
 void ipa3_proxy_clk_unvote(void)
 {
-	if (ipa3_is_ready() && ipa3_ctx->q6_proxy_clk_vote_valid) {
+	if (!ipa3_is_ready())
+		return;
+
+	mutex_lock(&ipa3_ctx->q6_proxy_clk_vote_mutex);
+	if (ipa3_ctx->q6_proxy_clk_vote_valid) {
 		IPA_ACTIVE_CLIENTS_DEC_SPECIAL("PROXY_CLK_VOTE");
 		ipa3_ctx->q6_proxy_clk_vote_valid = false;
 	}
+	mutex_unlock(&ipa3_ctx->q6_proxy_clk_vote_mutex);
 }
 
 /**
@@ -5740,10 +5769,15 @@ void ipa3_proxy_clk_unvote(void)
  */
 void ipa3_proxy_clk_vote(void)
 {
-	if (ipa3_is_ready() && !ipa3_ctx->q6_proxy_clk_vote_valid) {
+	if (!ipa3_is_ready())
+		return;
+
+	mutex_lock(&ipa3_ctx->q6_proxy_clk_vote_mutex);
+	if (!ipa3_ctx->q6_proxy_clk_vote_valid) {
 		IPA_ACTIVE_CLIENTS_INC_SPECIAL("PROXY_CLK_VOTE");
 		ipa3_ctx->q6_proxy_clk_vote_valid = true;
 	}
+	mutex_unlock(&ipa3_ctx->q6_proxy_clk_vote_mutex);
 }
 
 /**

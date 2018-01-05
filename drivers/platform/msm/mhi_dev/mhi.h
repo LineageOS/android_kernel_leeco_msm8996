@@ -273,6 +273,7 @@ struct mhi_config {
 #define MHI_ENV_VALUE			2
 #define MHI_MASK_ROWS_CH_EV_DB		4
 #define TRB_MAX_DATA_SIZE		8192
+#define MHI_CTRL_STATE			25
 
 /* Possible ring element types */
 union mhi_dev_ring_element_type {
@@ -350,6 +351,13 @@ enum mhi_dev_ch_operation {
 	MHI_DEV_POLL,
 };
 
+enum mhi_ctrl_info {
+	MHI_STATE_CONFIGURED = 0,
+	MHI_STATE_CONNECTED = 1,
+	MHI_STATE_DISCONNECTED = 2,
+	MHI_STATE_INVAL,
+};
+
 struct mhi_dev_channel;
 
 struct mhi_dev_ring {
@@ -395,6 +403,7 @@ static inline void mhi_dev_ring_inc_index(struct mhi_dev_ring *ring,
 
 enum cb_reason {
 	MHI_DEV_TRE_AVAILABLE = 0,
+	MHI_DEV_CTRL_UPDATE,
 };
 
 struct mhi_dev_client_cb_reason {
@@ -511,15 +520,19 @@ struct mhi_dev {
 	u32				ipa_clnt_hndl[4];
 	struct workqueue_struct		*ring_init_wq;
 	struct work_struct		ring_init_cb_work;
+	struct work_struct		re_init;
 
 	/* EP PCIe registration */
+	struct workqueue_struct		*pcie_event_wq;
 	struct ep_pcie_register_event	event_reg;
 	u32                             ifc_id;
 	struct ep_pcie_hw               *phandle;
+	struct work_struct		pcie_event;
 
 	atomic_t			write_active;
 	atomic_t			is_suspended;
 	atomic_t			mhi_dev_wake;
+	atomic_t			re_init_done;
 	struct mutex			mhi_write_test;
 	u32				device_local_pa_base;
 	u32				mhi_ep_msi_num;
@@ -545,6 +558,12 @@ struct mhi_dev {
 
 	/* iATU is required to map control and data region */
 	bool				config_iatu;
+
+	/* MHI state info */
+	enum mhi_ctrl_info		ctrl_info;
+
+	/*Register for interrupt*/
+	bool				mhi_int;
 };
 
 enum mhi_msg_level {
@@ -1035,8 +1054,10 @@ int mhi_dev_get_mhi_addr(struct mhi_dev *dev);
  * mhi_dev_get_mhi_state() - Fetches the MHI state such as M0/M1/M2/M3.
  * @dev:	MHI device structure.
  * @state:	Pointer of type mhi_dev_state
+ * @mhi_reset:	MHI device reset from host.
  */
-int mhi_dev_mmio_get_mhi_state(struct mhi_dev *dev, enum mhi_dev_state *state);
+int mhi_dev_mmio_get_mhi_state(struct mhi_dev *dev, enum mhi_dev_state *state,
+						bool *mhi_reset);
 
 /**
  * mhi_dev_mmio_init() - Initializes the MMIO and reads the Number of event
@@ -1142,5 +1163,9 @@ int mhi_uci_init(void);
 int mhi_dev_net_interface_init(void);
 
 void mhi_dev_notify_a7_event(struct mhi_dev *mhi);
+
+int mhi_ctrl_state_info(uint32_t *info);
+
+void uci_ctrl_update(struct mhi_dev_client_cb_reason *reason);
 
 #endif /* _MHI_H_ */
