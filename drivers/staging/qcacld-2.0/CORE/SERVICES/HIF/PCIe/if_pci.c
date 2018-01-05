@@ -61,11 +61,14 @@
 
 #define AR9888_DEVICE_ID (0x003c)
 #define AR6320_DEVICE_ID (0x003e)
+#define QCA9379_DEVICE_ID (0x0042)
+#define QCA9379_DEVICE_REV_ID (0x0043)
 #define AR6320_FW_1_1  (0x11)
 #define AR6320_FW_1_3  (0x13)
 #define AR6320_FW_2_0  (0x20)
 #define AR6320_FW_3_0  (0x30)
 #define AR6320_FW_3_2  (0x32)
+#define QCA9379_FW_3_2  (0x31)
 
 #ifdef CONFIG_SLUB_DEBUG_ON
 #define MAX_NUM_OF_RECEIVES 400 /* Maximum number of Rx buf to process before*
@@ -127,6 +130,8 @@ static void print_config_soc_reg(struct hif_pci_softc *sc)
 static struct pci_device_id hif_pci_id_table[] = {
 	{ 0x168c, 0x003c, PCI_ANY_ID, PCI_ANY_ID },
 	{ 0x168c, 0x003e, PCI_ANY_ID, PCI_ANY_ID },
+	{ 0x168c, 0x0042, PCI_ANY_ID, PCI_ANY_ID },
+	{ 0x168c, 0x0043, PCI_ANY_ID, PCI_ANY_ID },
 	{ 0 }
 };
 
@@ -1560,6 +1565,30 @@ static inline void
 hif_pci_pm_runtime_ssr_post_exit(struct hif_pci_softc *sc) { }
 #endif
 
+#ifdef CONFIG_NON_QC_PLATFORM_PCI
+static inline void *hif_pci_get_virt_ramdump_mem(unsigned long *size)
+{
+	size_t length = 0;
+	int flags = GFP_KERNEL;
+
+	length = DRAM_SIZE + IRAM1_SIZE + IRAM2_SIZE + AXI_SIZE + REG_SIZE;
+
+	if (size != NULL)
+		*size = (unsigned long)length;
+
+	if (in_interrupt() || irqs_disabled() || in_atomic())
+		flags = GFP_ATOMIC;
+
+	return kzalloc(length, flags);
+}
+
+static inline void hif_pci_release_ramdump_mem(unsigned long *address)
+{
+	if (address != NULL)
+		kfree(address);
+}
+#endif
+
 int
 hif_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
@@ -1699,6 +1728,8 @@ again:
         break;
 
     case AR6320_DEVICE_ID:
+    case QCA9379_DEVICE_ID:
+    case QCA9379_DEVICE_REV_ID:
         switch(revision_id) {
         case AR6320_FW_1_1:
         case AR6320_FW_1_3:
@@ -1709,6 +1740,7 @@ again:
         case AR6320_FW_2_0:
         case AR6320_FW_3_0:
         case AR6320_FW_3_2:
+        case QCA9379_FW_3_2:
             hif_type = HIF_TYPE_AR6320V2;
             target_type = TARGET_TYPE_AR6320V2;
             break;
@@ -1811,13 +1843,20 @@ again:
 #endif
     ol_sc->max_no_of_peers = 1;
 
+#ifdef CONFIG_NON_QC_PLATFORM_PCI
+    ol_sc->ramdump_base = hif_pci_get_virt_ramdump_mem(&ol_sc->ramdump_size);
+#else
     /* Get RAM dump memory address and size */
     ol_sc->ramdump_base = vos_get_virt_ramdump_mem(&pdev->dev,
                                              &ol_sc->ramdump_size);
 
+#endif
     if (ol_sc->ramdump_base == NULL || !ol_sc->ramdump_size) {
         pr_info("%s: Failed to get RAM dump memory address or size!\n",
                 __func__);
+    } else {
+        pr_info("%s: ramdump base 0x%p size %d\n", __func__,
+		ol_sc->ramdump_base, (int)ol_sc->ramdump_size);
     }
 
     adf_os_atomic_init(&sc->tasklet_from_intr);
@@ -1851,6 +1890,10 @@ again:
     return 0;
 
 err_config:
+#ifdef CONFIG_NON_QC_PLATFORM_PCI
+    if (sc && sc->ol_sc && sc->ol_sc->ramdump_base)
+        hif_pci_release_ramdump_mem(sc->ol_sc->ramdump_base);
+#endif
     hif_deinit_adf_ctx(ol_sc);
     A_FREE(ol_sc);
 err_attach:
@@ -2037,6 +2080,8 @@ again:
         break;
 
     case AR6320_DEVICE_ID:
+    case QCA9379_DEVICE_ID:
+    case QCA9379_DEVICE_REV_ID:
         switch(revision_id) {
         case AR6320_FW_1_1:
         case AR6320_FW_1_3:
@@ -2047,6 +2092,7 @@ again:
         case AR6320_FW_2_0:
         case AR6320_FW_3_0:
         case AR6320_FW_3_2:
+        case QCA9379_FW_3_2:
             hif_type = HIF_TYPE_AR6320V2;
             target_type = TARGET_TYPE_AR6320V2;
             break;
@@ -2148,9 +2194,13 @@ again:
     ol_sc->max_no_of_peers = 1;
 
     /* Get RAM dump memory address and size */
+#ifdef CONFIG_NON_QC_PLATFORM_PCI
+    ol_sc->ramdump_base = hif_pci_get_virt_ramdump_mem(&ol_sc->ramdump_size);
+#else
     ol_sc->ramdump_base = vos_get_virt_ramdump_mem(&pdev->dev,
                                              &ol_sc->ramdump_size);
 
+#endif
     if (ol_sc->ramdump_base == NULL || !ol_sc->ramdump_size) {
         pr_info("%s: Failed to get RAM dump memory address or size!\n",
                 __func__);
@@ -2190,6 +2240,10 @@ again:
     return 0;
 
 err_config:
+#ifdef CONFIG_NON_QC_PLATFORM_PCI
+    if (sc && sc->ol_sc && sc->ol_sc->ramdump_base)
+        hif_pci_release_ramdump_mem(sc->ol_sc->ramdump_base);
+#endif
     hif_deinit_adf_ctx(ol_sc);
     A_FREE(ol_sc);
 err_attach:
@@ -2501,6 +2555,10 @@ hif_pci_remove(struct pci_dev *pdev)
 
     scn = sc->ol_sc;
 
+#ifdef CONFIG_NON_QC_PLATFORM_PCI
+    if (sc && sc->ol_sc && sc->ol_sc->ramdump_base)
+        hif_pci_release_ramdump_mem(sc->ol_sc->ramdump_base);
+#endif
 #ifndef REMOVE_PKT_LOG
     if (vos_get_conparam() != VOS_FTM_MODE &&
         !WLAN_IS_EPPING_ENABLED(vos_get_conparam()))
@@ -2673,8 +2731,8 @@ static void hif_dump_crash_debug_info(struct hif_pci_softc *sc)
 
 	/*
 	 * When kernel panic happen, if WiFi FW is still active,
-	 * it may cause NOC errors/memory corruption, to avoid
-	 * this, inject a fw crash first.
+	 * it may cause NOC errors/memory corruption when dumping
+	 * target DRAM/IRAM, to avoid this, inject a fw crash first.
 	 * send crash_inject to FW directly, because we are now
 	 * in an atomic context, and preempt has been disabled,
 	 * MCThread won't be scheduled at the moment, at the same
@@ -2682,15 +2740,15 @@ static void hif_dump_crash_debug_info(struct hif_pci_softc *sc)
 	 * crash due to the same reason
 	 */
 	ret = wma_crash_inject(wma_handle, 1, 0);
-	if (ret) {
-		pr_err("%s: failed to send crash inject - %d\n",
-				__func__, ret);
-		return;
-	}
 
 	adf_os_spin_lock_irqsave(&hif_state->suspend_lock);
 	hif_irq_record(HIF_CRASH, sc);
 	hif_dump_soc_and_ce_registers(sc);
+	if (ret) {
+		pr_err("%s: failed to send crash inject - %d\n",
+				__func__, ret);
+		goto out;
+	}
 
 	ret = ol_copy_ramdump(scn);
 

@@ -573,6 +573,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_CHANNEL_BONDING_MODE_MIN,
                  CFG_CHANNEL_BONDING_MODE_MAX),
 
+   REG_VARIABLE(CFG_OVERRIDE_HT40_20_24GHZ_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, override_ht20_40_24g,
+                VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                CFG_OVERRIDE_HT40_20_24GHZ_DEFAULT,
+                CFG_OVERRIDE_HT40_20_24GHZ_MIN,
+                CFG_OVERRIDE_HT40_20_24GHZ_MAX),
+
    REG_VARIABLE( CFG_CHANNEL_BONDING_MODE_5GHZ_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, nChannelBondingMode5GHz,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK,
@@ -1065,6 +1072,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_QOS_WMM_MODE_MIN,
                  CFG_QOS_WMM_MODE_MAX ),
 
+   REG_VARIABLE( CFG_STA_LOCAL_EDCA_FOR_ETSI_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, gStaLocalEDCAEnable,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_STA_LOCAL_EDCA_FOR_ETSI_DEFAULT,
+                 CFG_STA_LOCAL_EDCA_FOR_ETSI_MIN,
+                 CFG_STA_LOCAL_EDCA_FOR_ETSI_MAX ),
+
    REG_VARIABLE( CFG_QOS_WMM_80211E_ENABLED_NAME , WLAN_PARAM_Integer,
                  hdd_config_t, b80211eIsEnabled,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -1463,6 +1477,27 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_WLAN_MCC_TO_SCC_SWITCH_MODE_DEFAULT,
                  CFG_WLAN_MCC_TO_SCC_SWITCH_MODE_MIN,
                  CFG_WLAN_MCC_TO_SCC_SWITCH_MODE_MAX ),
+
+   REG_VARIABLE( CFG_WLAN_BAND_SWITCH_ENABLE , WLAN_PARAM_Integer,
+                 hdd_config_t, wlan_band_switch_enable,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_WLAN_BAND_SWITCH_ENABLE_DEFAULT,
+                 CFG_WLAN_BAND_SWITCH_ENABLE_MIN,
+                 CFG_WLAN_BAND_SWITCH_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_WLAN_AP_P2PGO_CONC_ENABLE , WLAN_PARAM_Integer,
+                 hdd_config_t, wlan_ap_p2pgo_conc_enable,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_WLAN_AP_P2PGO_CONC_ENABLE_DEFAULT,
+                 CFG_WLAN_AP_P2PGO_CONC_ENABLE_MIN,
+                 CFG_WLAN_AP_P2PGO_CONC_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_WLAN_AP_P2PGC_CONC_ENABLE , WLAN_PARAM_Integer,
+                 hdd_config_t, wlan_ap_p2pclient_conc_enable,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_WLAN_AP_P2PGC_CONC_ENABLE_DEFAULT,
+                 CFG_WLAN_AP_P2PGC_CONC_ENABLE_MIN,
+                 CFG_WLAN_AP_P2PGC_CONC_ENABLE_MAX ),
 #endif
 #ifdef FEATURE_WLAN_AUTO_SHUTDOWN
    REG_VARIABLE( CFG_WLAN_AUTO_SHUTDOWN , WLAN_PARAM_Integer,
@@ -3535,6 +3570,12 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ENABLE_PACKET_LOG_DEFAULT,
                  CFG_ENABLE_PACKET_LOG_MIN,
                  CFG_ENABLE_PACKET_LOG_MAX ),
+   REG_VARIABLE( CFG_EDCA_FROM_HOSTAPD,  WLAN_PARAM_Integer,
+                 hdd_config_t, enable_hostapd_edca_local,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK,
+                 CFG_EDCA_FROM_HOSTAPD_DEFAULT,
+                 CFG_EDCA_FROM_HOSTAPD_MIN,
+                 CFG_EDCA_FROM_HOSTAPD_MAX),
 
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
    REG_VARIABLE( CFG_ROAMING_OFFLOAD_NAME,  WLAN_PARAM_Integer,
@@ -3882,6 +3923,13 @@ REG_TABLE_ENTRY g_registry_table[] =
               CFG_ENABLE_SELF_RECOVERY_DEFAULT,
               CFG_ENABLE_SELF_RECOVERY_MIN,
               CFG_ENABLE_SELF_RECOVERY_MAX ),
+
+   REG_VARIABLE( CFG_ENABLE_AC_TXQ_OPTIMIZE, WLAN_PARAM_HexInteger,
+              hdd_config_t, enable_ac_txq_optimize,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_ENABLE_AC_TXQ_OPTIMIZE_DEFAULT,
+              CFG_ENABLE_AC_TXQ_OPTIMIZE_MIN,
+              CFG_ENABLE_AC_TXQ_OPTIMIZE_MAX ),
 
 #ifdef FEATURE_WLAN_FORCE_SAP_SCC
    REG_VARIABLE(CFG_SAP_SCC_CHAN_AVOIDANCE, WLAN_PARAM_Integer,
@@ -5111,6 +5159,35 @@ REG_TABLE_ENTRY g_registry_table[] =
                CFG_SKIP_MAC_CONFIG_DEFAULT,
                CFG_SKIP_MAC_CONFIG_MIN,
                CFG_SKIP_MAC_CONFIG_MAX),
+#ifdef WLAN_FEATURE_DSRC
+  REG_VARIABLE(CFG_OCB_TX_PER_PKT_STATS_ENABLE_NAME, WLAN_PARAM_Integer,
+               hdd_config_t, ocb_tx_per_pkt_stats_enabled,
+               VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+               CFG_OCB_TX_PER_PKT_STATS_ENABLE_DEFAULT,
+               CFG_OCB_TX_PER_PKT_STATS_ENABLE_MIN,
+               CFG_OCB_TX_PER_PKT_STATS_ENABLE_MAX),
+#endif
+
+	REG_VARIABLE(CFG_CCA_THRESHOLD_ENABLE_NAME, WLAN_PARAM_Integer,
+		hdd_config_t, cca_threshold_enable,
+		VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+		CFG_CCA_THRESHOLD_ENABLE_DEFAULT,
+		CFG_CCA_THRESHOLD_ENABLE_MIN,
+		CFG_CCA_THRESHOLD_ENABLE_MAX),
+
+	REG_VARIABLE(CFG_CCA_THRESHOLD_2G_NAME, WLAN_PARAM_Integer,
+		hdd_config_t, cca_threshold_2g,
+		VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+		CFG_CCA_THRESHOLD_2G_DEFAULT,
+		CFG_CCA_THRESHOLD_2G_MIN,
+		CFG_CCA_THRESHOLD_2G_MAX),
+
+	REG_VARIABLE(CFG_CCA_THRESHOLD_5G_NAME, WLAN_PARAM_Integer,
+		hdd_config_t, cca_threshold_5g,
+		VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+		CFG_CCA_THRESHOLD_5G_DEFAULT,
+		CFG_CCA_THRESHOLD_5G_MIN,
+		CFG_CCA_THRESHOLD_5G_MAX),
 };
 
 
@@ -5310,7 +5387,8 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
 
    hddLog(LOG1, "%s: qcom_cfg.ini Size %zu", __func__, fw->size);
 
-   buffer = (char*)vos_mem_malloc(fw->size);
+   buffer = (char*)vos_mem_malloc(fw->size + 1);
+   buffer[fw->size] = '\0';
 
    if(NULL == buffer) {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: kmalloc failure",__func__);
@@ -5410,6 +5488,9 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gAPAutoShutOff] Value = [%u]", pHddCtx->cfg_ini->nAPAutoShutOff);
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gWlanMccToSccSwitchMode] Value = [%u]", pHddCtx->cfg_ini->WlanMccToSccSwitchMode);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gWlanBandSwitchEnable] Value = [%u]", pHddCtx->cfg_ini->wlan_band_switch_enable);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gWlanApP2pGOConcurrencyEnable] Value = [%u]", pHddCtx->cfg_ini->wlan_ap_p2pgo_conc_enable);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gWlanApP2pClientConcurEnable] Value = [%u]", pHddCtx->cfg_ini->wlan_ap_p2pclient_conc_enable);
 #endif
 #ifdef FEATURE_WLAN_AUTO_SHUTDOWN
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gWlanAutoShutdown] Value = [%u]", pHddCtx->cfg_ini->WlanAutoShutdown);
@@ -5442,6 +5523,8 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gACSBandSwitchThreshold] value = [%u]", pHddCtx->cfg_ini->acsBandSwitchThreshold);
 
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ChannelBondingMode] Value = [%u]",pHddCtx->cfg_ini->nChannelBondingMode24GHz);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [%s] Value = [%u] ",
+            CFG_OVERRIDE_HT40_20_24GHZ_NAME, pHddCtx->cfg_ini->override_ht20_40_24g);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ChannelBondingMode] Value = [%u]",pHddCtx->cfg_ini->nChannelBondingMode5GHz);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [dot11Mode] Value = [%u]",pHddCtx->cfg_ini->dot11Mode);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [WmmMode] Value = [%u] ",pHddCtx->cfg_ini->WmmMode);
@@ -5719,6 +5802,11 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
            "Name = [isRoamOffloadEnabled] Value = [%u]",
                    pHddCtx->cfg_ini->isRoamOffloadEnabled);
 #endif
+
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+           "Name = [gEnableHostapdEdcaLocal] Value = [%u]",
+                   pHddCtx->cfg_ini->enable_hostapd_edca_local);
+
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
            "Name = [gEnableSifsBurst] Value = [%u]",
                    pHddCtx->cfg_ini->enableSifsBurst);
@@ -5732,6 +5820,10 @@ void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
            "Name = [gEnableSelfRecovery] Value = [%u]",
                    pHddCtx->cfg_ini->enableSelfRecovery);
+
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+           "Name = [gEnableAcTxqOptimize] Value = [%u]",
+                   pHddCtx->cfg_ini->enable_ac_txq_optimize);
 
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
             "Name = [gEnableSapSuspend] Value = [%u]",
@@ -6212,7 +6304,7 @@ VOS_STATUS hdd_update_mac_config(hdd_context_t *pHddCtx)
 {
    int status, i = 0;
    const struct firmware *fw = NULL;
-   char *line, *buffer = NULL;
+   char *line, *buffer = NULL, *temp = NULL;
    char *name, *value;
    tCfgIniEntry macTable[VOS_MAX_CONCURRENCY_PERSONA];
    tSirMacAddr customMacAddr;
@@ -6236,7 +6328,15 @@ VOS_STATUS hdd_update_mac_config(hdd_context_t *pHddCtx)
       goto config_exit;
    }
 
-   buffer = (char *)fw->data;
+   temp = buffer = (char *) vos_mem_malloc(fw->size + 1);
+   if (NULL == buffer) {
+      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: unable to allocate memory",__func__);
+      release_firmware(fw);
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   vos_mem_copy((void*)buffer,(void *)fw->data, fw->size);
+   buffer[fw->size] = '\0';
 
    /* data format:
     * Intf0MacAddress=00AA00BB00CC
@@ -6292,6 +6392,7 @@ VOS_STATUS hdd_update_mac_config(hdd_context_t *pHddCtx)
 
 config_exit:
    release_firmware(fw);
+   vos_mem_free(temp);
    return vos_status;
 }
 
@@ -6807,7 +6908,7 @@ VOS_STATUS hdd_set_idle_ps_config(hdd_context_t *pHddCtx, v_U32_t val)
    hdd_config_t *pConfig = pHddCtx->cfg_ini;
    VOS_STATUS status = VOS_STATUS_SUCCESS;
 
-   hddLog(LOG1, "hdd_set_idle_ps_config: Enter Val %d pconfig %p ",
+   hddLog(LOG1, "hdd_set_idle_ps_config: Enter Val %d pconfig %pK ",
                  val, pConfig);
 
    if(pConfig && pConfig->fIsImpsEnabled)
@@ -6958,7 +7059,7 @@ VOS_STATUS hdd_hex_string_to_u16_array(char *str,
 		return VOS_STATUS_E_INVAL;
 
 	hddLog(VOS_TRACE_LEVEL_ERROR,
-		FL("str %p intArray %p intArrayMaxLen %d"),
+		FL("str %pK intArray %pK intArrayMaxLen %d"),
 		s, int_array, int_array_max_len);
 
 	*len = 0;
@@ -6971,7 +7072,7 @@ VOS_STATUS hdd_hex_string_to_u16_array(char *str,
 		if (sscanf(s, "%x", &val) == 1) {
 			int_array[*len] = (uint16_t) val;
 			hddLog(VOS_TRACE_LEVEL_DEBUG,
-				FL("s %p val %x intArray[%d]=0x%x"),
+				FL("s %pK val %x intArray[%d]=0x%x"),
 				s, val, *len, int_array[*len]);
 			*len += 1;
 		}
@@ -7805,6 +7906,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #endif
    smeConfig->csrConfig.Is11eSupportEnabled      = pConfig->b80211eIsEnabled;
    smeConfig->csrConfig.WMMSupportMode           = pConfig->WmmMode;
+   smeConfig->csrConfig.gStaLocalEDCAEnable      = pConfig->gStaLocalEDCAEnable;
    /*
     * -channelBondingMode5GHz is getting updated by SAP
     * so stacbmode will be used for STA connection.
@@ -7985,6 +8087,14 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig->csrConfig.enableTxLdpc = pConfig->enableTxLdpc;
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
    smeConfig->csrConfig.cc_switch_mode = pConfig->WlanMccToSccSwitchMode;
+   smeConfig->csrConfig.band_switch_enable = pConfig->wlan_band_switch_enable;
+   smeConfig->csrConfig.ap_p2pgo_concurrency_enable =
+                        pConfig->wlan_ap_p2pgo_conc_enable;
+   smeConfig->csrConfig.ap_p2pclient_concur_enable =
+                        pConfig->wlan_ap_p2pclient_conc_enable;
+   smeConfig->csrConfig.ch_width_24g_orig = pConfig->nChannelBondingMode24GHz ?
+                        eHT_CHANNEL_WIDTH_40MHZ : eHT_CHANNEL_WIDTH_20MHZ;
+   smeConfig->csrConfig.ch_width_5g_orig = pConfig->vhtChannelWidth;
 #endif
 
    smeConfig->csrConfig.max_amsdu_num = pConfig->max_amsdu_num;

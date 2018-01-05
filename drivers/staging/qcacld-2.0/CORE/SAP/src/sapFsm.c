@@ -2290,8 +2290,8 @@ static VOS_STATUS sap_check_mcc_valid(
 	session_info_t *info;
 	session_info_t sessions[VOS_MAX_CONCURRENCY_PERSONA + 1];
 	v_U8_t	i, j;
-	v_U8_t session_cnt[VOS_MAX_CONCURRENCY_PERSONA];
-	v_U32_t channels[VOS_MAX_CONCURRENCY_PERSONA];
+	v_U8_t session_cnt[VOS_MAX_CONCURRENCY_PERSONA + 1];
+	v_U32_t channels[VOS_MAX_CONCURRENCY_PERSONA + 1];
 	v_U8_t chan_cnt = 0;
 
 	if (session_count <= 0)
@@ -2311,7 +2311,8 @@ static VOS_STATUS sap_check_mcc_valid(
 	info->con_mode = VOS_STA_SAP_MODE;
 	info->och = chan;
 	session_count++;
-	for (i = 0; i < session_count; i++) {
+	for (i = 0; i < session_count &&
+		chan_cnt < VOS_MAX_CONCURRENCY_PERSONA; i++) {
 		info = &sessions[i];
 		for (j = 0; j < chan_cnt; j++) {
 			if (info->och == channels[j]) {
@@ -2319,7 +2320,8 @@ static VOS_STATUS sap_check_mcc_valid(
 				break;
 			}
 		}
-		if (j >= chan_cnt) {
+		if ((j >= chan_cnt) &&
+		    (chan_cnt < (VOS_MAX_CONCURRENCY_PERSONA + 1))) {
 			channels[chan_cnt] = info->och;
 			session_cnt[chan_cnt] = 1;
 			chan_cnt++;
@@ -2385,6 +2387,9 @@ static VOS_STATUS sap_check_mcc_valid(
 *    same band.
 * gWlanMccToSccSwitchMode = 2: force to SCC in same band.
 *
+* gWlanBandSwitchEnable = false: disabled.
+* gWlanBandSwitchEnable = true:  enable band switch for MCC to SCC
+*
 * Return: VOS_STATUS_SUCCESS: Success
 *             other value will fail the sap start request
 */
@@ -2446,8 +2451,19 @@ sap_concurrency_chan_override(
 		    "%s: mode %d band %d och %d lf %d hf %d cf %d hbw %d",
 		    __func__, info->con_mode, info->band, info->och,
 		    info->lfreq, info->hfreq, info->cfreq, info->hbw);
-		if (info->band != target_band)
-			continue;
+		if (info->band != target_band) {
+			if (sap_context->band_switch_enable) {
+				if (info->band == eCSR_BAND_5G) {
+					sap_context->ch_width_orig =
+						sap_context->ch_width_5g_orig;
+				} else {
+					sap_context->ch_width_orig =
+						sap_context->ch_width_24g_orig;
+				}
+			} else {
+				continue;
+			}
+		}
 		if (cc_switch_mode == VOS_MCC_TO_SCC_SWITCH_ENABLE
 			&& target_chan != 0
 			&& sap_overlap_check(&target_info, info))
@@ -2466,8 +2482,19 @@ sap_concurrency_chan_override(
 			    __func__, info->con_mode, info->band,
 			    info->och, info->lfreq, info->hfreq,
 			    info->cfreq, info->hbw);
-			if (info->band != target_band)
-				continue;
+			if (info->band != target_band) {
+				if (sap_context->band_switch_enable) {
+					if (info->band == eCSR_BAND_5G) {
+						sap_context->ch_width_orig =
+							sap_context->ch_width_5g_orig;
+					} else {
+						sap_context->ch_width_orig =
+							sap_context->ch_width_24g_orig;
+					}
+				} else {
+					continue;
+				}
+			}
 			candidate[candidate_count++] = info->och;
 		}
 	}
@@ -2731,6 +2758,31 @@ sapGotoChannelSel
         }
 #endif
     }
+#ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
+    else if (sapContext->ap_p2pclient_concur_enable &&
+             vos_get_concurrency_mode() == (VOS_SAP|VOS_P2P_CLIENT)) {
+#ifdef FEATURE_WLAN_STA_AP_MODE_DFS_DISABLE
+        if (sapContext->channel == AUTO_CHANNEL_SELECT)
+            sapContext->dfs_ch_disable = VOS_TRUE;
+        else if (VOS_IS_DFS_CH(sapContext->channel)) {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_WARN,
+                       "In %s, DFS not supported in STA_AP Mode, chan=%d",
+                       __func__, sapContext->channel);
+            return VOS_STATUS_E_ABORTED;
+        }
+#endif
+        vosStatus = sap_concurrency_chan_override(
+                sapContext,
+                sapContext->cc_switch_mode,
+                &con_ch);
+        if (vosStatus != VOS_STATUS_SUCCESS) {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                "%s: invalid SAP channel(%d) configuration",
+                __func__,sapContext->channel);
+            return VOS_STATUS_E_ABORTED;
+        }
+    }
+#endif
 
     if (sapContext->channel == AUTO_CHANNEL_SELECT)
     {
@@ -2981,6 +3033,7 @@ sap_OpenSession (tHalHandle hHal, ptSapContext sapContext,
     if (!VOS_IS_STATUS_SUCCESS(status)) {
         VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                   "wait for sap open session event timed out");
+        sme_CloseSession(hHal, sapContext->sessionId, NULL, FALSE);
         return VOS_STATUS_E_FAILURE;
     }
 
@@ -3795,7 +3848,7 @@ VOS_STATUS sap_CacStartNotify(tHalHandle hHal)
              (VOS_FALSE == pSapContext->isCacStartNotified))
          {
               VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_MED,
-              "sapdfs: Signaling eSAP_DFS_CAC_START to HDD for sapctx[%p]",
+              "sapdfs: Signaling eSAP_DFS_CAC_START to HDD for sapctx[%pK]",
               pSapContext);
 
               vosStatus = sapSignalHDDevent(pSapContext, NULL,
@@ -3862,7 +3915,7 @@ VOS_STATUS sap_CacEndNotify(tHalHandle hHal, tCsrRoamInfo *roamInfo)
                 pSapContext->isCacEndNotified = VOS_TRUE;
                 pMac->sap.SapDfsInfo.sap_radar_found_status = VOS_FALSE;
                 VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_MED,
-                          "sapdfs: Start beacon request on sapctx[%p]",
+                          "sapdfs: Start beacon request on sapctx[%pK]",
                           pSapContext);
 
                 /* Start beaconing on the new channel */
@@ -4011,7 +4064,7 @@ sapFsm
     }
     pMac = PMAC_STRUCT( hHal );
 
-    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_DEBUG, "%s: sapContext=%p, stateVar=%d, msg=0x%x", __func__, sapContext, stateVar, msg);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_DEBUG, "%s: sapContext=%pK, stateVar=%d, msg=0x%x", __func__, sapContext, stateVar, msg);
 
     switch (stateVar)
     {
@@ -4075,7 +4128,7 @@ sapFsm
                if ( pMac->sap.SapDfsInfo.is_dfs_cac_timer_running != VOS_TRUE)
                {
                    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_MED,
-                             "sapdfs: starting dfs cac timer on sapctx[%p]",
+                             "sapdfs: starting dfs cac timer on sapctx[%pK]",
                              sapContext);
                    sapStartDfsCacTimer(sapContext);
                }
@@ -4513,7 +4566,7 @@ sapFsm
                             pSapContext = pMac->sap.sapCtxList [intf].pSapContext;
                             VOS_TRACE(VOS_MODULE_ID_SAP,
                                       VOS_TRACE_LEVEL_INFO_MED,
-                                      "sapdfs: Sending CSAIE for sapctx[%p]",
+                                      "sapdfs: Sending CSAIE for sapctx[%pK]",
                                       pSapContext);
 
                             vosStatus =
@@ -4588,7 +4641,7 @@ sapFsm
             else if (msg == eWNI_SME_CHANNEL_CHANGE_REQ)
             {
                VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_MED,
-                         "sapdfs: Send channel change request on sapctx[%p]",
+                         "sapdfs: Send channel change request on sapctx[%pK]",
                          sapContext);
                /* Most likely, radar has been detected and SAP wants to
                 * change the channel
@@ -5399,7 +5452,7 @@ void sapDfsCacTimerCallback(void *data)
          * CAC Complete, post eSAP_DFS_CHANNEL_CAC_END to sapFsm
          */
         VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_MED,
-        "sapdfs: Sending eSAP_DFS_CHANNEL_CAC_END for target_channel = %d on sapctx[%p]",
+        "sapdfs: Sending eSAP_DFS_CHANNEL_CAC_END for target_channel = %d on sapctx[%pK]",
         sapContext->channel, sapContext);
 
         sapEvent.event = eSAP_DFS_CHANNEL_CAC_END;
@@ -5643,11 +5696,11 @@ tANI_BOOLEAN is_concurrent_sap_ready_for_channel_change(tHalHandle hHal,
                     (ptSapContext)pMac->sap.sapCtxList [intf].pSapContext;
              if (pSapContext == sapContext) {
                  VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                           FL("sapCtx matched [%p]"), sapContext);
+                           FL("sapCtx matched [%pK]"), sapContext);
                  continue;
              } else {
                  VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                           FL("concurrent sapCtx[%p] didn't matche with [%p]"),
+                           FL("concurrent sapCtx[%pK] didn't matche with [%pK]"),
                            pSapContext, sapContext);
                  is_ready_for_chng = is_ready_for_chng &&
                      pSapContext->is_sap_ready_for_chnl_chng;

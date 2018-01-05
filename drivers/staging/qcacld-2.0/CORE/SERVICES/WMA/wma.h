@@ -101,6 +101,8 @@
 
 #define FRAGMENT_SIZE 3072
 
+#define WMA_MAX_MGMT_MPDU_LEN     2000
+
 #define WMA_INVALID_VDEV_ID				0xFF
 #define MAX_MEM_CHUNKS					32
 #define WMA_MAX_VDEV_SIZE				20
@@ -1401,6 +1403,7 @@ struct wma_set_key_params {
 	u_int32_t key_idx;
 	bool unicast;
 	u_int8_t key_data[SIR_MAC_MAX_KEY_LENGTH];
+	u_int8_t key_rsc[SIR_MAC_MAX_KEY_RSC_LEN];
 };
 
 typedef struct {

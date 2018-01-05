@@ -4310,11 +4310,6 @@ eHalStatus sme_set_ll_ext_cb(tHalHandle hal,
 
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 
-eHalStatus sme_fw_mem_dump(tHalHandle hHal, void *recvd_req);
-eHalStatus sme_fw_mem_dump_register_cb(tHalHandle hHal,
-    void (*callback_routine)(void *cb_context, struct fw_dump_rsp *rsp));
-eHalStatus sme_fw_mem_dump_unregister_cb(tHalHandle hHal);
-
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 /*--------------------------------------------------------------------------
   \brief sme_UpdateRoamOffloadEnabled() - enable/disable roam offload feature
@@ -4711,6 +4706,9 @@ eHalStatus sme_delete_all_tdls_peers(tHalHandle hal, uint8_t session_id);
 
 eHalStatus sme_update_txrate(tHalHandle hal, struct sir_txrate_update *req);
 
+eHalStatus sme_peer_flush_pending(tHalHandle hal,
+				  struct sme_flush_pending *req);
+
 void sme_send_disassoc_req_frame(tHalHandle hal, uint8_t session_id,
 		uint8_t *peer_mac, tANI_U16 reason, uint8_t wait_for_ack);
 
@@ -4825,5 +4823,7 @@ eHalStatus sme_clear_random_mac(tHalHandle hal, uint32_t session_id,
 
 eHalStatus sme_set_chip_pwr_save_fail_cb(tHalHandle hal, void (*cb)( void *,
 				struct chip_pwr_save_fail_detected_params *));
+
+eHalStatus sme_set_ac_txq_optimize(tHalHandle hal_handle, uint8_t *value);
 
 #endif //#if !defined( __SME_API_H )

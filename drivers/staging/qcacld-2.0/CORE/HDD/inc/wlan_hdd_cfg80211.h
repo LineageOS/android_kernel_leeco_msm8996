@@ -241,8 +241,9 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_GET_WIFI_INFO = 61,
     /* Start Wifi Logger */
     QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_START = 62,
-    /* Start Wifi Memory Dump */
-    QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_MEMORY_DUMP = 63,
+
+    /* FW Memory Dump feature is deprecated */
+
     QCA_NL80211_VENDOR_SUBCMD_ROAM = 64,
 
     /*
@@ -303,6 +304,8 @@ enum qca_nl80211_vendor_subcmds {
 	/* subcommand to get chain rssi value */
 	QCA_NL80211_VENDOR_SUBCMD_GET_CHAIN_RSSI = 138,
 	QCA_NL80211_VENDOR_SUBCMD_CHIP_PWRSAVE_FAILURE = 148,
+	/* subcommand to flush peer tids */
+	QCA_NL80211_VENDOR_SUBCMD_PEER_FLUSH_PENDING  = 162,
 };
 
 /**
@@ -421,9 +424,6 @@ enum qca_nl80211_vendor_subcmds_index {
 
     /* OCB events */
     QCA_NL80211_VENDOR_SUBCMD_DCC_STATS_EVENT_INDEX,
-#ifdef WLAN_FEATURE_MEMDUMP
-    QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_MEMORY_DUMP_INDEX,
-#endif /* WLAN_FEATURE_MEMDUMP */
     QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI_INDEX,
 #ifdef WLAN_FEATURE_NAN_DATAPATH
     QCA_NL80211_VENDOR_SUBCMD_NDP_INDEX,
@@ -1238,6 +1238,7 @@ enum qca_wlan_vendor_attr_ll_stats_results
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
     QCA_WLAN_VENDOR_ATTR_LL_STATS_PAD,
 #endif
+    QCA_WLAN_VENDOR_ATTR_LL_STATS_WMM_AC_PENDING_MSDU = 83,
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_LL_STATS_AFTER_LAST,
     QCA_WLAN_VENDOR_ATTR_LL_STATS_MAX =
@@ -1579,6 +1580,27 @@ enum qca_wlan_vendor_features {
         NUM_QCA_WLAN_VENDOR_FEATURES
 };
 
+/**
+ * enum qca_wlan_vendor_attr_flush_pending - Attributes for
+ * flush pending traffic in firmware.
+ *
+ * @QCA_WLAN_VENDOR_ATTR_PEER_ADDR: Configure peer mac address.
+ * @QCA_WLAN_VENDOR_ATTR_AC: Configure access category the pending
+ *  packets using. It is u8 value with bit0~3 represent AC_BE, AC_BK,
+ *  AC_VI, AC_VO respectively. Set the corresponding bit to 1 to flush
+ *  packets with access category.
+ */
+enum qca_wlan_vendor_attr_flush_pending{
+	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_INVALID = 0,
+	QCA_WLAN_VENDOR_ATTR_PEER_ADDR = 1,
+	QCA_WLAN_VENDOR_ATTR_AC = 2,
+
+	/* keep last */
+	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_AFTER_LAST,
+	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_MAX =
+	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_AFTER_LAST - 1,
+};
+
 /* Feature defines */
 #define WIFI_FEATURE_INFRA              0x0001   /* Basic infrastructure mode */
 #define WIFI_FEATURE_INFRA_5G           0x0002   /* Support for 5 GHz Band */
@@ -1619,7 +1641,6 @@ enum qca_wlan_vendor_features {
 
 /**
  * enum wifi_logger_supported_features - values for supported logger features
- * @WIFI_LOGGER_MEMORY_DUMP_SUPPORTED - Memory dump of FW
  * @WIFI_LOGGER_PER_PACKET_TX_RX_STATUS_SUPPORTED - Per packet statistics
  * @WIFI_LOGGER_CONNECT_EVENT_SUPPORTED - Logging of Connectivity events
  * @WIFI_LOGGER_POWER_EVENT_SUPPORTED - Power of driver
@@ -1627,7 +1648,6 @@ enum qca_wlan_vendor_features {
  * @WIFI_LOGGER_WATCHDOG_TIMER_SUPPORTED - monitor FW health
  */
 enum wifi_logger_supported_features {
-	WIFI_LOGGER_MEMORY_DUMP_SUPPORTED = (1 << (0)),
 	WIFI_LOGGER_PER_PACKET_TX_RX_STATUS_SUPPORTED = (1 << (1)),
 	WIFI_LOGGER_CONNECT_EVENT_SUPPORTED = (1 << (2)),
 	WIFI_LOGGER_POWER_EVENT_SUPPORTED = (1 << (3)),

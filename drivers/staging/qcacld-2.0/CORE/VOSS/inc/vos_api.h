@@ -356,6 +356,15 @@ static inline bool vos_is_ptp_tx_opt_enabled(void)
 }
 #endif
 
+#ifdef WLAN_FEATURE_DSRC
+bool vos_is_ocb_tx_per_pkt_stats_enabled(void);
+#else
+static inline bool vos_is_ocb_tx_per_pkt_stats_enabled(void)
+{
+	return false;
+}
+#endif
+
 v_U64_t vos_get_monotonic_boottime(void);
 
 /**

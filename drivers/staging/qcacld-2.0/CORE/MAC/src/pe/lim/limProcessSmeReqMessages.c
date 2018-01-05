@@ -2125,13 +2125,14 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             psessionEntry->vdev_nss = vdev_type_nss->sta;
 
         limLog(pMac, LOG1,
-              FL("persona: %d, nss: %d cbMode: %d enableHtSmps: %d htSmps: %d supported NSS 1x1: %d"),
+              FL("persona: %d, nss: %d cbMode: %d enableHtSmps: %d htSmps: %d supported NSS 1x1: %d force_24ghz_in_ht20 %d"),
                         psessionEntry->pePersona,
                         psessionEntry->vdev_nss,
                         pSmeJoinReq->cbMode,
                         psessionEntry->enableHtSmps,
                         psessionEntry->htSmpsvalue,
-                        psessionEntry->supported_nss_1x1);
+                        psessionEntry->supported_nss_1x1,
+                        pSmeJoinReq->force_24ghz_in_ht20);
 
 #ifdef WLAN_FEATURE_11AC
         psessionEntry->vhtCapability = IS_DOT11_MODE_VHT(psessionEntry->dot11mode);
@@ -2179,6 +2180,7 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->gLimPhyMode = pSmeJoinReq->bssDescription.nwType;
         handleHTCapabilityandHTInfo(pMac, psessionEntry);
         psessionEntry->htSupportedChannelWidthSet = (pSmeJoinReq->cbMode > 0)?1:0; // This is already merged value of peer and self - done by csr in csrGetCBModeFromIes
+        psessionEntry->force_24ghz_in_ht20 = pSmeJoinReq->force_24ghz_in_ht20;
         psessionEntry->htRecommendedTxWidthSet = psessionEntry->htSupportedChannelWidthSet;
         psessionEntry->htSecondaryChannelOffset = pSmeJoinReq->cbMode;
 
@@ -6824,7 +6826,7 @@ limUpdateIBssPropAddIEs(tpAniSirGlobal pMac, tANI_U8 **pDstData_buff,
 
     if ((0 == oui_length) || (NULL == ibss_ie)) {
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-                  FL("Invalid set IBSS vendor IE comamnd length %d ibss_ie %p"),
+                  FL("Invalid set IBSS vendor IE comamnd length %d ibss_ie %pK"),
                   oui_length, ibss_ie);
         return FALSE;
     }
@@ -6842,8 +6844,17 @@ limUpdateIBssPropAddIEs(tpAniSirGlobal pMac, tANI_U8 **pDstData_buff,
         vos_mem_copy(vendor_ie, pModifyIE->pIEBuffer,
                      pModifyIE->ieBufferlength);
     } else {
-        uint16_t new_length = pModifyIE->ieBufferlength + *pDstDataLen;
-        uint8_t *new_ptr = vos_mem_malloc(new_length);
+	uint8_t *new_ptr;
+	uint16_t new_length;
+
+	if (USHRT_MAX - pModifyIE->ieBufferlength < *pDstDataLen) {
+			limLog(pMac,LOGE,FL("U16 overflow due to %d + %d"),
+				pModifyIE->ieBufferlength, *pDstDataLen);
+			return false;
+		}
+
+        new_length = pModifyIE->ieBufferlength + *pDstDataLen;
+        new_ptr = vos_mem_malloc(new_length);
 
         if (NULL == new_ptr) {
             limLog(pMac, LOGE, FL("Memory allocation failed."));
@@ -6940,7 +6951,7 @@ limProcessModifyAddIEs(tpAniSirGlobal pMac, tANI_U32 *pMsg)
         }
         else
         {
-            limLog(pMac, LOGE, FL("Invalid request pIEBuffer %p ieBufferlength"
+            limLog(pMac, LOGE, FL("Invalid request pIEBuffer %pK ieBufferlength"
                             " %d ieIDLen %d ieID %d. update Type %d"),
                             pModifyAddIEs->modifyIE.pIEBuffer,
                             pModifyAddIEs->modifyIE.ieBufferlength,
@@ -7217,6 +7228,21 @@ limProcessUpdateAddIEs(tpAniSirGlobal pMac, tANI_U32 *pMsg)
                 tANI_U16 new_length = pUpdateAddIEs->updateIE.ieBufferlength +
                                 psessionEntry->addIeParams.probeRespDataLen;
                 tANI_U8 *new_ptr = vos_mem_malloc(new_length);
+                /* Multiple back to back append commands
+                 * can lead to a huge length.So, check
+                 * for the validity of the length.
+                 */
+                if (psessionEntry->addIeParams.probeRespDataLen >
+                     (USHRT_MAX - pUpdateAddIEs->updateIE.ieBufferlength))
+                {
+                    limLog(pMac, LOGE,
+                           FL("IE Length overflow, curr:%d, new:%d."),
+                           psessionEntry->addIeParams.probeRespDataLen,
+                           pUpdateAddIEs->updateIE.ieBufferlength);
+                    vos_mem_free(pUpdateAddIEs->updateIE.pAdditionIEBuffer);
+                    pUpdateAddIEs->updateIE.pAdditionIEBuffer = NULL;
+                    return;
+                }
                 if (NULL == new_ptr)
                 {
                     limLog(pMac, LOGE, FL("Memory allocation failed."));

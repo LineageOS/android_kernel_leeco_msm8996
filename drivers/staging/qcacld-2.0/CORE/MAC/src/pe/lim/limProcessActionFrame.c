@@ -473,7 +473,8 @@ lim_process_ext_channel_switch_action_frame(tpAniSirGlobal mac_ctx,
 		return;
 	}
 
-	if (eLIM_AP_ROLE == session_entry->limSystemRole) {
+	if ((eLIM_STA_ROLE == session_entry->limSystemRole) || \
+	    (eLIM_P2P_DEVICE_CLIENT == session_entry->limSystemRole)) {
 
 		struct sir_sme_ext_cng_chan_ind *ext_cng_chan_ind;
 		tSirMsgQ mmh_msg;
@@ -1888,6 +1889,12 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
               pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
               frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
 
+              if (frameLen < sizeof(pPubAction)) {
+                limLog(pMac, LOG1,
+                  FL("Received action frame of invalid len %d"), frameLen);
+                break;
+              }
+
               //Check if it is a P2P public action frame.
               if (vos_mem_compare(pPubAction->Oui, P2POui, 4))
               {
@@ -2067,6 +2074,12 @@ limProcessActionFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd)
 
                 pHdr = WDA_GET_RX_MAC_HEADER(pBd);
                 frameLen = WDA_GET_RX_PAYLOAD_LEN(pBd);
+
+                if (frameLen < sizeof(pActionHdr)) {
+                  limLog(pMac, LOG1,
+                    FL("Received action frame of invalid len %d"), frameLen);
+                  break;
+                }
 
                 //Check if it is a P2P public action frame.
                 if (vos_mem_compare(pActionHdr->Oui, P2POui, 4))

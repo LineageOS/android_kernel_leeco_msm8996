@@ -1068,7 +1068,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_UPDATE_Q2Q_IE_IND                 SIR_HAL_UPDATE_Q2Q_IE_IND
 #endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
 
-#define WDA_FW_MEM_DUMP_REQ                   SIR_HAL_FW_MEM_DUMP_REQ
 #define WDA_TSF_GPIO_PIN                      SIR_HAL_TSF_GPIO_PIN_REQ
 #define WDA_SET_RSSI_MONITOR_REQ              SIR_HAL_SET_RSSI_MONITOR_REQ
 
@@ -1100,9 +1099,12 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_UPDATE_SHORT_RETRY_LIMIT_CNT      SIR_HAL_SHORT_RETRY_LIMIT_CNT
 #define WDA_UPDATE_LONG_RETRY_LIMIT_CNT       SIR_HAL_LONG_RETRY_LIMIT_CNT
 
+#define WDA_PEER_FLUSH_PENDING                SIR_HAL_PEER_FLUSH_PENDING
 
 #define WDA_UPDATE_STA_INACTIVITY_TIMEOUT     SIR_HAL_STA_INACTIVITY_TIMEOUT
 #define WDA_ACTION_FRAME_RANDOM_MAC           SIR_HAL_ACTION_FRAME_RANDOM_MAC
+
+#define WDA_SET_AC_TXQ_OPTIMIZE               SIR_HAL_SET_AC_TXQ_OPTIMIZE
 
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 

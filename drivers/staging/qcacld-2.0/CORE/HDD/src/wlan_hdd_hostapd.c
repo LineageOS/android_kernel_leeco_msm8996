@@ -1101,7 +1101,7 @@ void hdd_hostapd_inactivity_timer_cb(v_PVOID_t usrDataForCallback)
         if ((NULL == pHostapdAdapter) ||
             (WLAN_HDD_ADAPTER_MAGIC != pHostapdAdapter->magic))
         {
-            hddLog(LOGE, FL("invalid adapter: %p"), pHostapdAdapter);
+            hddLog(LOGE, FL("invalid adapter: %pK"), pHostapdAdapter);
             return;
         }
         pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter);
@@ -2153,7 +2153,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             }
 
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                      "The value of dfs_cac_block_tx[%d] for ApCtx[%p]",
+                      "The value of dfs_cac_block_tx[%d] for ApCtx[%pK]",
                       pHddApCtx->dfs_cac_block_tx, pHddApCtx);
 
             if ((NV_CHANNEL_DFS ==
@@ -2419,11 +2419,10 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 staId = event->staId;
                 hdd_fill_station_info(&pHostapdAdapter->aStaInfo[staId],
                                       event);
+                pHostapdAdapter->aStaInfo[staId].ecsa_capable =
+                    pSapEvent->
+                    sapevt.sapStationAssocReassocCompleteEvent.ecsa_capable;
             }
-
-            pHostapdAdapter->aStaInfo[staId].ecsa_capable =
-                pSapEvent->
-                sapevt.sapStationAssocReassocCompleteEvent.ecsa_capable;
 
 #ifdef IPA_OFFLOAD
             if (hdd_ipa_is_enabled(pHddCtx))
@@ -3295,40 +3294,52 @@ static __iw_softap_set_ini_cfg(struct net_device *dev,
                           union iwreq_data *wrqu, char *extra)
 {
     VOS_STATUS vstatus;
-    int ret = 0; /* success */
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
-    hdd_context_t *pHddCtx;
+    int errno;
+    hdd_adapter_t *adapter;
+    hdd_context_t *hdd_ctx;
+    char *value;
+    size_t len;
 
-    if (pAdapter == NULL)
+    ENTER();
+
+    adapter = netdev_priv(dev);
+    if (adapter == NULL)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                                        "%s: pAdapter is NULL!", __func__);
+                                        "%s: adapter is NULL!", __func__);
         return -EINVAL;
     }
 
-    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-    ret = wlan_hdd_validate_context(pHddCtx);
-    if (ret != 0)
-        return ret;
+    hdd_ctx = WLAN_HDD_GET_CTX(adapter);
+    errno = wlan_hdd_validate_context(hdd_ctx);
+    if (errno != 0)
+        return errno;
 
+    /* ensure null termination */
+    len = min_t(size_t, wrqu->data.length, QCSAP_IOCTL_MAX_STR_LEN);
+    value = vos_mem_malloc(len + 1);
+    if (!value)
+        return -ENOMEM;
+
+    vos_mem_copy(value, extra, len);
+    value[len] = '\0';
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-              "%s: Received data %s", __func__, extra);
+              "%s: Received data %s", __func__, value);
 
-    vstatus = hdd_execute_global_config_command(pHddCtx, extra);
+    vstatus = hdd_execute_global_config_command(hdd_ctx, value);
 #ifdef WLAN_FEATURE_MBSSID
     if (vstatus == VOS_STATUS_E_PERM) {
-        vstatus = hdd_execute_sap_dyn_config_command(pAdapter, extra);
+        vstatus = hdd_execute_sap_dyn_config_command(adapter, value);
         if (vstatus == VOS_STATUS_SUCCESS)
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                    "%s: Stored in Dynamic SAP ini config", __func__);
     }
 #endif
-    if (VOS_STATUS_SUCCESS != vstatus)
-    {
-        ret = -EINVAL;
-    }
+    vos_mem_free(value);
 
-    return ret;
+    EXIT();
+
+    return vos_status_to_os_return(vstatus);
 }
 
 int
@@ -4323,6 +4334,13 @@ static __iw_softap_setparam(struct net_device *dev,
                                    set_value, PDEV_CMD);
             break;
 
+        case QCSAP_ENABLE_DYNAMIC_BW:
+           hddLog(LOG1, "QCSAP_ENABLE_DYNAMIC_BW val %d", set_value);
+           ret = process_wma_set_command((int)pHostapdAdapter->sessionId,
+                                         (int)WMI_PDEV_PARAM_DYNAMIC_BW,
+                                         set_value, PDEV_CMD);
+            break;
+
         default:
             hddLog(LOGE, FL("Invalid setparam command %d value %d"),
                     sub_cmd, set_value);
@@ -4601,6 +4619,14 @@ static __iw_softap_getparam(struct net_device *dev,
                         (int)pHostapdAdapter->sessionId,
                         (int)WMI_VDEV_PARAM_NSS,
                         VDEV_CMD);
+            break;
+        }
+    case QCSAP_GET_DYNAMIC_BW:
+        {
+            *value = wma_cli_get_command(pHddCtx->pvosContext,
+                                        (int)pHostapdAdapter->sessionId,
+                                        (int)WMI_PDEV_PARAM_DYNAMIC_BW,
+                                        PDEV_CMD);
             break;
         }
     case QCASAP_GET_TEMP_CMD:
@@ -6578,7 +6604,7 @@ void hdd_get_rssi_cb(struct sir_peer_info_resp *sta_rssi, void *context)
 	if ((NULL == sta_rssi) || (NULL == context)) {
 
 		hddLog(VOS_TRACE_LEVEL_ERROR,
-			"%s: Bad param, sta_rssi [%p] context [%p]",
+			"%s: Bad param, sta_rssi [%pK] context [%pK]",
 			__func__, sta_rssi, context);
 		return;
 	}
@@ -7102,6 +7128,12 @@ static const struct iw_priv_args hostapd_private_args[] = {
         0,
         "rts_bursting" },
 
+    {   QCSAP_ENABLE_DYNAMIC_BW,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "cwmenable" },
+
+
   { QCSAP_IOCTL_GETPARAM, 0,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "getparam" },
   { QCSAP_IOCTL_GETPARAM, 0,
@@ -7158,6 +7190,8 @@ static const struct iw_priv_args hostapd_private_args[] = {
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_txchainmask" },
   { QCASAP_RX_CHAINMASK_CMD, 0,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_rxchainmask" },
+  { QCSAP_GET_DYNAMIC_BW, 0,
+      IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_cwmenable" },
   { QCASAP_NSS_CMD, 0,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "get_nss" },
   { QCASAP_GET_TEMP_CMD, 0,
@@ -7612,8 +7646,8 @@ hdd_adapter_t* hdd_wlan_create_ap_dev(hdd_context_t *pHddCtx,
         pHostapdAdapter->pHddCtx = pHddCtx;
         pHostapdAdapter->magic = WLAN_HDD_ADAPTER_MAGIC;
 
-        hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: pWlanHostapdDev = %p, "
-                                      "pHostapdAdapter = %p, "
+        hddLog(VOS_TRACE_LEVEL_DEBUG, "%s: pWlanHostapdDev = %pK, "
+                                      "pHostapdAdapter = %pK, "
                                       "concurrency_mode=0x%x", __func__,
                                       pWlanHostapdDev,
                                       pHostapdAdapter,
@@ -7760,7 +7794,7 @@ void hdd_sap_indicate_disconnect_for_sta(hdd_adapter_t *adapter)
 
 	for (staId = 0; staId < WLAN_MAX_STA_COUNT; staId++) {
 		if (adapter->aStaInfo[staId].isUsed) {
-			hddLog(LOG1, FL("staId: %d isUsed: %d %p"),
+			hddLog(LOG1, FL("staId: %d isUsed: %d %pK"),
 				staId, adapter->aStaInfo[staId].isUsed,
 				sap_ctx);
 

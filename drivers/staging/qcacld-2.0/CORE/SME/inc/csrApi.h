@@ -1051,6 +1051,7 @@ typedef struct tagCsrRoamProfile
     tSirMacRateSet  supported_rates;
     tSirMacRateSet  extended_rates;
     uint8_t sub20_channelwidth;
+    bool force_24ghz_in_ht20;
     tCsrBssid bssid_hint;
 #ifdef WLAN_FEATURE_FILS_SK
     bool fils_connection;
@@ -1201,6 +1202,7 @@ typedef struct tagCsrConfigParam
     tANI_U32 bgScanInterval;
     tANI_U16 TxRate;
     eCsrRoamWmmUserModeType WMMSupportMode;
+    tANI_U8 gStaLocalEDCAEnable;
     tANI_BOOLEAN Is11eSupportEnabled;
     tANI_BOOLEAN Is11dSupportEnabled;
     tANI_BOOLEAN Is11dSupportEnabledOriginal;
@@ -1362,6 +1364,11 @@ typedef struct tagCsrConfigParam
     eCsrBand  scanBandPreference;
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
     tANI_U8  cc_switch_mode;
+    bool     band_switch_enable;
+    bool     ap_p2pgo_concurrency_enable;
+    bool     ap_p2pclient_concur_enable;
+    uint16_t ch_width_24g_orig;
+    uint16_t ch_width_5g_orig;
 #endif
     tANI_U8  allowDFSChannelRoam;
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
