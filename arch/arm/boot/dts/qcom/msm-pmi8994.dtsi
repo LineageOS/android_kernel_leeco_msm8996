@@ -577,7 +577,7 @@
 			qcom,lra-res-cal-period = <4>;
 		};
 
-		qcom,leds@d000 {
+		rgb_leds: qcom,leds@d000 {
 			compatible = "qcom,leds-qpnp";
 			reg = <0xd000 0x100>;
 			label = "rgb";
@@ -593,7 +593,14 @@
 				qcom,default-state = "off";
 				linux,name = "red";
 				linux,default-trigger =
-					"battery-charging";
+					"none";
+				qcom,start-idx = <0>;
+				qcom,ramp-step-ms = <100>;
+				qcom,duty-pcts = [00 03 06 09 0c 0f 12 15 18 1b 1e
+				   1e 1b 18 15 12 0f 0c 09 06 03 00];
+				qcom,pause-lo = <1000>;
+				qcom,lut-flags = <27>;
+				qcom,use-blink;
 			};
 
 			green_led: qcom,rgb_1 {
@@ -605,7 +612,14 @@
 				qcom,max-current = <12>;
 				qcom,default-state = "off";
 				linux,name = "green";
-				linux,default-trigger = "battery-full";
+				linux,default-trigger = "none";
+				qcom,start-idx = <0>;
+				qcom,ramp-step-ms = <100>;
+				qcom,duty-pcts = [00 03 06 09 0c 0f 12 15 18 1b 1e
+				   1e 1b 18 15 12 0f 0c 09 06 03 00];
+				qcom,pause-lo = <1000>;
+				qcom,lut-flags = <27>;
+				qcom,use-blink;
 			};
 
 			blue_led: qcom,rgb_2 {
@@ -617,7 +631,14 @@
 				qcom,max-current = <12>;
 				qcom,default-state = "off";
 				linux,name = "blue";
-				linux,default-trigger = "boot-indication";
+				linux,default-trigger = "none";
+				qcom,start-idx = <0>;
+				qcom,ramp-step-ms = <100>;
+				qcom,duty-pcts = [00 03 06 09 0c 0f 12 15 18 1b 1e
+				   1e 1b 18 15 12 0f 0c 09 06 03 00];
+				qcom,pause-lo = <1000>;
+				qcom,lut-flags = <27>;
+				qcom,use-blink;
 			};
 		};
 
