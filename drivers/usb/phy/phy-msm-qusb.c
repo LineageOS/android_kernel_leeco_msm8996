@@ -116,6 +116,10 @@
 
 #define QUSB2PHY_LVL_SHIFTER_CMD_ID	0x1B
 
+static int phy_tune[64],phy_tune_n;
+module_param_array(phy_tune, int, &phy_tune_n,  S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(phy_tune, "QUSB PHY TUNE SEQ");
+
 unsigned int tune2;
 module_param(tune2, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(tune2, "QUSB PHY TUNE2");
@@ -801,6 +805,16 @@ static int qusb_phy_init(struct usb_phy *phy)
 	if (qphy->qusb_phy_init_seq)
 		qusb_phy_write_seq(qphy->base, qphy->qusb_phy_init_seq,
 				qphy->init_seq_len, 0);
+
+	/* phy tune modparam set, override any register */
+	if (phy_tune_n > 0 && (0 == phy_tune_n%2)) {
+		int i;
+
+		for (i = 0; i < phy_tune_n; i = i+2) {
+			dev_dbg(phy->dev, "write 0x%02x to 0x%02x\n", phy_tune[i], phy_tune[i+1]);
+			writel_relaxed(phy_tune[i], qphy->base + phy_tune[i+1]);
+		}
+	}
 
 	/*
 	 * Check for EFUSE value only if tune2_efuse_reg is available
