@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8f18787_661dc1e7",
+        "filename": "arch/arm64/Kconfig",
+        "patchSetId": 2
+      },
+      "lineNbr": 703,
+      "author": {
+        "id": 16002
+      },
+      "writtenOn": "2018-02-14T17:06:17Z",
+      "side": 1,
+      "message": "authorship https://github.com/AICP/kernel_leeco_msm8996/commit/7c5ab166b529554a618b83044929a7e72dd440d9#diff-74b704a6995edb0529fc619230b82b94",
+      "revId": "9739429bcae13493a026acf372c39dfc8a02b0be",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
