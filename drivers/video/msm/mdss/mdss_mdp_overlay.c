@@ -2900,6 +2900,9 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 
 	mdss_mdp_check_ctl_reset_status(ctl);
+#ifdef CONFIG_PRODUCT_LE_X2
+	__vsync_set_vsync_handler(mfd);
+#endif
 	__validate_and_set_roi(mfd, data);
 
 	if (ctl->ops.wait_pingpong && mdp5_data->mdata->serialize_wait4pp)
@@ -2953,7 +2956,9 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 			&commit_cb);
 		ATRACE_END("display_commit");
 	}
+#ifndef CONFIG_PRODUCT_LE_X2
 	__vsync_set_vsync_handler(mfd);
+#endif
 
 	/*
 	 * release the commit pending flag; we are releasing this flag
@@ -6125,7 +6130,11 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		 * retire_signal api checks for retire_cnt with sync_mutex lock.
 		 */
 
+#ifdef CONFIG_PRODUCT_LE_X2
+		flush_work(&mdp5_data->retire_work);
+#else
 		flush_kthread_work(&mdp5_data->vsync_work);
+#endif
 	}
 
 ctl_stop:
@@ -6330,13 +6339,25 @@ static void __vsync_retire_handle_vsync(struct mdss_mdp_ctl *ctl, ktime_t t)
 	}
 
 	mdp5_data = mfd_to_mdp5_data(mfd);
+#ifdef CONFIG_PRODUCT_LE_X2
+	schedule_work(&mdp5_data->retire_work);
+#else
 	queue_kthread_work(&mdp5_data->worker, &mdp5_data->vsync_work);
+#endif
 }
 
+#ifdef CONFIG_PRODUCT_LE_X2
+static void __vsync_retire_work_handler(struct work_struct *work)
+#else
 static void __vsync_retire_work_handler(struct kthread_work *work)
+#endif
 {
 	struct mdss_overlay_private *mdp5_data =
+#ifdef CONFIG_PRODUCT_LE_X2
+		container_of(work, typeof(*mdp5_data), retire_work);
+#else
 		container_of(work, typeof(*mdp5_data), vsync_work);
+#endif
 
 	if (!mdp5_data->ctl || !mdp5_data->ctl->mfd)
 		return;
@@ -6354,10 +6375,14 @@ static void __vsync_retire_signal(struct msm_fb_data_type *mfd, int val)
 	mutex_lock(&mfd->mdp_sync_pt_data.sync_mutex);
 	if (mdp5_data->retire_cnt > 0) {
 		sw_sync_timeline_inc(mdp5_data->vsync_timeline, val);
+#ifdef CONFIG_PRODUCT_LE_X2
+		mdp5_data->retire_cnt -= min(val, mdp5_data->retire_cnt);
+#else
 		mdp5_data->retire_cnt -= min(val, mdp5_data->retire_cnt);
 		pr_debug("Retire signaled! timeline val=%d remaining=%d\n",
 				mdp5_data->vsync_timeline->value,
 				mdp5_data->retire_cnt);
+#endif
 
 		if (mdp5_data->retire_cnt == 0) {
 			mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
@@ -6430,7 +6455,9 @@ static int __vsync_retire_setup(struct msm_fb_data_type *mfd)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	char name[24];
+#ifndef CONFIG_PRODUCT_LE_X2
 	struct sched_param param = { .sched_priority = 5 };
+#endif
 
 	snprintf(name, sizeof(name), "mdss_fb%d_retire", mfd->index);
 	mdp5_data->vsync_timeline = sw_sync_timeline_create(name);
@@ -6439,6 +6466,7 @@ static int __vsync_retire_setup(struct msm_fb_data_type *mfd)
 		return -ENOMEM;
 	}
 
+#ifndef CONFIG_PRODUCT_LE_X2
 	init_kthread_worker(&mdp5_data->worker);
 	init_kthread_work(&mdp5_data->vsync_work, __vsync_retire_work_handler);
 
@@ -6452,12 +6480,16 @@ static int __vsync_retire_setup(struct msm_fb_data_type *mfd)
 	}
 
 	sched_setscheduler(mdp5_data->thread, SCHED_FIFO, &param);
+#endif
 
 	mfd->mdp_sync_pt_data.get_retire_fence = __vsync_retire_get_fence;
 
 	mdp5_data->vsync_retire_handler.vsync_handler =
 		__vsync_retire_handle_vsync;
 	mdp5_data->vsync_retire_handler.cmd_post_flush = false;
+#ifdef CONFIG_PRODUCT_LE_X2
+	INIT_WORK(&mdp5_data->retire_work, __vsync_retire_work_handler);
+#endif
 
 	return 0;
 }

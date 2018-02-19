@@ -1763,8 +1763,13 @@ static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 	mdata->hflip_buffer_reused = true;
 	/* prevent disable of prefill calculations */
 	mdata->min_prefill_lines = 0xffff;
+#ifdef CONFIG_PRODUCT_LE_X2
+	/* clock gating feature is enabled by default */
+	mdata->enable_gate = true;
+#else
 	/* clock gating feature is disabled by default */
 	mdata->enable_gate = false;
+#endif
 	mdata->pixel_ram_size = 0;
 	mem_protect_sd_ctrl_id = MEM_PROTECT_SD_CTRL_FLAT;
 
@@ -2382,6 +2387,7 @@ ssize_t mdss_mdp_show_capabilities(struct device *dev,
 	if (mdata->clk_factor.numer)
 		SPRINT("clk_fudge_factor=%u,%u\n", mdata->clk_factor.numer,
 			mdata->clk_factor.denom);
+#ifndef CONFIG_PRODUCT_LE_X2
 	if (mdata->has_rot_dwnscale) {
 		if (mdata->rot_dwnscale_min)
 			SPRINT("rot_dwnscale_min=%u\n",
@@ -2390,6 +2396,7 @@ ssize_t mdss_mdp_show_capabilities(struct device *dev,
 			SPRINT("rot_dwnscale_max=%u\n",
 				mdata->rot_dwnscale_max);
 	}
+#endif
 	SPRINT("features=");
 	if (mdata->has_bwc)
 		SPRINT(" bwc");
@@ -4154,6 +4161,7 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 		 "qcom,mdss-traffic-shaper-enabled");
 	mdata->has_rot_dwnscale = of_property_read_bool(pdev->dev.of_node,
 		"qcom,mdss-has-rotator-downscale");
+#ifndef CONFIG_PRODUCT_LE_X2
 	if (mdata->has_rot_dwnscale) {
 		rc = of_property_read_u32(pdev->dev.of_node,
 			"qcom,mdss-rot-downscale-min",
@@ -4167,6 +4175,7 @@ static int mdss_mdp_parse_dt_misc(struct platform_device *pdev)
 		if (rc)
 			pr_err("Max rotator downscale property not specified\n");
 	}
+#endif
 
 	rc = of_property_read_u32(pdev->dev.of_node,
 		"qcom,mdss-dram-channels", &mdata->bus_channels);

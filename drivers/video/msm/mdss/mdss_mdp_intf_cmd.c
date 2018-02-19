@@ -21,7 +21,9 @@
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
 #include "mdss_dsi_clk.h"
+#ifndef CONFIG_PRODUCT_LE_X2
 #include <linux/interrupt.h>
+#endif
 
 #define MAX_RECOVERY_TRIALS 10
 #define MAX_SESSIONS 2
@@ -1206,8 +1208,12 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 			       atomic_read(&ctx->koff_cnt));
 		if (sync_ppdone) {
 			atomic_inc(&ctx->pp_done_cnt);
+#ifdef CONFIG_PRODUCT_LE_X2
+			schedule_work(&ctx->pp_done_work);
+#else
 			if (!ctl->commit_in_progress)
 				schedule_work(&ctx->pp_done_work);
+#endif
 
 			mdss_mdp_resource_control(ctl,
 				MDP_RSRC_CTL_EVENT_PP_DONE);
@@ -1902,7 +1908,11 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	struct mdss_mdp_cmd_ctx *ctx;
 	struct mdss_panel_data *pdata;
 	unsigned long flags;
+#ifdef CONFIG_PRODUCT_LE_X2
+	int rc = 0;
+#else
 	int rc = 0, te_irq;
+#endif
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->intf_ctx[MASTER_CTX];
 	if (!ctx) {
@@ -1950,6 +1960,9 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 				ctl->num, rc, ctx->pp_timeout_report_cnt,
 				atomic_read(&ctx->koff_cnt));
 
+#ifdef CONFIG_PRODUCT_LE_X2
+		if (ctx->pp_timeout_report_cnt == 0) {
+#else
 		/* enable TE irq to check if it is coming from the panel */
 		te_irq = gpio_to_irq(pdata->panel_te_gpio);
 		enable_irq(te_irq);
@@ -1964,6 +1977,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			MDSS_XLOG(0xbac);
 			mdss_fb_report_panel_dead(ctl->mfd);
 		} else if (ctx->pp_timeout_report_cnt == 0) {
+#endif
 			MDSS_XLOG(0xbad);
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0_ctrl", "dsi0_phy",
 				"dsi1_ctrl", "dsi1_phy", "vbif", "vbif_nrt",
@@ -1976,8 +1990,10 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			mdss_fb_report_panel_dead(ctl->mfd);
 		}
 
+#ifndef CONFIG_PRODUCT_LE_X2
 		/* disable te irq */
 		disable_irq_nosync(te_irq);
+#endif
 
 		ctx->pp_timeout_report_cnt++;
 		rc = -EPERM;
