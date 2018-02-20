@@ -2,6 +2,7 @@
 #include "dsi-panel-sharp-dualmipi-cmd-le_x2-dvt1_1.dtsi"
 #include "dsi-panel-truly-dualmipi-cmd-le_x2-dvt2.dtsi"
 #include "letv-tp-atmel_mxt_ts-le_x2-dvt1.1.dtsi"
+
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_dual_sharp_cmd>;
 	/delete-property/ vddio-supply;
