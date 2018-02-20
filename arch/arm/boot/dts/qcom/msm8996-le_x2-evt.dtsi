@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8996-mtp.dtsi"
+#include "msm8996-mtp-le-common.dtsi"
 #include "msm8996-pinctrl-le_x2.dtsi"
 #include "msm8996-le-common.dtsi"
 #include "dsi-panel-truly-dualmipi-cmd-le_x2-evt.dtsi"
