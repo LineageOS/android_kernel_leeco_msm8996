@@ -76,6 +76,7 @@
 		qcom,us-euro-gpios = <&tlmm 21 0>;
 		qcom,wsa-max-devs = <0>;
 		qcom,wsa-devs = <0>;
+		qcom,wsa-aux-dev-prefix = <0>;
 	};
 
 	qcom,msm-dai-mi2s {

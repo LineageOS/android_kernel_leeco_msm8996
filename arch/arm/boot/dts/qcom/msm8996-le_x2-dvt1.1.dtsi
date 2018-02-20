@@ -98,8 +98,9 @@
 		/delete-property/ qcom,hph-en1-gpio;
 		/delete-property/ qcom,hph-en0-gpio;
 		/delete-property/ qcom,us-euro-gpios;
-		/delete-property/ qcom,wsa-devs;
-		/delete-property/ qcom,wsa-aux-dev-prefix;
+		qcom,wsa-max-devs = <0>;
+		qcom,wsa-devs = <0>;
+		qcom,wsa-aux-dev-prefix = <0>;
 	};
 };
 
