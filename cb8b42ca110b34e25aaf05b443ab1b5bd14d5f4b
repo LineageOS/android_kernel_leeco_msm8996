@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c3fa35ca_b4495526",
+        "filename": "drivers/input/goodixfp/gf_spi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2018-02-24T17:35:34Z",
+      "side": 1,
+      "message": "pr_debug",
+      "range": {
+        "startLine": 116,
+        "startChar": 4,
+        "endLine": 116,
+        "endChar": 11
+      },
+      "revId": "cb8b42ca110b34e25aaf05b443ab1b5bd14d5f4b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa9c96c1_e1ac48e1",
+        "filename": "drivers/input/goodixfp/gf_spi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2018-02-24T17:35:34Z",
+      "side": 1,
+      "message": "pr_debug",
+      "range": {
+        "startLine": 129,
+        "startChar": 4,
+        "endLine": 129,
+        "endChar": 11
+      },
+      "revId": "cb8b42ca110b34e25aaf05b443ab1b5bd14d5f4b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0bf75b57_9cdf3e5a",
+        "filename": "drivers/input/goodixfp/gf_spi.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 423,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2018-02-24T17:35:34Z",
+      "side": 1,
+      "message": "pr_debug",
+      "range": {
+        "startLine": 423,
+        "startChar": 3,
+        "endLine": 423,
+        "endChar": 9
+      },
+      "revId": "cb8b42ca110b34e25aaf05b443ab1b5bd14d5f4b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
