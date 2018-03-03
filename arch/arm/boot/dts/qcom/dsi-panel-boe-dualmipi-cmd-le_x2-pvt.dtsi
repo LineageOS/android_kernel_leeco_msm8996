@@ -71,7 +71,6 @@
 		qcom,ulps-enabled;
 		qcom,dcs-cmd-by-left;
 		qcom,mdss-mdp-transfer-time-us = <12000>;
-		qcom,config-select = <&dsi_boe_qhd_dualdsi_cmd_le_x2_config0>;
 		qcom,mdss-dsi-on-command = [
 					#if 0
 					23 01 00 00 00 00 02 B0 04                                                                                                                               
@@ -125,8 +124,5 @@
 					05 01 00 00 78 00 02 10 00];
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		//qcom,mdss-tear-check-sync-cfg-height = <2580>;
-		dsi_boe_qhd_dualdsi_cmd_le_x2_config0: config0 {
-		qcom,split-mode = "pingpong-split";
-		};
 	};
 };
