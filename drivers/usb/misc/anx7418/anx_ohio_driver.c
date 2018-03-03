@@ -25,7 +25,6 @@ static struct ohio_platform_data *g_pdata;
 
 #define DONGLE_CABLE_INSERT  1
 #define CABLE_DET_PIN_HAS_GLITCH
-#define MSEC_TO_JIFFIES(msec)			((msec) * HZ / 1000)
 
 struct i2c_client *ohio_client;
 
@@ -366,7 +365,7 @@ void cable_disconnect(void *data)
 	flush_workqueue(ohio->workqueue);
 	ohio_power_standby();
 	wake_unlock(&ohio->ohio_lock);
-	wake_lock_timeout(&ohio->ohio_lock, 1000 * HZ);
+	wake_lock_timeout(&ohio->ohio_lock, msecs_to_jiffies(100000));
 
 }
 
@@ -827,7 +826,7 @@ static int ohio_i2c_probe(struct i2c_client *client,
 	ohio_power_standby();
 
 	/*enable driver*/
-	queue_delayed_work(ohio->workqueue, &ohio->work, MSEC_TO_JIFFIES(5000));
+	queue_delayed_work(ohio->workqueue, &ohio->work, msecs_to_jiffies(5000));
 
 	cclogic_set_audio_mode_register(anx_cclogic_set_audio_mode);
 

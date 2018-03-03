@@ -391,7 +391,7 @@ static void letv_pd_timer_charger_env_check(unsigned long data)
 	timer_charger_env_check_active = 0;
 	letv_pd_timer_handle_charger_status();
 	if (start_check_charger_env) {
-		timer_charger_env_check.expires = jiffies + HZ * 2;
+		timer_charger_env_check.expires = jiffies + msecs_to_jiffies(200);
 		timer_charger_env_check_active = 1;
 		add_timer(&timer_charger_env_check);
 	}
@@ -475,7 +475,7 @@ static void letv_pd_set_usb_mode(enum usb_mode mode)
 		letv_pd_del_timer_charger_env_check();
 		letv_pd_del_timer_letv_pd_charger_setup();
 		letv_pd_init_adjust_charger_parameter();
-		timer_ufp_task.expires = jiffies + (HZ/4);
+		timer_ufp_task.expires = jiffies + (msecs_to_jiffies(25));
 		timer_ufp_task_active = 1;
 		add_timer(&timer_ufp_task);
 	} else if (mode == LETV_USB_DFP_MODE) {
@@ -662,7 +662,7 @@ static int letv_pd_check_off_charger_status(void)
 		return -1;
 	}
 
-	timer_letv_pd_off_charger.expires = jiffies + (HZ/5);
+	timer_letv_pd_off_charger.expires = jiffies + msecs_to_jiffies(20);
 	timer_letv_pd_off_charger_active = 1;
 	add_timer(&timer_letv_pd_off_charger);
 	return 0;
@@ -1048,7 +1048,7 @@ static int letv_pd_message_dr_swap_accept(void)
 
 	letv_pd_send_message_vdm_read_charger_pn();
 	start_check_charger_env = 1;
-	timer_charger_env_check.expires = jiffies + HZ * 2;
+	timer_charger_env_check.expires = jiffies + msecs_to_jiffies(200);
 	timer_charger_env_check_active = 1;
 	add_timer(&timer_charger_env_check);
 	return 0;
@@ -1617,7 +1617,7 @@ static int letv_pd_message_vdm_resp_charger_data(unsigned char *vdm_buf, int siz
 	{
 	case LETV_VDM_RQ_RANDOM_DATA:
 		letv_pd_del_timer_letv_pd_off_charger();
-		timer_letv_pd_charger_setup.expires = jiffies + HZ * 5;
+		timer_letv_pd_charger_setup.expires = jiffies + msecs_to_jiffies(500);
 		timer_letv_pd_charger_setup_active = 1;
 		add_timer(&timer_letv_pd_charger_setup);
 		letv_pd_send_message_vdm_random_data();

@@ -49,8 +49,6 @@ static struct file *f_tty_ap;
 
 static bool ap_port_exists;
 
-#define AP_CHECK_FOR_INTERRUPT_DELAY	(HZ/10)
-
 struct ap_work {
 	struct delayed_work ap_check_for_intr_work;
 };
@@ -62,7 +60,6 @@ static void ap_check_for_interrupt(struct work_struct *work);
 
 static struct workqueue_struct *isr_handler_wq;
 #ifdef USE_DELAYED_WORK_FOR_INTERRUPT
-#define POLL_INTERRUPTS_DELAY	(2 * HZ)
 static struct delayed_work *isr_handler_work;
 #else /* USE_DELAYED_WORK_FOR_INTERRUPT */
 static struct work_struct *isr_handler_work;
@@ -170,7 +167,7 @@ static int tty_read(unsigned char *buf, size_t buf_size, struct file *filp,
 					break;
 				set_current_state(TASK_INTERRUPTIBLE);
 				schedule_timeout(((timeout - elapsed) *
-							HZ) / 10000);
+							msecs_to_jiffies(100)) / 10000);
 			}
 			poll_freewait(&table);
 
@@ -777,7 +774,7 @@ static void ap_check_for_interrupt(struct work_struct *work)
 			/* Queue check for interrupt work */
 			if (!queue_delayed_work(ap_check_for_intr_wq,
 					&my_ap_work->ap_check_for_intr_work,
-					AP_CHECK_FOR_INTERRUPT_DELAY)) {
+					msecs_to_jiffies(10))) {
 				warn("AP check for INTR task already queued\n");
 			}
 		} else {
@@ -830,7 +827,7 @@ static void isr_work_handler(struct work_struct *work)
 			    (NULL != isr_handler_work)) {
 				if (!queue_delayed_work(isr_handler_wq,
 						isr_handler_work,
-						POLL_INTERRUPTS_DELAY)) {
+						msecs_to_jiffies(200))) {
 					warn("Interrupt task already queued\n");
 				}
 			}
@@ -954,7 +951,7 @@ enum sii_status SiiHalInit(void)
 		/* Queue check for interrupt work */
 		if (!queue_delayed_work(ap_check_for_intr_wq,
 					&my_ap_work->ap_check_for_intr_work,
-					AP_CHECK_FOR_INTERRUPT_DELAY)) {
+					msecs_to_jiffies(10))) {
 			warn("AP check for interrupt task already queued\n");
 		}
 	}

@@ -754,7 +754,7 @@ static ssize_t tfa98xx_dbgfs_dsp_state_set(struct file *file,
 	} else if (!strncmp(buf, mon_start_cmd, sizeof(mon_start_cmd) - 1)) {
 		pr_info("Manual start of monitor thread...\n");
 		queue_delayed_work(tfa98xx->tfa98xx_wq,
-					&tfa98xx->monitor_work, HZ);
+					&tfa98xx->monitor_work, msecs_to_jiffies(100));
 	} else if (!strncmp(buf, mon_stop_cmd, sizeof(mon_stop_cmd) - 1)) {
 		pr_info("Manual stop of monitor thread...\n");
 		cancel_delayed_work_sync(&tfa98xx->monitor_work);
@@ -1890,7 +1890,7 @@ static void tfa98xx_tapdet_check_update(struct tfa98xx *tfa98xx)
 		tfa98xx->tapdet_poll = true;
 		if (enable)
 			queue_delayed_work(tfa98xx->tfa98xx_wq,
-						&tfa98xx->tapdet_work, HZ/10);
+						&tfa98xx->tapdet_work, msecs_to_jiffies(10));
 		else
 			cancel_delayed_work_sync(&tfa98xx->tapdet_work);
 		dev_dbg(tfa98xx->codec->dev,
@@ -2219,7 +2219,7 @@ static void tfa98xx_tapdet_work(struct work_struct *work)
 	if (val & TFA98XX_STATUSREG_SPKS)
 		tfa98xx_tapdet(tfa98xx);
 
-	queue_delayed_work(tfa98xx->tfa98xx_wq, &tfa98xx->tapdet_work, HZ/10);
+	queue_delayed_work(tfa98xx->tfa98xx_wq, &tfa98xx->tapdet_work, msecs_to_jiffies(10));
 }
 
 static void tfa98xx_monitor(struct work_struct *work)
@@ -2273,7 +2273,7 @@ static void tfa98xx_monitor(struct work_struct *work)
 	}
 
 	/* reschedule */
-	queue_delayed_work(tfa98xx->tfa98xx_wq, &tfa98xx->monitor_work, 5*HZ);
+	queue_delayed_work(tfa98xx->tfa98xx_wq, &tfa98xx->monitor_work, msecs_to_jiffies(500));
 }
 
 static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
@@ -2322,7 +2322,7 @@ static void tfa98xx_dsp_init(struct tfa98xx *tfa98xx)
 			 */
 			queue_delayed_work(tfa98xx->tfa98xx_wq,
 						&tfa98xx->monitor_work,
-						1*HZ);
+						msecs_to_jiffies(100));
 		}
 	} else {
 		/* exceeded max number ot start tentatives, cancel start */

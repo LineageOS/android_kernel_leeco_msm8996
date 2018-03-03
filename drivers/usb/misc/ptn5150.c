@@ -996,7 +996,7 @@ static int ptn5150_probe(struct i2c_client *client,
 
 	g_ptn_dev = ptn5150_dev;
 	cclogic_set_audio_mode_register(ptn5150_cclogic_set_audio_mode);
-    schedule_delayed_work(&ptn5150_dev->check_work,1*HZ);
+    schedule_delayed_work(&ptn5150_dev->check_work,msecs_to_jiffies(100));
     cclogic_updata_port_state(0);/*"cc_state: none"*/
 
 	pr_debug("ptn5150 probe ok!\n");
