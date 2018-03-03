@@ -415,7 +415,7 @@ gf_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 static irqreturn_t gf_irq(int irq, void *handle)
 {
 	struct gf_dev *gf_dev = &gf;
-	wake_lock_timeout(&FP_wakelock,10*HZ);
+	wake_lock_timeout(&FP_wakelock,msecs_to_jiffies(1000));
 #ifdef GF_FASYNC
 	if (gf_dev->async)
 		kill_fasync(&gf_dev->async, SIGIO, POLL_IN);
