@@ -907,7 +907,7 @@ static int tusb320_probe(struct i2c_client *client,
 	tusb320_hw_init(client);
 
 	cclogic_set_audio_mode_register(tusb320_cclogic_set_audio_mode);
-	schedule_delayed_work(&tusb320_dev->check_work,1*HZ);
+	schedule_delayed_work(&tusb320_dev->check_work,msecs_to_jiffies(100));
 	cclogic_updata_port_state(0);/*"cc_state: none"*/
 	cclogic_updata_port_polarity(0); /* no typec usb connected*/
 	msleep(50);

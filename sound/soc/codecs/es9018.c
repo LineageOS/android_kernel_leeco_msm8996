@@ -551,7 +551,7 @@ static int es9018_45M_close(void)
 {
 	schedule_delayed_work(&power_supply_45M_dwork,
 			usecs_to_jiffies(POWER_SUPPLY_TIMEOUT));
-	wake_lock_timeout(&hifi_wakelock, 3*HZ);
+	wake_lock_timeout(&hifi_wakelock, msecs_to_jiffies(300));
 
 	/* software mute */
 	es9018_write_reg(g_es9018_priv->i2c_client,
@@ -697,7 +697,7 @@ static int es9018_49M_close(void)
 {
 	schedule_delayed_work(&power_supply_49M_dwork,
 			usecs_to_jiffies(POWER_SUPPLY_TIMEOUT));
-	wake_lock_timeout(&hifi_wakelock, 3*HZ);
+	wake_lock_timeout(&hifi_wakelock, msecs_to_jiffies(300));
 
 	/* software mute */
 	es9018_write_reg(g_es9018_priv->i2c_client,
@@ -1061,7 +1061,7 @@ bypass_enabled:
 	} else {
 		schedule_delayed_work(&power_supply_bypass_dwork,
 			usecs_to_jiffies(POWER_SUPPLY_TIMEOUT));
-		wake_lock_timeout(&hifi_wakelock, 3*HZ);
+		wake_lock_timeout(&hifi_wakelock, msecs_to_jiffies(300));
 		bypass_waiting_close = true;
 	}
 	return 0;
