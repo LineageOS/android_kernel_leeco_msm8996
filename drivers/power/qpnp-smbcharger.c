@@ -878,7 +878,9 @@ static bool is_otg_present_schg(struct smbchg_chip *chip)
 		return false;
 	}
 	usbid_val = (usbid_reg[0] << 8) | usbid_reg[1];
-#ifdef CONFIG_PRODUCT_LE_ZL1
+#ifdef CONFIG_PRODUCT_LE_X2
+	if(false == ignore_otgidpin) {
+#endif
 	if (usbid_val > USBID_GND_THRESHOLD) {
 		pr_smb(PR_STATUS, "USBID = 0x%04x, too high to be ground\n",
 				usbid_val);
@@ -895,31 +897,12 @@ static bool is_otg_present_schg(struct smbchg_chip *chip)
 	pr_smb(PR_STATUS, "RID_STS = %02x\n", reg);
 
 	return (reg & RID_MASK) == 0;
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
-       if(false == ignore_otgidpin) {
-        	if (usbid_val > USBID_GND_THRESHOLD) {
-        		pr_smb(PR_STATUS, "USBID = 0x%04x, too high to be ground\n",
-        				usbid_val);
-        		return false;
-        	}
-
-        	rc = smbchg_read(chip, &reg, chip->usb_chgpth_base + RID_STS, 1);
-        	if (rc < 0) {
-        		dev_err(chip->dev,
-        				"Couldn't read usb rid status rc = %d\n", rc);
-        		return false;
-        	}
-
-        	pr_smb(PR_STATUS, "RID_STS = %02x\n", reg);
-
-        	return (reg & RID_MASK) == 0;
-       }
-       else {
-        	return true;
-       }
+	}
+	else {
+		return true;
+	}
 #endif
-
 }
 
 #define RID_GND_DET_STS			BIT(2)
@@ -1029,11 +1012,10 @@ static int get_rid_state(struct smbchg_chip *chip)
 
 static char *usb_type_str[] = {
 	"SDP",		/* bit 0 */
-#ifdef CONFIG_PRODUCT_LE_ZL1
-	"OTHER",	/* bit 1 */
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 	"ACA",		/* bit 1, set OTHER as ACA */
+#else
+	"OTHER",	/* bit 1 */
 #endif
 	"DCP",		/* bit 2 */
 	"CDP",		/* bit 3 */
@@ -1058,19 +1040,17 @@ static inline char *get_usb_type_name(int type)
 
 static enum power_supply_type usb_type_enum[] = {
 	POWER_SUPPLY_TYPE_USB,		/* bit 0 */
-#ifdef CONFIG_PRODUCT_LE_ZL1
-	POWER_SUPPLY_TYPE_USB_DCP,	/* bit 1 */
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 	POWER_SUPPLY_TYPE_USB_ACA,	/* bit 1 */
+#else
+	POWER_SUPPLY_TYPE_USB_DCP,	/* bit 1 */
 #endif
 	POWER_SUPPLY_TYPE_USB_DCP,	/* bit 2 */
 	POWER_SUPPLY_TYPE_USB_CDP,	/* bit 3 */
-#ifdef CONFIG_PRODUCT_LE_ZL1
-	POWER_SUPPLY_TYPE_USB_DCP,	/* bit 4 error case, report DCP */
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 	POWER_SUPPLY_TYPE_UNKNOWN,	/* bit 4 error case, report UNKNOWN */
+#else
+	POWER_SUPPLY_TYPE_USB_DCP,	/* bit 4 error case, report DCP */
 #endif
 };
 
@@ -2760,16 +2740,15 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip,
 		pr_smb(PR_STATUS, "CDP adapter, skipping\n");
 		return false;
 	}
-#ifdef CONFIG_PRODUCT_LE_ZL1
-	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB) {
-		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
-		return false;
-	}
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 	if ((get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB)
 		&& (chip->usb_supply_type != POWER_SUPPLY_TYPE_USB_PD)
 		&& (chip->usb_supply_type != POWER_SUPPLY_TYPE_USB_LE_PD)) {
+		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
+		return false;
+	}
+#else
+	if (get_usb_supply_type(type) == POWER_SUPPLY_TYPE_USB) {
 		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
 		return false;
 	}
@@ -3592,105 +3571,6 @@ static int smbchg_quick_charge_icl_set(struct smbchg_chip *chip,
 }
 #endif
 
-#ifdef CONFIG_PRODUCT_LE_ZL1
-static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
-								int lvl_sel)
-{
-	int rc = 0;
-	int prev_therm_lvl;
-	int thermal_icl_ma;
-
-	if (!chip->thermal_mitigation) {
-		dev_err(chip->dev, "Thermal mitigation not supported\n");
-		return -EINVAL;
-	}
-
-	if (lvl_sel < 0) {
-		dev_err(chip->dev, "Unsupported level selected %d\n", lvl_sel);
-		return -EINVAL;
-	}
-
-	if (lvl_sel >= chip->thermal_levels) {
-		dev_err(chip->dev, "Unsupported level selected %d forcing %d\n",
-				lvl_sel, chip->thermal_levels - 1);
-		lvl_sel = chip->thermal_levels - 1;
-	}
-
-	if (lvl_sel == chip->therm_lvl_sel)
-		return 0;
-
-	mutex_lock(&chip->therm_lvl_lock);
-	prev_therm_lvl = chip->therm_lvl_sel;
-	chip->therm_lvl_sel = lvl_sel;
-	if (chip->therm_lvl_sel == (chip->thermal_levels - 1)) {
-		/*
-		 * Disable charging if highest value selected by
-		 * setting the DC and USB path in suspend
-		 */
-		rc = vote(chip->dc_suspend_votable, THERMAL_EN_VOTER, true, 0);
-		if (rc < 0) {
-			dev_err(chip->dev,
-				"Couldn't set dc suspend rc %d\n", rc);
-			goto out;
-		}
-		rc = vote(chip->usb_suspend_votable, THERMAL_EN_VOTER, true, 0);
-		if (rc < 0) {
-			dev_err(chip->dev,
-				"Couldn't set usb suspend rc %d\n", rc);
-			goto out;
-		}
-		goto out;
-	}
-
-	if (chip->therm_lvl_sel == 0) {
-		rc = vote(chip->usb_icl_votable, THERMAL_ICL_VOTER, false, 0);
-		if (rc < 0)
-			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
-				rc);
-
-		rc = vote(chip->dc_icl_votable, THERMAL_ICL_VOTER, false, 0);
-		if (rc < 0)
-			pr_err("Couldn't disable DC thermal ICL vote rc=%d\n",
-				rc);
-	} else {
-		thermal_icl_ma =
-			(int)chip->thermal_mitigation[chip->therm_lvl_sel];
-		rc = vote(chip->usb_icl_votable, THERMAL_ICL_VOTER, true,
-					thermal_icl_ma);
-		if (rc < 0)
-			pr_err("Couldn't vote for USB thermal ICL rc=%d\n", rc);
-
-		rc = vote(chip->dc_icl_votable, THERMAL_ICL_VOTER, true,
-					thermal_icl_ma);
-		if (rc < 0)
-			pr_err("Couldn't vote for DC thermal ICL rc=%d\n", rc);
-	}
-
-	if (prev_therm_lvl == chip->thermal_levels - 1) {
-		/*
-		 * If previously highest value was selected charging must have
-		 * been disabed. Enable charging by taking the DC and USB path
-		 * out of suspend.
-		 */
-		rc = vote(chip->dc_suspend_votable, THERMAL_EN_VOTER, false, 0);
-		if (rc < 0) {
-			dev_err(chip->dev,
-				"Couldn't set dc suspend rc %d\n", rc);
-			goto out;
-		}
-		rc = vote(chip->usb_suspend_votable, THERMAL_EN_VOTER,
-								false, 0);
-		if (rc < 0) {
-			dev_err(chip->dev,
-				"Couldn't set usb suspend rc %d\n", rc);
-			goto out;
-		}
-	}
-out:
-	mutex_unlock(&chip->therm_lvl_lock);
-	return rc;
-}
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
 								int lvl_sel)
@@ -3851,6 +3731,104 @@ static int smbchg_usbin_temp_level_set(struct smbchg_chip *chip,
 out:
 	chip->usb_prev_therm_lvl = lvl_sel;
 	mutex_unlock(&chip->usb_therm_lvl_lock);
+	return rc;
+}
+#else
+static int smbchg_system_temp_level_set(struct smbchg_chip *chip,
+								int lvl_sel)
+{
+	int rc = 0;
+	int prev_therm_lvl;
+	int thermal_icl_ma;
+
+	if (!chip->thermal_mitigation) {
+		dev_err(chip->dev, "Thermal mitigation not supported\n");
+		return -EINVAL;
+	}
+
+	if (lvl_sel < 0) {
+		dev_err(chip->dev, "Unsupported level selected %d\n", lvl_sel);
+		return -EINVAL;
+	}
+
+	if (lvl_sel >= chip->thermal_levels) {
+		dev_err(chip->dev, "Unsupported level selected %d forcing %d\n",
+				lvl_sel, chip->thermal_levels - 1);
+		lvl_sel = chip->thermal_levels - 1;
+	}
+
+	if (lvl_sel == chip->therm_lvl_sel)
+		return 0;
+
+	mutex_lock(&chip->therm_lvl_lock);
+	prev_therm_lvl = chip->therm_lvl_sel;
+	chip->therm_lvl_sel = lvl_sel;
+	if (chip->therm_lvl_sel == (chip->thermal_levels - 1)) {
+		/*
+		 * Disable charging if highest value selected by
+		 * setting the DC and USB path in suspend
+		 */
+		rc = vote(chip->dc_suspend_votable, THERMAL_EN_VOTER, true, 0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set dc suspend rc %d\n", rc);
+			goto out;
+		}
+		rc = vote(chip->usb_suspend_votable, THERMAL_EN_VOTER, true, 0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set usb suspend rc %d\n", rc);
+			goto out;
+		}
+		goto out;
+	}
+
+	if (chip->therm_lvl_sel == 0) {
+		rc = vote(chip->usb_icl_votable, THERMAL_ICL_VOTER, false, 0);
+		if (rc < 0)
+			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
+				rc);
+
+		rc = vote(chip->dc_icl_votable, THERMAL_ICL_VOTER, false, 0);
+		if (rc < 0)
+			pr_err("Couldn't disable DC thermal ICL vote rc=%d\n",
+				rc);
+	} else {
+		thermal_icl_ma =
+			(int)chip->thermal_mitigation[chip->therm_lvl_sel];
+		rc = vote(chip->usb_icl_votable, THERMAL_ICL_VOTER, true,
+					thermal_icl_ma);
+		if (rc < 0)
+			pr_err("Couldn't vote for USB thermal ICL rc=%d\n", rc);
+
+		rc = vote(chip->dc_icl_votable, THERMAL_ICL_VOTER, true,
+					thermal_icl_ma);
+		if (rc < 0)
+			pr_err("Couldn't vote for DC thermal ICL rc=%d\n", rc);
+	}
+
+	if (prev_therm_lvl == chip->thermal_levels - 1) {
+		/*
+		 * If previously highest value was selected charging must have
+		 * been disabed. Enable charging by taking the DC and USB path
+		 * out of suspend.
+		 */
+		rc = vote(chip->dc_suspend_votable, THERMAL_EN_VOTER, false, 0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set dc suspend rc %d\n", rc);
+			goto out;
+		}
+		rc = vote(chip->usb_suspend_votable, THERMAL_EN_VOTER,
+								false, 0);
+		if (rc < 0) {
+			dev_err(chip->dev,
+				"Couldn't set usb suspend rc %d\n", rc);
+			goto out;
+		}
+	}
+out:
+	mutex_unlock(&chip->therm_lvl_lock);
 	return rc;
 }
 #endif
@@ -7739,10 +7717,6 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 		goto out;
 
 	if ((reg & USBIN_UV_BIT) && (reg & USBIN_SRC_DET_BIT)) {
-#ifdef CONFIG_PRODUCT_LE_ZL1
-		pr_smb(PR_STATUS, "Very weak charger detected\n");
-		chip->very_weak_charger = true;
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 		chip->weak_chg_irq_count++;
 		pr_smb(PR_STATUS, "Very weak charger detected,c:%d\n", chip->weak_chg_irq_count);
@@ -7752,6 +7726,9 @@ static irqreturn_t usbin_uv_handler(int irq, void *_chip)
 			schedule_delayed_work(&chip->weak_charger_timeout_work,
 				msecs_to_jiffies(WEAK_CHAEGER_CHECK_DELAY_MS));
 		}
+#else
+		pr_smb(PR_STATUS, "Very weak charger detected\n");
+		chip->very_weak_charger = true;
 #endif
 		rc = smbchg_read(chip, &reg,
 				chip->usb_chgpth_base + ICL_STS_2_REG, 1);
@@ -7946,33 +7923,6 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 
 	return IRQ_HANDLED;
 }
-#ifdef CONFIG_PRODUCT_LE_ZL1
-/**
- * usbid_change_handler() - called when the usb RID changes.
- * This is used mostly for detecting OTG
- */
-static irqreturn_t usbid_change_handler(int irq, void *_chip)
-{
-	struct smbchg_chip *chip = _chip;
-	bool otg_present;
-
-	pr_smb(PR_INTERRUPT, "triggered\n");
-	otg_present = is_otg_present(chip);
-	if (chip->usb_psy) {
-		pr_smb(PR_MISC, "setting usb psy OTG = %d\n",
-				otg_present ? 1 : 0);
-		power_supply_set_usb_otg(chip->usb_psy, otg_present ? 1 : 0);
-	}
-	if (otg_present)
-		pr_smb(PR_STATUS, "OTG detected\n");
-
-	/* update FG */
-	set_property_on_fg(chip, POWER_SUPPLY_PROP_STATUS,
-			get_prop_batt_status(chip));
-
-	return IRQ_HANDLED;
-}
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 /**
  * usbid_change_handler() - called when the usb RID changes.
@@ -8027,6 +7977,32 @@ static irqreturn_t usbid_change_handler(int irq, void *_chip)
 			power_supply_set_usb_otg(chip->usb_psy,
 						otg_present ? 1 : 0);
 		}
+	}
+	if (otg_present)
+		pr_smb(PR_STATUS, "OTG detected\n");
+
+	/* update FG */
+	set_property_on_fg(chip, POWER_SUPPLY_PROP_STATUS,
+			get_prop_batt_status(chip));
+
+	return IRQ_HANDLED;
+}
+#else
+/**
+ * usbid_change_handler() - called when the usb RID changes.
+ * This is used mostly for detecting OTG
+ */
+static irqreturn_t usbid_change_handler(int irq, void *_chip)
+{
+	struct smbchg_chip *chip = _chip;
+	bool otg_present;
+
+	pr_smb(PR_INTERRUPT, "triggered\n");
+	otg_present = is_otg_present(chip);
+	if (chip->usb_psy) {
+		pr_smb(PR_MISC, "setting usb psy OTG = %d\n",
+				otg_present ? 1 : 0);
+		power_supply_set_usb_otg(chip->usb_psy, otg_present ? 1 : 0);
 	}
 	if (otg_present)
 		pr_smb(PR_STATUS, "OTG detected\n");
@@ -9492,10 +9468,6 @@ static void rerun_hvdcp_det_if_necessary(struct smbchg_chip *chip)
 		return;
 
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
-#ifdef CONFIG_PRODUCT_LE_ZL1
-	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP
-		&& !is_hvdcp_present(chip)) {
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 	/* when DUT reboots with connected QC3.0, type "OTHER", which is not really
 	 * the "OTHER" type, will be checked first by PMIC, so rerun the apsd to
@@ -9504,6 +9476,9 @@ static void rerun_hvdcp_det_if_necessary(struct smbchg_chip *chip)
 	if (((usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP)
 		|| (usb_supply_type == POWER_SUPPLY_TYPE_USB_ACA))
 		&& (!is_hvdcp_present(chip))) {
+#else
+	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP
+		&& !is_hvdcp_present(chip)) {
 #endif
 		pr_smb(PR_STATUS, "DCP found rerunning APSD\n");
 		rc = vote(chip->usb_icl_votable,
@@ -10114,11 +10089,10 @@ static int smbchg_probe(struct spmi_device *spmi)
 			dev_err(chip->dev,
 					"Unable to register charger led: %d\n",
 					rc);
-#ifdef CONFIG_PRODUCT_LE_ZL1
-			goto unregister_dc_psy;
-#endif
 #ifdef CONFIG_PRODUCT_LE_X2
 			goto unregister_le_ab_psy;
+#else
+			goto unregister_dc_psy;
 #endif
 		}
 
