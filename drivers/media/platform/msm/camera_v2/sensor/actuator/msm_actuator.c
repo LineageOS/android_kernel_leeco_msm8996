@@ -91,7 +91,7 @@ static ssize_t actuator_register_store(struct device *dev, struct device_attribu
 
 	if (msm_actuator_t == NULL)
 		return status;
-	memset(reg_data_dump, 0, PAGE_SIZE);
+	memset(reg_data_dump, 0, sizeof(reg_data_dump));
 	sscanf(buf, "%4x", &addr);
 	sscanf(buf, "%*x%u", &len);
 	if (0 == len)
