@@ -2581,7 +2581,7 @@ static ssize_t test_sysfs_read_report_store(struct device *dev,
 	retval = test_sysfs_do_preparation_store(dev, attr, cmd, 1);
 	if (retval < 0)
 		goto exit;
-		break;
+	break;
 	}
 
 	retval = test_sysfs_get_report_store(dev, attr, cmd, 1);
@@ -2614,7 +2614,7 @@ static ssize_t test_sysfs_read_report_store(struct device *dev,
 	retval = test_sysfs_resume_touch_store(dev, attr, cmd, 1);
 	if (retval < 0)
 		goto exit;
-		break;
+	break;
 	default:
 		rmi4_data->reset_device(rmi4_data, false);
 		break;

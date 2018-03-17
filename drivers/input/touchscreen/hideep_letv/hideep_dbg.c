@@ -382,7 +382,7 @@ static long hideep_debug_ioctl(struct file *file, unsigned int cmd, unsigned lon
 			break;
 		case HIDEEP_DEBUG_MODE:
 			//opmode 8f setting
-			ret = copy_from_user(&opmode, argp, sizeof(argp));
+			ret = copy_from_user(&opmode, argp, sizeof(opmode));
 			if (opmode) {
 				//op mode 8f on
 				drv_info->vr_buff[0] = HIDEEP_OPM_RAW;
