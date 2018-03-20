@@ -125,8 +125,10 @@ static int letv_pd_usb_off_charger_mode;
 static bool letv_pd_charger_confirmed;
 
 struct message_handle_struct *timer_msg_struct[TIMER_NUMBER_END];
+#ifdef CONFIG_PRODUCT_LE_X2
 extern int letv_pd_notice_charger_in_parameter(int voltage, int mA);
 extern int letv_pd_notice_ver_just_vol(unsigned char *pd_ver, int size);
+#endif
 
 static LIST_HEAD(handle_list_head);
 static DEFINE_SPINLOCK(letv_pd_lock);
@@ -950,6 +952,7 @@ static int letv_pd_message_request_get_valid_pdo(unsigned char *data, int *volta
 
 static int letv_pd_message_handle_ps_rdy(struct hpi_msg *msg)
 {
+#ifdef CONFIG_PRODUCT_LE_X2
 	int usb_mode;
 	int ret;
 	u8 value[4];
@@ -1012,7 +1015,7 @@ static int letv_pd_message_handle_ps_rdy(struct hpi_msg *msg)
 	default:
 		break;
 	}
-
+#endif
 	return 0;
 }
 
@@ -1567,7 +1570,9 @@ static int letv_pd_message_vdm_handle_charger_pn(unsigned char *vdm_data, int si
 
 	pr_err("%s:DEBUG: charger pn=0x%x, 0x%x, 0x%x, 0x%x\n",
 			__func__,charger_pn[0],charger_pn[1],charger_pn[2],charger_pn[3]);
+#ifdef CONFIG_PRODUCT_LE_X2
 	letv_pd_notice_ver_just_vol(charger_pn, 4);
+#endif
 	return 0;
 }
 

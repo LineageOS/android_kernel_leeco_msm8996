@@ -74,6 +74,10 @@ obj-$(CONFIG_QPNP_FG)		+= qpnp-fg.o
 obj-$(CONFIG_QPNP_FG_GEN3)	+= qpnp-fg-gen3.o fg-memif.o fg-util.o pmic-voter.o
 obj-$(CONFIG_QPNP_CHARGER)	+= qpnp-charger.o
 obj-$(CONFIG_QPNP_LINEAR_CHARGER)	+= qpnp-linear-charger.o
+
+CFLAGS_qpnp-smbcharger.o := -DDEBUG
+CFLAGS_pmic-voter.o := -DDEBUG
+
 obj-$(CONFIG_QPNP_SMBCHARGER)	+= qpnp-smbcharger.o pmic-voter.o mhl_uevent.o
 obj-$(CONFIG_QPNP_SMB2)		+= battery.o qpnp-smb2.o pmic-voter.o smb-lib.o storm-watch.o
 obj-$(CONFIG_QPNP_TYPEC)	+= qpnp-typec.o

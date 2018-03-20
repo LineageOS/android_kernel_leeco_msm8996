@@ -276,7 +276,7 @@ struct smbchg_chip {
 	struct work_struct		usb_set_online_work;
 	struct delayed_work		vfloat_adjust_work;
 	struct delayed_work		hvdcp_det_work;
-#ifdef CONFIG_VENDOR_LEECO
+#ifdef CONFIG_PRODUCT_LE_X2
 	struct delayed_work	    	letv_pd_set_vol_cur_work;
 	struct delayed_work		pd_charger_init_work;
 	struct delayed_work	    	first_detect_float_work;
@@ -544,7 +544,7 @@ module_param_named(
 	int, S_IRUSR | S_IWUSR
 );
 
-#ifdef CONFIG_VENDOR_LEECO
+#ifdef CONFIG_PRODUCT_LE_X2
 enum le_pd_type {
 	LE_PD_TYPE_UNKNOWN = 0,
 	LE_PD_TYPE_EV_24ACN,
@@ -566,27 +566,22 @@ static struct le_pd_type_info le_pd_type_val[] = {
 	{ "EV_24AUK", LE_PD_TYPE_EV_24AUK, 0x1421 },
 	{ NULL, LE_PD_TYPE_UNKNOWN, 0 },
 };
-#endif
 
 extern void letv_pd_set_adjust_charger_parameter(int voltage, int mA);
-#ifdef CONFIG_PRODUCT_LE_X2
 static int pd_init_flag = 0;
 static int new_pd_vol = 0;
 static int pre_pd_vol = 0;
-#endif
 static int le_pd_type_flag = 0;
-#ifdef CONFIG_PRODUCT_LE_X2
 static bool ignore_otgidpin = false;
-#endif
 static int pd_init_ma = 0;
-struct smbchg_chip *pd_smbchg_chip;
 static bool delay_pd_state = false;
 static int pd_det_flag = 0;
 static int pd_init_voltage = 0;
-#ifdef CONFIG_PRODUCT_LE_X2
 static bool hvdcp_aicl_rerun = false;
 static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv);
 #endif
+
+struct smbchg_chip *pd_smbchg_chip;
 
 #define pr_smb(reason, fmt, ...)				\
 	do {							\
@@ -1331,7 +1326,7 @@ static int get_prop_batt_voltage_now(struct smbchg_chip *chip)
 	return uv;
 }
 
-#ifdef CONFIG_VENDOR_LEECO
+#ifdef CONFIG_PRODUCT_LE_X2
 int get_charger_charging_current(void)
 {
 	int cur;
@@ -1676,7 +1671,7 @@ static const int aicl_rerun_period_schg_lite[] = {
 	360,
 };
 
-#ifdef CONFIG_VENDOR_LEECO
+#ifdef CONFIG_PRODUCT_LE_X2
 static const int Vol_raw[] = {
 	3000,
 	3200,
@@ -9699,7 +9694,7 @@ out:
 }
 #endif
 
-#ifdef CONFIG_VENDOR_LEECO
+#ifdef CONFIG_PRODUCT_LE_X2
 /*
   *This function called by pd for notice charger voltage and mA
   */
