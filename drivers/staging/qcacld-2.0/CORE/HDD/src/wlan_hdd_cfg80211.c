@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -569,6 +569,14 @@ wlan_hdd_sta_ap_p2pgo_iface_limit[] = {
    }
 };
 
+static const struct ieee80211_iface_limit
+   wlan_hdd_mon_iface_limit[] = {
+   {
+       .max = 3, /* Monitor interface */
+       .types = BIT(NL80211_IFTYPE_MONITOR),
+   },
+};
+
 static struct ieee80211_iface_combination
 wlan_hdd_iface_combination[] = {
    /* STA */
@@ -635,6 +643,13 @@ wlan_hdd_iface_combination[] = {
       .max_interfaces = 4,
       .n_limits = ARRAY_SIZE(wlan_hdd_sta_ap_p2pgo_iface_limit),
       .beacon_int_infra_match = true,
+   },
+   /* Monitor */
+   {
+      .limits = wlan_hdd_mon_iface_limit,
+      .max_interfaces = 3,
+      .num_different_channels = 2,
+      .n_limits = ARRAY_SIZE(wlan_hdd_mon_iface_limit),
    },
 };
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0)) ||
@@ -7200,8 +7215,9 @@ static int put_wifi_ll_ext_stats(struct sir_wifi_ll_ext_stats *stats,
 	struct sir_wifi_ll_ext_period *period;
 
 	period = &stats->time_stamp;
-	if (nla_put_u64(skb, QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_REPORT_TIME,
-			period->end_time) ||
+	if (hdd_wlan_nla_put_u64(skb,
+				 QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_REPORT_TIME,
+				 period->end_time) ||
 	    nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_MEASUREMENT_TIME,
 			period->duration) ||
 	    nla_put_u32(skb, QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_EVENT_MODE,
@@ -13033,6 +13049,53 @@ static int wlan_hdd_cfg80211_sta_roam_policy(struct wiphy *wiphy,
 }
 
 #ifdef FEATURE_WLAN_CH_AVOID
+
+static int hdd_validate_avoid_freq_chanlist(hdd_context_t *hdd_ctx,
+					    tHddAvoidFreqList *channel_list)
+{
+	unsigned int range_idx, ch_idx;
+	unsigned int unsafe_channel_index, unsafe_channel_count = 0;
+	bool ch_found = false;
+
+	unsafe_channel_count = VOS_MIN((uint16_t)hdd_ctx->unsafe_channel_count,
+			(uint16_t)NUM_20MHZ_RF_CHANNELS);
+
+	for (range_idx = 0; range_idx < channel_list->avoidFreqRangeCount;
+					range_idx++) {
+		if ((channel_list->avoidFreqRange[range_idx].startFreq <
+		     VOS_24_GHZ_CHANNEL_1) ||
+		    (channel_list->avoidFreqRange[range_idx].endFreq >
+		     VOS_5_GHZ_CHANNEL_165) ||
+		    (channel_list->avoidFreqRange[range_idx].startFreq >
+		     channel_list->avoidFreqRange[range_idx].endFreq))
+				continue;
+
+		for (ch_idx = channel_list->avoidFreqRange[range_idx].startFreq;
+		     ch_idx <= channel_list->avoidFreqRange[range_idx].endFreq;
+		     ch_idx++) {
+			for (unsafe_channel_index = 0;
+			     unsafe_channel_index < unsafe_channel_count;
+			     unsafe_channel_index++) {
+				if (ch_idx ==
+					hdd_ctx->unsafe_channel_list[
+					unsafe_channel_index]) {
+					hddLog(VOS_TRACE_LEVEL_INFO,
+					       FL("Duplicate channel %d"),
+					       ch_idx);
+					ch_found = true;
+					break;
+				}
+			}
+			if (!ch_found) {
+				hdd_ctx->unsafe_channel_list[
+				unsafe_channel_count++] = ch_idx;
+			}
+			ch_found = false;
+		}
+	}
+	return unsafe_channel_count;
+}
+
 /**
  * __wlan_hdd_cfg80211_avoid_freq() - ask driver to restart SAP if SAP
  * is on unsafe channel.
@@ -13055,28 +13118,43 @@ __wlan_hdd_cfg80211_avoid_freq(struct wiphy *wiphy,
 {
 	hdd_context_t *hdd_ctx = wiphy_priv(wiphy);
 	int ret;
-	uint16_t unsafe_channel_count;
 	int unsafe_channel_index;
+	tHddAvoidFreqList *channel_list;
+	tVOS_CON_MODE curr_mode;
 
 	ENTER();
 
-	if (VOS_FTM_MODE == hdd_get_conparam()) {
-		hddLog(LOGE, FL("Command not allowed in FTM mode"));
+        curr_mode = hdd_get_conparam();
+	if (VOS_FTM_MODE == curr_mode ||
+	    VOS_MONITOR_MODE == curr_mode) {
+		hddLog(LOGE, FL("Command not allowed in FTM/MONITOR mode"));
 		return -EINVAL;
 	}
 
 	ret = wlan_hdd_validate_context(hdd_ctx);
 	if (0 != ret)
 		return -EINVAL;
+
+	channel_list = (tHddAvoidFreqList *)data;
+	if (!channel_list) {
+		hddLog(LOGE, FL("Avoid frequency channel list empty"));
+		return -EINVAL;
+	}
+
 	vos_get_wlan_unsafe_channel(hdd_ctx->unsafe_channel_list,
 			&(hdd_ctx->unsafe_channel_count),
 			sizeof(hdd_ctx->unsafe_channel_list));
 
-	unsafe_channel_count = VOS_MIN((uint16_t)hdd_ctx->unsafe_channel_count,
-			(uint16_t)NUM_20MHZ_RF_CHANNELS);
+	hdd_ctx->unsafe_channel_count =
+		hdd_validate_avoid_freq_chanlist(hdd_ctx,
+						 channel_list);
+
+	vos_set_wlan_unsafe_channel(hdd_ctx->unsafe_channel_list,
+			hdd_ctx->unsafe_channel_count);
+
 	for (unsafe_channel_index = 0;
-			unsafe_channel_index < unsafe_channel_count;
-			unsafe_channel_index++) {
+		unsafe_channel_index < hdd_ctx->unsafe_channel_count;
+		unsafe_channel_index++) {
 		hddLog(LOGE, FL("Channel %d is not safe. "),
 			hdd_ctx->unsafe_channel_list[unsafe_channel_index]);
 	}
@@ -15524,7 +15602,8 @@ int wlan_hdd_cfg80211_init(struct device *dev,
                              | BIT(NL80211_IFTYPE_ADHOC)
                              | BIT(NL80211_IFTYPE_P2P_CLIENT)
                              | BIT(NL80211_IFTYPE_P2P_GO)
-                             | BIT(NL80211_IFTYPE_AP);
+                             | BIT(NL80211_IFTYPE_AP)
+                             | BIT(NL80211_IFTYPE_MONITOR);
 
     if( pCfg->advertiseConcurrentOperation )
     {
@@ -16392,6 +16471,11 @@ int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter)
 
     wlan_hdd_add_extra_ie(pHostapdAdapter, genie, &total_ielen,
                           WLAN_EID_VHT_TX_POWER_ENVELOPE);
+
+    if(test_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags))
+        wlan_hdd_add_extra_ie(pHostapdAdapter, genie, &total_ielen,
+                              WLAN_EID_RSN);
+
     if (0 != wlan_hdd_add_ie(pHostapdAdapter, genie,
                               &total_ielen, WPS_OUI_TYPE, WPS_OUI_TYPE_SIZE))
     {
@@ -23169,6 +23253,12 @@ int wlan_hdd_cfg80211_set_ie(hdd_adapter_t *pAdapter,
                 }
                 break;
             case DOT11F_EID_RSN:
+                if (eLen > (MAX_WPA_RSN_IE_LEN - 2)) {
+                    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Invalid WPA RSN IE length[%d], exceeds %d bytes",
+                            __func__, eLen, MAX_WPA_RSN_IE_LEN - 2);
+                    VOS_ASSERT(0);
+                    return -EINVAL;
+                }
                 hddLog (VOS_TRACE_LEVEL_INFO, "%s Set RSN IE(len %d)",__func__, eLen + 2);
                 memset( pWextState->WPARSNIE, 0, MAX_WPA_RSN_IE_LEN );
                 memcpy( pWextState->WPARSNIE, genie - 2, (eLen + 2)/*ie_len*/);
@@ -23863,6 +23953,7 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     eConnectionState prev_conn_state;
+    uint32_t wait_time = WLAN_WAIT_TIME_DISCONNECT;
 
     ENTER();
 
@@ -23890,7 +23981,15 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
         hddLog(LOG1,
                FL("status = %d, already disconnected"), status);
         result = 0;
-        goto disconnected;
+        /*
+         * Wait here instead of returning directly. This will block the
+         * next connect command and allow processing of the disconnect
+         * in SME else we might hit some race conditions leading to SME
+         * and HDD out of sync. As disconnect is already in progress,
+         * wait here for 1 sec instead of 5 sec.
+         */
+        wait_time = WLAN_WAIT_DISCONNECT_ALREADY_IN_PROGRESS;
+        goto wait_for_disconnect;
     }
     /*
      * Wait here instead of returning directly, this will block the next
@@ -23909,9 +24008,10 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
         result = -EINVAL;
         goto disconnected;
     }
+wait_for_disconnect:
     rc = wait_for_completion_timeout(
                 &pAdapter->disconnect_comp_var,
-                msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
+                msecs_to_jiffies(wait_time));
 
     if (!rc && (eHAL_STATUS_CMD_NOT_QUEUED != status)) {
        hddLog(VOS_TRACE_LEVEL_ERROR,
@@ -29806,12 +29906,49 @@ static int wlan_hdd_cfg80211_channel_switch(struct wiphy *wiphy,
 }
 #endif
 
+#ifdef FEATURE_WLAN_THERMAL_SHUTDOWN
+static void wlan_hdd_thermal_suspend(hdd_context_t *pHddCtx)
+{
+	/* send auto shutdown timer val 0 to fw as suspend */
+	sme_set_auto_shutdown_timer(pHddCtx->hHal, 0);
+}
+
+static int wlan_hdd_thermal_resume(hdd_context_t *pHddCtx, bool thermal)
+{
+	hddLog(LOG1, "state=%d, thermal=%d\n",
+			   hdd_thermal_suspend_state(pHddCtx), thermal);
+
+	/* If system suspend after thermal suspend, assure system resume first. */
+	if (hdd_thermal_suspend_state(pHddCtx) == HDD_WLAN_THERMAL_SUSPENDED &&
+		!thermal) {
+		hddLog(LOG1, FL("System resume when thermal suspended"));
+		return -EINVAL;
+	}
+
+	/* send auto shutdown timer val 1 to fw as resume */
+	sme_set_auto_shutdown_timer(pHddCtx->hHal, 1);
+
+	return 0;
+}
+#else
+static int wlan_hdd_thermal_resume(hdd_context_t *pHddCtx, bool thermal)
+{
+	return 0;
+}
+
+static void wlan_hdd_thermal_suspend(hdd_context_t *pHddCtx)
+{
+	return;
+}
+
+#endif
+
 /*
  * FUNCTION: __wlan_hdd_cfg80211_resume_wlan
  * this is called when cfg80211 driver resume
  * driver updates  latest sched_scan scan result(if any) to cfg80211 database
  */
-int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
+int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy, bool thermal)
 {
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     hdd_adapter_t *pAdapter;
@@ -29838,9 +29975,13 @@ int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
         return 0;
     }
 
-    if (hif_is_80211_fw_wow_required()) {
-       result = wma_resume_fw();
-       if (result) {
+    result = wlan_hdd_thermal_resume(pHddCtx, thermal);
+    if (0 != result)
+        return result;
+
+    if (!thermal && hif_is_80211_fw_wow_required()) {
+        result = wma_resume_fw();
+        if (result) {
           /* SSR happened while we were waiting for this */
           if (result == VOS_STATUS_E_ALREADY)
               return 0;
@@ -29852,9 +29993,8 @@ int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
           if (!vos_is_logp_in_progress(VOS_MODULE_ID_HDD, NULL))
               VOS_BUG(0);
           return -EBUSY;
-       }
+        }
     }
-
     dev = pHddCtx->parent_dev;
     vos_request_bus_bandwidth(dev, CNSS_BUS_WIDTH_MEDIUM);
 
@@ -29873,7 +30013,7 @@ int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
 
 #endif
 
-    hdd_resume_wlan();
+    hdd_resume_wlan(thermal);
 
     MTRACE(vos_trace(VOS_MODULE_ID_HDD, TRACE_CODE_HDD_CFG80211_RESUME_WLAN,
                           NO_SESSION, pHddCtx->isWiphySuspended));
@@ -29929,21 +30069,69 @@ void wlan_hdd_cfg80211_ready_to_suspend(void *callbackContext, boolean suspended
 
 int wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy)
 {
+    hdd_context_t *hdd_ctx = wiphy_priv(wiphy);
     int ret;
 
     vos_ssr_protect(__func__);
-    ret = __wlan_hdd_cfg80211_resume_wlan(wiphy);
+    ret = __wlan_hdd_cfg80211_resume_wlan(wiphy, false);
+    hdd_system_suspend_state_set(hdd_ctx, false);
     vos_ssr_unprotect(__func__);
 
     return ret;
 }
 
+#ifdef FEATURE_WLAN_THERMAL_SHUTDOWN
+static bool wlan_hdd_is_thermal_suspended(hdd_context_t *pHddCtx)
+{
+	if (hdd_thermal_suspend_state(pHddCtx) == HDD_WLAN_THERMAL_SUSPENDED) {
+		hddLog(LOG1, FL("System suspend when thermal suspended"));
+		return true;
+	}
+	return false;
+}
+
+static VOS_STATUS wlan_hdd_suspend_mc_thread(pVosSchedContext vosSchedCtx,
+					hdd_context_t *pHddCtx)
+{
+	return VOS_STATUS_SUCCESS;
+}
+#else
+static bool wlan_hdd_is_thermal_suspended(hdd_context_t *pHddCtx)
+{
+	return false;
+}
+
+static VOS_STATUS wlan_hdd_suspend_mc_thread(pVosSchedContext vosSchedCtx,
+					hdd_context_t *pHddCtx)
+{
+	int rc;
+
+	/* Suspend MC thread */
+	set_bit(MC_SUSPEND_EVENT, &vosSchedCtx->mcEventFlag);
+	wake_up_interruptible(&vosSchedCtx->mcWaitQueue);
+
+	/* Wait for suspend confirmation from MC thread */
+	rc = wait_for_completion_timeout(&pHddCtx->mc_sus_event_var,
+			msecs_to_jiffies(WLAN_WAIT_TIME_MCTHREAD_SUSPEND));
+	if (!rc)
+	{
+		clear_bit(MC_SUSPEND_EVENT, &vosSchedCtx->mcEventFlag);
+		VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+				   "%s: Failed to stop mc thread", __func__);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	pHddCtx->isMcThreadSuspended = TRUE;
+	return VOS_STATUS_SUCCESS;
+}
+
+#endif
 /*
  * FUNCTION: __wlan_hdd_cfg80211_suspend_wlan
  * this is called when cfg80211 driver suspends
  */
 int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
-                                   struct cfg80211_wowlan *wow)
+                                   struct cfg80211_wowlan *wow, bool thermal)
 {
 #ifdef QCA_CONFIG_SMP
 #define RX_TLSHIM_SUSPEND_TIMEOUT 200 /* msecs */
@@ -29967,6 +30155,15 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
     if (VOS_FTM_MODE == hdd_get_conparam()) {
         hddLog(LOGE, FL("Command not allowed in FTM mode"));
         return -EINVAL;
+    }
+
+    if (true == vos_is_mon_enable()) {
+        hddLog(LOGE, FL("command not allowed in FTM mode"));
+        return -EINVAL;
+    }
+
+    if (wlan_hdd_is_thermal_suspended(pHddCtx)) {
+        return 0;
     }
 
     /* If RADAR detection is in progress (HDD), prevent suspend. The flag
@@ -30055,7 +30252,7 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
     /* Wait for the target to be ready for suspend */
     INIT_COMPLETION(pHddCtx->ready_to_suspend);
 
-    hdd_suspend_wlan(&wlan_hdd_cfg80211_ready_to_suspend, pHddCtx);
+    hdd_suspend_wlan(&wlan_hdd_cfg80211_ready_to_suspend, pHddCtx, thermal);
 
     rc = wait_for_completion_timeout(&pHddCtx->ready_to_suspend,
                              msecs_to_jiffies(WLAN_WAIT_TIME_READY_TO_SUSPEND));
@@ -30074,21 +30271,9 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
     }
 
     /* Suspend MC thread */
-    set_bit(MC_SUSPEND_EVENT, &vosSchedContext->mcEventFlag);
-    wake_up_interruptible(&vosSchedContext->mcWaitQueue);
-
-    /* Wait for suspend confirmation from MC thread */
-    rc = wait_for_completion_timeout(&pHddCtx->mc_sus_event_var,
-                                 msecs_to_jiffies(WLAN_WAIT_TIME_MCTHREAD_SUSPEND));
-    if (!rc)
-    {
-        clear_bit(MC_SUSPEND_EVENT, &vosSchedContext->mcEventFlag);
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Failed to stop mc thread", __func__);
+    status = wlan_hdd_suspend_mc_thread(vosSchedContext, pHddCtx);
+    if (VOS_STATUS_SUCCESS != status)
         goto resume_tx;
-    }
-
-    pHddCtx->isMcThreadSuspended = TRUE;
 
 #ifdef QCA_CONFIG_SMP
     /* Suspend tlshim rx thread */
@@ -30112,17 +30297,20 @@ int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
 
     vos_request_bus_bandwidth(dev, CNSS_BUS_WIDTH_NONE);
 
-    if (hif_is_80211_fw_wow_required()) {
-       rc = wma_suspend_fw();
-       if (rc) {
-          hddLog(LOGE, FL("Failed to suspend FW err:%d"), rc);
-          goto fail_suspend;
-       }
+    if (thermal) {
+        wlan_hdd_thermal_suspend(pHddCtx);
+    } else {
+        if (hif_is_80211_fw_wow_required()) {
+           rc = wma_suspend_fw();
+           if (rc) {
+              hddLog(LOGE, FL("Failed to suspend FW err:%d"), rc);
+              goto fail_suspend;
+           }
+        }
     }
 
     EXIT();
     return 0;
-
 fail_suspend:
     vos_request_bus_bandwidth(dev, CNSS_BUS_WIDTH_MEDIUM);
     pHddCtx->isWiphySuspended = FALSE;
@@ -30141,7 +30329,7 @@ resume_all:
 
 resume_tx:
 
-    hdd_resume_wlan();
+    hdd_resume_wlan(thermal);
 
     return -ETIME;
 }
@@ -30149,14 +30337,17 @@ resume_tx:
 int wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
                                    struct cfg80211_wowlan *wow)
 {
+    hdd_context_t *hdd_ctx = wiphy_priv(wiphy);
     int ret;
 
     vos_ssr_protect(__func__);
-    ret = __wlan_hdd_cfg80211_suspend_wlan(wiphy, wow);
+    ret = __wlan_hdd_cfg80211_suspend_wlan(wiphy, wow, false);
+    hdd_system_suspend_state_set(hdd_ctx, true);
     vos_ssr_unprotect(__func__);
 
     return ret;
 }
+
 
 #ifdef QCA_HT_2040_COEX
 /**
