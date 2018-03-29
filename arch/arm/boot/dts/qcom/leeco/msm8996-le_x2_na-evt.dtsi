@@ -15,7 +15,7 @@
 #include "msm8996-le-common.dtsi"
 #include "dsi-panel-truly-dualmipi-cmd-le_x2_na.dtsi"
 #include "letv-tp-synaptics-dsx-i2c.dtsi"
-#include "msm8996-camera-sensor-x2-dvt1.dtsi"
+#include "msm8996-camera-sensor-le_x2.dtsi"
 
 &sdhc_2 {
 	status = "disabled";
