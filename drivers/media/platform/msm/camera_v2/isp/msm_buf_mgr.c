@@ -86,7 +86,7 @@ struct msm_isp_bufq *msm_isp_get_bufq(
 	/* bufq_handle cannot be 0 */
 	if ((bufq_handle == 0) ||
 		bufq_index >= BUF_MGR_NUM_BUF_Q ||
-		(bufq_index > buf_mgr->num_buf_q))
+		(bufq_index >= buf_mgr->num_buf_q))
 		return NULL;
 
 	bufq = &buf_mgr->bufq[bufq_index];
@@ -690,7 +690,10 @@ static int msm_isp_update_put_buf_cnt_unsafe(
 			bufq->stream_id, buf_info->state);
 			return -EFAULT;
 		}
-		BUG_ON(buf_info->pingpong_bit != pingpong_bit);
+		if (buf_info->pingpong_bit != pingpong_bit) {
+			pr_err("%s: Pingpong bit mismatch\n", __func__);
+			return -EFAULT;
+		}
 	}
 
 	if (bufq->buf_type != ISP_SHARE_BUF ||

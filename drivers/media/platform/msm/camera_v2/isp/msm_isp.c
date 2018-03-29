@@ -29,6 +29,7 @@
 #include "msm_isp_axi_util.h"
 #include "msm_isp_stats_util.h"
 #include "msm_sd.h"
+#include "msm_isp48.h"
 #include "msm_isp47.h"
 #include "msm_isp46.h"
 #include "msm_isp44.h"
@@ -330,6 +331,17 @@ void msm_isp_update_req_history(uint32_t client, uint64_t ab,
 	spin_unlock(&req_history_lock);
 }
 
+void msm_isp_update_last_overflow_ab_ib(struct vfe_device *vfe_dev)
+{
+	spin_lock(&req_history_lock);
+	vfe_dev->msm_isp_last_overflow_ab =
+	msm_isp_bw_request_history[msm_isp_bw_request_history_idx].total_ab;
+	vfe_dev->msm_isp_last_overflow_ib =
+	msm_isp_bw_request_history[msm_isp_bw_request_history_idx].total_ib;
+	spin_unlock(&req_history_lock);
+}
+
+
 #ifdef CONFIG_COMPAT
 static long msm_isp_dqevent(struct file *file, struct v4l2_fh *vfh, void *arg)
 {
@@ -425,11 +437,69 @@ static long msm_isp_v4l2_fops_ioctl(struct file *file, unsigned int cmd,
 	return video_usercopy(file, cmd, arg, msm_isp_subdev_do_ioctl);
 }
 
+static void isp_vma_open(struct vm_area_struct *vma)
+{
+	pr_debug("%s: open called\n", __func__);
+}
+
+static void isp_vma_close(struct vm_area_struct *vma)
+{
+	pr_debug("%s: close called\n", __func__);
+}
+
+static int isp_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+{
+	struct page *page;
+	struct vfe_device *vfe_dev = vma->vm_private_data;
+	struct isp_proc *isp_page = NULL;
+
+	isp_page = vfe_dev->isp_page;
+
+	pr_debug("%s: vfeid:%d u_virt_addr:0x%lx k_virt_addr:%pK\n",
+		__func__, vfe_dev->pdev->id, vma->vm_start,
+		(void *)isp_page);
+	if (isp_page != NULL) {
+		page = virt_to_page(isp_page);
+		get_page(page);
+		vmf->page = page;
+		isp_page->kernel_sofid =
+			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
+		isp_page->vfeid = vfe_dev->pdev->id;
+	}
+	return 0;
+}
+
+static const struct vm_operations_struct isp_vm_ops = {
+	.open = isp_vma_open,
+	.close = isp_vma_close,
+	.fault = isp_vma_fault,
+};
+
+static int msm_isp_v4l2_fops_mmap(struct file *filep,
+	struct vm_area_struct *vma)
+{
+	int ret =  -EINVAL;
+	struct video_device *vdev = video_devdata(filep);
+	struct v4l2_subdev *sd = vdev_to_v4l2_subdev(vdev);
+	struct vfe_device *vfe_dev = v4l2_get_subdevdata(sd);
+
+	vma->vm_ops = &isp_vm_ops;
+	vma->vm_flags |=
+		(unsigned long)(VM_DONTEXPAND | VM_DONTDUMP);
+	vma->vm_private_data = vfe_dev;
+	isp_vma_open(vma);
+	ret = 0;
+	pr_debug("%s: isp mmap is called vm_start: 0x%lx\n",
+		__func__, vma->vm_start);
+	return ret;
+}
+
 static struct v4l2_file_operations msm_isp_v4l2_fops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl32 = msm_isp_v4l2_fops_ioctl,
 #endif
-	.unlocked_ioctl = msm_isp_v4l2_fops_ioctl
+	.unlocked_ioctl = msm_isp_v4l2_fops_ioctl,
+	.mmap = msm_isp_v4l2_fops_mmap
 };
 
 static int vfe_set_common_data(struct platform_device *pdev)
@@ -463,67 +533,40 @@ static int vfe_set_common_data(struct platform_device *pdev)
 
 static int vfe_probe(struct platform_device *pdev)
 {
-	struct vfe_parent_device *vfe_parent_dev;
 	int rc = 0;
 	struct device_node *node;
 	struct platform_device *new_dev = NULL;
 	uint32_t i = 0;
 	char name[10] = "\0";
+	uint32_t num_hw_sd;
 
-	vfe_parent_dev = kzalloc(sizeof(struct vfe_parent_device),
-		GFP_KERNEL);
-	if (!vfe_parent_dev) {
-		rc = -ENOMEM;
-		goto end;
-	}
-
-	vfe_parent_dev->common_sd = kzalloc(
-		sizeof(struct msm_vfe_common_subdev), GFP_KERNEL);
-	if (!vfe_parent_dev->common_sd) {
-		rc = -ENOMEM;
-		goto probe_fail1;
-	}
-
-	vfe_parent_dev->common_sd->common_data = &vfe_common_data;
 	memset(&vfe_common_data, 0, sizeof(vfe_common_data));
 	spin_lock_init(&vfe_common_data.common_dev_data_lock);
 	spin_lock_init(&vfe_common_data.common_dev_axi_lock);
 
-	of_property_read_u32(pdev->dev.of_node,
-		"num_child", &vfe_parent_dev->num_hw_sd);
+	of_property_read_u32(pdev->dev.of_node, "num_child", &num_hw_sd);
 
-	for (i = 0; i < vfe_parent_dev->num_hw_sd; i++) {
+	for (i = 0; i < num_hw_sd; i++) {
 		node = NULL;
 		snprintf(name, sizeof(name), "qcom,vfe%d", i);
 		node = of_find_node_by_name(NULL, name);
 		if (!node) {
 			pr_err("%s: Error! Cannot find node in dtsi %s\n",
 				__func__, name);
-			goto probe_fail2;
+			goto end;
 		}
 		new_dev = of_find_device_by_node(node);
 		if (!new_dev) {
 			pr_err("%s: Failed to find device on bus %s\n",
 				__func__, node->name);
-			goto probe_fail2;
+			goto end;
 		}
-		vfe_parent_dev->child_list[i] = new_dev;
-		new_dev->dev.platform_data =
-			(void *)vfe_parent_dev->common_sd->common_data;
+		new_dev->dev.platform_data = &vfe_common_data;
 		rc = vfe_set_common_data(new_dev);
 		if (rc < 0)
-			goto probe_fail2;
+			goto end;
 	}
 
-	vfe_parent_dev->num_sd = vfe_parent_dev->num_hw_sd;
-	vfe_parent_dev->pdev = pdev;
-
-	return rc;
-
-probe_fail2:
-	kfree(vfe_parent_dev->common_sd);
-probe_fail1:
-	kfree(vfe_parent_dev);
 end:
 	return rc;
 }
@@ -582,8 +625,7 @@ int vfe_hw_probe(struct platform_device *pdev)
 
 	vfe_dev->pdev = pdev;
 
-
-	rc = vfe_dev->hw_info->vfe_ops.core_ops.get_platform_data(vfe_dev);
+	rc = vfe_dev->hw_info->vfe_ops.platform_ops.get_platform_data(vfe_dev);
 	if (rc < 0) {
 		pr_err("%s: failed to get platform resources\n", __func__);
 		rc = -ENOMEM;
@@ -626,6 +668,8 @@ int vfe_hw_probe(struct platform_device *pdev)
 	msm_isp_v4l2_fops.compat_ioctl32 =
 		msm_isp_v4l2_fops_ioctl;
 #endif
+	msm_isp_v4l2_fops.mmap = msm_isp_v4l2_fops_mmap;
+
 	vfe_dev->subdev.sd.devnode->fops = &msm_isp_v4l2_fops;
 
 	vfe_dev->buf_mgr = &vfe_buf_mgr;
@@ -644,6 +688,14 @@ int vfe_hw_probe(struct platform_device *pdev)
 		vfe_dev->hw_info->num_iommu_secure_ctx;
 	vfe_dev->buf_mgr->init_done = 1;
 	vfe_dev->vfe_open_cnt = 0;
+	/*Allocate a page in kernel and map it to camera user process*/
+	vfe_dev->isp_page = (struct isp_proc *)get_zeroed_page(GFP_KERNEL);
+	if (vfe_dev->isp_page == NULL) {
+		pr_err("%s: no enough memory\n", __func__);
+		rc = -ENOMEM;
+		goto probe_fail3;
+	}
+	vfe_dev->isp_page->vfeid = vfe_dev->pdev->id;
 	return rc;
 
 probe_fail3:

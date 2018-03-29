@@ -82,7 +82,7 @@ struct msm_actuator_ctrl_t {
 	enum af_camera_name cam_name;
 	struct mutex *actuator_mutex;
 	struct msm_actuator_func_tbl *func_tbl;
-	enum msm_actuator_data_type i2c_data_type;
+	enum msm_camera_i2c_data_type i2c_data_type;
 	struct v4l2_subdev sdev;
 	struct v4l2_subdev_ops *act_v4l2_subdev_ops;
 
@@ -105,9 +105,12 @@ struct msm_actuator_ctrl_t {
 	struct msm_actuator_vreg vreg_cfg;
 	struct park_lens_data_t park_lens;
 	uint32_t max_code_size;
+	/* LeTV camera code, TODO: condition to #ifdefined. */
 	struct msm_camera_sensor_board_info *actuatordata;
 	const char *project_name;
-	uint16_t maxdac;// add for semico  sa3103 actuator , which is different with all qcom supported standard actuator type.
+	/* NOTE: The sa3103 actuator is different from all qcom
+	 * standard actuator types. Maybe not needed for Pro3? LeTV turbo only. */
+	uint16_t maxdac;
 	uint16_t mindac;
 };
 
