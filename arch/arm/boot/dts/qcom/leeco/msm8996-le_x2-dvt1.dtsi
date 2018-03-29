@@ -18,7 +18,7 @@
 #include "dsi-panel-ofilm-dualmipi-cmd-le_x2-pvt.dtsi"
 #include "dsi-panel-boe-dualmipi-cmd-le_x2-pvt.dtsi"
 #include "letv-tp-synaptics-dsx-i2c.dtsi"
-#include "msm8996-camera-sensor-x2-dvt1.dtsi"
+#include "msm8996-camera-sensor-le_x2.dtsi"
 #include "letv-ft-hideep-i2c.dtsi"
 
 &sdhc_2 {

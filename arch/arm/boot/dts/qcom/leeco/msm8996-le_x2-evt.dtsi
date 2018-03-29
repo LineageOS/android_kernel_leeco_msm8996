@@ -15,6 +15,7 @@
 #include "msm8996-le-common.dtsi"
 #include "dsi-panel-truly-dualmipi-cmd-le_x2-evt.dtsi"
 #include "letv-tp-synaptics-dsx-i2c-le_x2-evt.dtsi"
+#include "msm8996-camera-sensor-le_x2.dtsi"
 
 &sdhc_2 {
 	status = "disabled";
@@ -343,6 +344,14 @@
 		clocks = <&clock_gcc clk_gcc_blsp2_uart6_apps_clk>,
 		 <&clock_gcc clk_gcc_blsp2_ahb_clk>;
         };
+};
+
+/* Adjust front camera EEPROM memory location for EVT variants. */
+&cci {
+	qcom,eeprom@1 {
+		qcom,mem0 = <16 0x7000 2 0 1 0>;
+		qcom,mem1 = <268 0x7010 2 0 1 0>;
+	};
 };
 
 &blsp2_uart6 {
