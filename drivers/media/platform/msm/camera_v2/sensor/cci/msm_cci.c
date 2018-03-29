@@ -1817,14 +1817,16 @@ static void msm_cci_init_cci_params(struct cci_device *new_cci_dev)
 			mutex_init(&new_cci_dev->cci_master_info[i].mutex_q[j]);
 			init_completion(&new_cci_dev->
 				cci_master_info[i].report_q[j]);
-			if (j == QUEUE_0)
-				new_cci_dev->cci_i2c_queue_info[i][j].
-					max_queue_size = CCI_I2C_QUEUE_0_SIZE;
-			else
-				new_cci_dev->cci_i2c_queue_info[i][j].
-					max_queue_size = CCI_I2C_QUEUE_1_SIZE;
 			spin_lock_init(&new_cci_dev->
 				cci_master_info[i].lock_q[j]);
+			/* Set the i2c queue size for CCI. */
+			if (j == QUEUE_0) {
+				new_cci_dev->cci_i2c_queue_info[i][j].
+					max_queue_size = CCI_I2C_QUEUE_0_SIZE;
+			} else {
+				new_cci_dev->cci_i2c_queue_info[i][j].
+					max_queue_size = CCI_I2C_QUEUE_1_SIZE;
+			}
 		}
 	}
 	return;
