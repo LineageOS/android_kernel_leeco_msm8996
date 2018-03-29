@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -679,8 +679,6 @@ static int msm_isp_start_stats_stream(struct vfe_device *vfe_dev,
 			stream_cfg_cmd->num_streams);
 		return -EINVAL;
 	}
-	mutex_lock(&vfe_dev->buf_mgr->lock);
-
 	num_stats_comp_mask =
 		vfe_dev->hw_info->stats_hw_info->num_stats_comp_mask;
 	rc = vfe_dev->hw_info->vfe_ops.stats_ops.check_streams(
@@ -693,7 +691,6 @@ static int msm_isp_start_stats_stream(struct vfe_device *vfe_dev,
 
 		if (idx >= vfe_dev->hw_info->stats_hw_info->num_stats_type) {
 			pr_err("%s Invalid stats index %d", __func__, idx);
-			mutex_unlock(&vfe_dev->buf_mgr->lock);
 			return -EINVAL;
 		}
 
@@ -709,13 +706,11 @@ static int msm_isp_start_stats_stream(struct vfe_device *vfe_dev,
 			pr_err("%s: comp grp %d exceed max %d\n",
 				__func__, stream_info->composite_flag,
 				num_stats_comp_mask);
-			mutex_unlock(&vfe_dev->buf_mgr->lock);
 			return -EINVAL;
 		}
 		rc = msm_isp_init_stats_ping_pong_reg(vfe_dev, stream_info);
 		if (rc < 0) {
 			pr_err("%s: No buffer for stream%d\n", __func__, idx);
-			mutex_unlock(&vfe_dev->buf_mgr->lock);
 			return rc;
 		}
 		if (!stream_info->composite_flag)
@@ -740,7 +735,6 @@ static int msm_isp_start_stats_stream(struct vfe_device *vfe_dev,
 			stats_data->num_active_stream);
 
 	}
-	mutex_unlock(&vfe_dev->buf_mgr->lock);
 
 	if (vfe_dev->axi_data.src_info[VFE_PIX_0].active) {
 		rc = msm_isp_stats_wait_for_cfg_done(vfe_dev);
@@ -890,22 +884,31 @@ int msm_isp_update_stats_stream(struct vfe_device *vfe_dev, void *arg)
 	struct msm_vfe_axi_stream_cfg_update_info *update_info = NULL;
 	struct msm_isp_sw_framskip *sw_skip_info = NULL;
 
+	if (update_cmd->num_streams > MSM_ISP_STATS_MAX) {
+		pr_err("%s: Invalid num_streams %d\n",
+			__func__, update_cmd->num_streams);
+		return -EINVAL;
+	}
+
 	/*validate request*/
 	for (i = 0; i < update_cmd->num_streams; i++) {
-		update_info = &update_cmd->update_info[i];
+		update_info = (struct msm_vfe_axi_stream_cfg_update_info *)
+				&update_cmd->update_info[i];
 		/*check array reference bounds*/
 		if (STATS_IDX(update_info->stream_handle)
 			>= vfe_dev->hw_info->stats_hw_info->num_stats_type) {
 			pr_err("%s: stats idx %d out of bound!", __func__,
-				STATS_IDX(update_info->stream_handle));
+			STATS_IDX(update_info->stream_handle));
 			return -EINVAL;
 		}
 	}
 
 	for (i = 0; i < update_cmd->num_streams; i++) {
-		update_info = &update_cmd->update_info[i];
+		update_info = (struct msm_vfe_axi_stream_cfg_update_info *)
+				&update_cmd->update_info[i];
 		stream_info = &stats_data->stream_info[
-				STATS_IDX(update_info->stream_handle)];
+			STATS_IDX(
+			update_info->stream_handle)];
 		if (stream_info->stream_handle !=
 			update_info->stream_handle) {
 			pr_err("%s: stats stream handle %x %x mismatch!\n",
@@ -919,7 +922,8 @@ int msm_isp_update_stats_stream(struct vfe_device *vfe_dev, void *arg)
 			uint32_t framedrop_period =
 				msm_isp_get_framedrop_period(
 				   update_info->skip_pattern);
-			if (update_info->skip_pattern == SKIP_ALL)
+			if (update_info->skip_pattern ==
+				SKIP_ALL)
 				stream_info->framedrop_pattern = 0x0;
 			else
 				stream_info->framedrop_pattern = 0x1;
@@ -930,7 +934,8 @@ int msm_isp_update_stats_stream(struct vfe_device *vfe_dev, void *arg)
 			break;
 		}
 		case UPDATE_STREAM_SW_FRAME_DROP: {
-			sw_skip_info = &update_info->sw_skip_info;
+			sw_skip_info =
+			&update_info->sw_skip_info;
 			if (!stream_info->sw_skip.stream_src_mask)
 				stream_info->sw_skip = *sw_skip_info;
 
