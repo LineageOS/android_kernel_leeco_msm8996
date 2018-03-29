@@ -48,13 +48,7 @@
 #define MSM_CAMERA_SUBDEV_SENSOR_INIT  14
 #define MSM_CAMERA_SUBDEV_OIS          15
 #define MSM_CAMERA_SUBDEV_FLASH        16
-#ifdef CONFIG_VENDOR_LEECO
 #define MSM_CAMERA_SUBDEV_EXT          17
-#else
-#define MSM_CAMERA_SUBDEV_IR_LED       17
-#define MSM_CAMERA_SUBDEV_IR_CUT       18
-#define MSM_CAMERA_SUBDEV_EXT          19
-#endif
 
 #define MSM_MAX_CAMERA_SENSORS  5
 

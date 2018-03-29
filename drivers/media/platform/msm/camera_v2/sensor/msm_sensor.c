@@ -420,6 +420,11 @@ int32_t msm_sensor_free_sensor_data(struct msm_sensor_ctrl_t *s_ctrl)
 	return 0;
 }
 
+/*
+ * WARNING: The new camera API from CAF gets the values
+ * using GPIO from DT. This code from LeTV is rubbish
+ * and shall not be tolerated.
+ */
 static struct msm_cam_clk_info cam_8960_clk_info[] = {
 	[SENSOR_CAM_MCLK] = {"cam_clk", 24000000},
 };
@@ -581,7 +586,7 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 #ifndef LETV_SINGLE_MODULE_VENDOR
 	uint8_t camera_id = 0;
 	uint8_t module_id = 0;
-#ifdef CONFIG_PRODUCT_LE_ZL1
+#ifdef CONFIG_MACH_LEECO_ZL1
 	uint8_t vcm_id = 0;
 	uint8_t vcmid_otp_buf[MSM_OTP_REAR_CAMERA_VCM_ID_BUFF_SIZE];
 #endif
@@ -598,12 +603,12 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 #ifndef LETV_SINGLE_MODULE_VENDOR
 	camera_id = s_ctrl->sensordata->slave_info->camera_id;
 	module_id = s_ctrl->sensordata->slave_info->module_id;
-#ifdef CONFIG_PRODUCT_LE_ZL1
+#ifdef CONFIG_MACH_LEECO_ZL1
 	vcm_id = s_ctrl->sensordata->slave_info->vcm_id;
 #endif
 #endif
 	if (!sensor_i2c_client || !slave_info || !sensor_name) {
-		pr_err("[CAM-0x1801]%s:%d failed: %p %p %p\n",
+		pr_err("[CAM-0x1801]%s:%d failed: %pK %pK %pK\n",
 			__func__, __LINE__, sensor_i2c_client, slave_info,
 			sensor_name);
 		return -EINVAL;
@@ -647,7 +652,7 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 			pr_err("%s:Err rear camera module id doesn't match\n", __func__);
 			return -ENODEV;
 		}
-#ifdef CONFIG_PRODUCT_LE_ZL1
+#ifdef CONFIG_MACH_LEECO_ZL1
 		memset(vcmid_otp_buf, 0,
 			MSM_OTP_REAR_CAMERA_VCM_ID_BUFF_SIZE);
 		msm_get_otp_data(vcmid_otp_buf,
@@ -2185,7 +2190,7 @@ int32_t msm_sensor_init_default_params(struct msm_sensor_ctrl_t *s_ctrl)
 	/* Initialize clock info */
 	clk_info = kzalloc(sizeof(cam_8974_clk_info), GFP_KERNEL);
 	if (!clk_info) {
-		pr_err("%s:%d failed no memory clk_info %pK\n", __func__,
+		pr_err("%s:%d failed no memory clk_info %p\n", __func__,
 			__LINE__, clk_info);
 		rc = -ENOMEM;
 		goto FREE_CCI_CLIENT;

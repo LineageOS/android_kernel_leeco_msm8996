@@ -2,11 +2,9 @@
 #define __LINUX_MSM_CAM_SENSOR_H
 
 #include <uapi/media/msm_cam_sensor.h>
-#include <uapi/media/msm_camsensor_sdk.h>
 
 #include <linux/compat.h>
 
-#ifdef CONFIG_VENDOR_LEECO
 #define MSM_OTP_FRONT_CAMERA_ID_BUFF_SIZE (36)
 #define MSM_OTP_FRONT_CAMERA_DATE_BUFF_SIZE (3)
 #define MSM_OTP_FRONT_CAMERA_MODULE_ID_BUFF_SIZE (4)
@@ -18,9 +16,6 @@
 #define MSM_OTP_REAR_CAMERA_PDAF_BUFF_SIZE (100)
 #define MSM_OTP_REAR_CAMERA_MODULE_ID_BUFF_SIZE (4)
 #define MSM_OTP_REAR_CAMERA_VCM_ID_BUFF_SIZE (4)
-
-
-
 
 enum msm_otp_flag {
 	OTP_FRONT_CAMERA_ID,
@@ -39,7 +34,6 @@ enum msm_otp_flag {
 	OTP_REAR_CAMERA_VCM_ID,
 	OTP_REAR_CAMERA_ALL
 };
-#endif
 
 #ifdef CONFIG_COMPAT
 
@@ -75,13 +69,7 @@ struct msm_camera_sensor_slave_info32 {
 	struct msm_sensor_power_setting_array32 power_setting_array;
 	uint8_t  is_init_params_valid;
 	struct msm_sensor_init_params sensor_init_params;
-#ifdef CONFIG_VENDOR_LEECO
-	uint8_t is_flash_supported;
-#endif
 	enum msm_sensor_output_format_t output_format;
-#ifndef CONFIG_VENDOR_LEECO
-	uint8_t bypass_video_node_creation;
-#endif
 };
 
 struct msm_camera_csid_lut_params32 {
@@ -112,16 +100,6 @@ struct csid_cfg_data32 {
 		compat_uptr_t csid_params;
 		compat_uptr_t csid_testmode_params;
 	} cfg;
-};
-
-struct msm_ir_led_cfg_data_t32 {
-	enum msm_ir_led_cfg_type_t cfg_type;
-	int32_t pwm_duty_on_ns;
-	int32_t pwm_period_ns;
-};
-
-struct msm_ir_cut_cfg_data_t32 {
-	enum msm_ir_cut_cfg_type_t cfg_type;
 };
 
 struct eeprom_read_t32 {
@@ -187,13 +165,8 @@ struct msm_actuator_params_t32 {
 	uint16_t init_setting_size;
 	uint32_t i2c_addr;
 	enum i2c_freq_mode_t i2c_freq_mode;
-#ifdef CONFIG_VENDOR_LEECO
-	enum msm_actuator_addr_type i2c_addr_type;
-	enum msm_actuator_data_type i2c_data_type;
-#else
 	enum msm_camera_i2c_reg_addr_type i2c_addr_type;
 	enum msm_camera_i2c_data_type i2c_data_type;
-#endif
 	compat_uptr_t reg_tbl_params;
 	compat_uptr_t init_settings;
 	struct park_lens_data_t park_lens;
@@ -232,9 +205,7 @@ struct msm_actuator_cfg_data32 {
 		struct msm_actuator_set_position_t setpos;
 		enum af_camera_name cam_name;
 	} cfg;
-#ifdef CONFIG_VENDOR_LEECO
 	char actuator_name[32];
-#endif
 };
 
 struct csiphy_cfg_data32 {
@@ -318,12 +289,6 @@ struct msm_flash_cfg_data_t32 {
 
 #define VIDIOC_MSM_FLASH_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 13, struct msm_flash_cfg_data_t32)
-
-#define VIDIOC_MSM_IR_LED_CFG32 \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_ir_led_cfg_data_t32)
-
-#define VIDIOC_MSM_IR_CUT_CFG32 \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t32)
 #endif
 
 #endif
