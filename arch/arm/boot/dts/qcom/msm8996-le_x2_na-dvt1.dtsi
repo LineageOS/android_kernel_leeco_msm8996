@@ -389,7 +389,7 @@
 /{
 	mtp_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
-		#include "batterydata-le-x2-3200mah.dtsi"
+		#include "batterydata-le_x2-3200mah.dtsi"
 	};
 };
 
