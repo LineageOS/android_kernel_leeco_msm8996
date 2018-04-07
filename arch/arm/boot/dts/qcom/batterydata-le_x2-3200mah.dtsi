@@ -1,16 +1,19 @@
-qcom,2257929_letv_x2_3200mah_averaged_masterslave_dec21st2015 {
-/* #2257929_LeTV_X2_3200mAh_averaged_MasterSlave_Dec21st2015*/
+qcom,letv_x2_3200mah {
+	qcom,fcc-mah = <3200>;
+	qcom,chg-term-ua = <170000>;
+
 	qcom,max-voltage-uv = <4400000>;
 	qcom,nom-batt-capacity-mah = <3200>;
 	qcom,batt-id-kohm = <10>;
 	qcom,battery-beta = <3380>;
-	qcom,battery-type = "2257929_letv_x2_3200mah_averaged_masterslave_dec21st2015";
+	qcom,battery-type = "letv_x2_3200mah";
 	qcom,chg-rslow-comp-c1 = <2417907>;
 	qcom,chg-rslow-comp-c2 = <3212907>;
 	qcom,chg-rs-to-rslow = <889142>;
 	qcom,chg-rslow-comp-thr = <0x9F>;
 	qcom,checksum = <0xE9E1>;
 	qcom,gui-version = "PMI8996GUI - 1.1.0.0";
+
 	qcom,fg-profile-data = [
 		D7 83 69 7C
 		DA 80 F1 76
