@@ -148,8 +148,10 @@ int mdss_livedisplay_update(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	if (mlc == NULL)
 		return -ENODEV;
 
+#ifdef CONFIG_PRODUCT_LE_X2
 	if (mlc->mfd == NULL)
 		return -ENODEV;
+#endif
 
 	if (!mlc->caps || !mdss_panel_is_power_on_interactive(pinfo->panel_power_state))
 		return 0;
