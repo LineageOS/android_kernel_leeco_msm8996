@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f4f19d8b_881866bb",
+        "filename": "drivers/video/msm/mdss/mdss_livedisplay.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 12986
+      },
+      "writtenOn": "2018-04-10T11:10:10Z",
+      "side": 1,
+      "message": "if (mdss_dsi_is_hw_config_dual(ctrl_pdata-\u003eshared_data))",
+      "revId": "e566213ca6d7abea77e780dc8486783d09d817de",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
