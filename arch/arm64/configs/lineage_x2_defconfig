@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm64 3.18.96 Kernel Configuration
+# Linux/arm64 3.18.101 Kernel Configuration
 #
 CONFIG_VENDOR_LEECO=y
 CONFIG_ARM64=y
@@ -159,7 +159,7 @@ CONFIG_RD_LZMA=y
 # CONFIG_RD_XZ is not set
 # CONFIG_RD_LZO is not set
 # CONFIG_RD_LZ4 is not set
-CONFIG_CC_OPTIMIZE_FOR_SIZE=y
+# CONFIG_CC_OPTIMIZE_FOR_SIZE is not set
 CONFIG_SYSCTL=y
 CONFIG_ANON_INODES=y
 CONFIG_HAVE_UID16=y
