@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/arm64 3.18.96 Kernel Configuration
+# Linux/arm64 3.18.105 Kernel Configuration
 #
 CONFIG_VENDOR_LEECO=y
 CONFIG_ARM64=y
