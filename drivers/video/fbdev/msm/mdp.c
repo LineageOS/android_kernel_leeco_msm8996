@@ -154,7 +154,7 @@ static int mdp_wait(struct mdp_info *mdp, uint32_t mask, wait_queue_head_t *wq)
 	int ret = 0;
 	unsigned long irq_flags;
 
-	wait_event_timeout(*wq, !mdp_check_mask(mask), HZ);
+	wait_event_timeout(*wq, !mdp_check_mask(mask), msecs_to_jiffies(1000));
 
 	spin_lock_irqsave(&mdp_lock, irq_flags);
 	if (mdp_irq_mask & mask) {
