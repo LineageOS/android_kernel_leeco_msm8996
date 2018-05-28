@@ -768,7 +768,7 @@ static int hdmi_ddc_read_retry(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 			atomic_set(&ddc_ctrl->read_busy_wait_done, 0);
 		} else {
 			reinit_completion(&ddc_ctrl->ddc_sw_done);
-			wait_time = HZ / 2;
+			wait_time = msecs_to_jiffies(500);
 		}
 
 		hdmi_ddc_trigger(ddc_ctrl, TRIGGER_READ, false);
@@ -1174,7 +1174,7 @@ int hdmi_ddc_read_seg(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 		hdmi_ddc_trigger(ddc_ctrl, TRIGGER_READ, true);
 
 		time_out_count = wait_for_completion_timeout(
-			&ddc_ctrl->ddc_sw_done, HZ / 2);
+			&ddc_ctrl->ddc_sw_done, msecs_to_jiffies(500));
 
 		if (!time_out_count) {
 			pr_debug("%s: timedout\n", ddc_data->what);
@@ -1246,7 +1246,7 @@ int hdmi_ddc_write(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 			atomic_set(&ddc_ctrl->write_busy_wait_done, 0);
 		} else {
 			reinit_completion(&ddc_ctrl->ddc_sw_done);
-			wait_time = HZ / 2;
+			wait_time = msecs_to_jiffies(500);
 		}
 
 		hdmi_ddc_trigger(ddc_ctrl, TRIGGER_WRITE, false);

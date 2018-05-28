@@ -314,7 +314,7 @@ static long mddi_wait_interrupt_timeout(struct mddi_info *mddi,
 
 static void mddi_wait_interrupt(struct mddi_info *mddi, uint32_t intmask)
 {
-	if (mddi_wait_interrupt_timeout(mddi, intmask, HZ/10) == 0)
+	if (mddi_wait_interrupt_timeout(mddi, intmask, msecs_to_jiffies(100)) == 0)
 		printk(KERN_INFO "mddi_wait_interrupt %d, timeout "
 		       "waiting for %x, INT = %x, STAT = %x gotint = %x\n",
 		       current->pid, intmask, mddi_readl(INT), mddi_readl(STAT),
@@ -458,7 +458,7 @@ static int mddi_get_client_caps(struct mddi_info *mddi)
 		mddi_writel(CMD_GET_CLIENT_CAP, CMD);
 		mddi_wait_interrupt(mddi, MDDI_INT_NO_CMD_PKTS_PEND);
 		wait_event_timeout(mddi->int_wait, mddi->flags & FLAG_HAVE_CAPS,
-				   HZ / 100);
+				   msecs_to_jiffies(10));
 
 		if (mddi->flags & FLAG_HAVE_CAPS)
 			break;
@@ -481,7 +481,7 @@ int mddi_check_status(struct mddi_info *mddi)
 		mddi_wait_interrupt(mddi, MDDI_INT_NO_CMD_PKTS_PEND);
 		wait_event_timeout(mddi->int_wait,
 				   mddi->flags & FLAG_HAVE_STATUS,
-				   HZ / 100);
+				   msecs_to_jiffies(10));
 
 		if (mddi->flags & FLAG_HAVE_STATUS) {
 			if (mddi->status.crc_error_count)
@@ -587,7 +587,7 @@ uint32_t mddi_remote_read(struct msm_mddi_client_data *cdata, uint32_t reg)
 		/* Enable Periodic Reverse Encapsulation. */
 		mddi_writel(MDDI_CMD_PERIODIC_REV_ENCAP | 1, CMD);
 		mddi_wait_interrupt(mddi, MDDI_INT_NO_CMD_PKTS_PEND);
-		if (wait_for_completion_timeout(&ri.done, HZ/10) == 0 &&
+		if (wait_for_completion_timeout(&ri.done, msescs_to_jiffies(100)) == 0 &&
 		    !ri.done.done) {
 			printk(KERN_INFO "mddi_remote_read(%x) timeout "
 					 "(%d %d %d)\n",
