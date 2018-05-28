@@ -58,7 +58,7 @@ struct mdss_hw mdss_dsi1_hw = {
 
 #define DSI_EVENT_Q_MAX	4
 
-#define DSI_BTA_EVENT_TIMEOUT (HZ / 10)
+#define DSI_BTA_EVENT_TIMEOUT (msecs_to_jiffies(100))
 
 /* Mutex common for both the controllers */
 static struct mutex dsi_mtx;
