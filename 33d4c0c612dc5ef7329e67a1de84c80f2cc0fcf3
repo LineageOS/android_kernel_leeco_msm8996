@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a2b443d_58ff3e73",
+        "filename": "drivers/staging/qcacld-2.0/Kbuild",
+        "patchSetId": 1
+      },
+      "lineNbr": 350,
+      "author": {
+        "id": 19252
+      },
+      "writtenOn": "2018-06-13T21:03:04Z",
+      "side": 1,
+      "message": "I just noticed this accidentally got turned back on with qcacld-2.0 update. Can we please disable it again? It\u0027s still causing wakelocks.\n\nhttps://photos.app.goo.gl/EKhjaPFhPt2s2zkA9\n\nhttps://review.lineageos.org/#/c/LineageOS/android_kernel_leeco_msm8996/+/212639/",
+      "revId": "33d4c0c612dc5ef7329e67a1de84c80f2cc0fcf3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
