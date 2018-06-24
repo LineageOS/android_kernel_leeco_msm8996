@@ -579,7 +579,7 @@ static int msm_afe_capture_copy(struct snd_pcm_substream *substream,
 
 		prtd->dsp_cnt++;
 		ret = wait_event_timeout(prtd->read_wait,
-				atomic_read(&prtd->rec_bytes_avail), 5 * HZ);
+				atomic_read(&prtd->rec_bytes_avail), msecs_to_jiffies(5000));
 		if (ret < 0) {
 			pr_err("%s: wait_event_timeout failed\n", __func__);
 

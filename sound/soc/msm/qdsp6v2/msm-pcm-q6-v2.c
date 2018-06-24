@@ -56,7 +56,7 @@ struct snd_msm {
 };
 
 #define CMD_EOS_MIN_TIMEOUT_LENGTH  50
-#define CMD_EOS_TIMEOUT_MULTIPLIER  (HZ * 50)
+#define CMD_EOS_TIMEOUT_MULTIPLIER  msecs_to_jiffies(50000)
 #define MAX_PB_COPY_RETRIES         3
 #define MAX_PCM_STREAMS 2
 
@@ -658,7 +658,7 @@ static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,
 		}
 
 		ret = wait_event_timeout(the_locks.write_wait,
-				(atomic_read(&prtd->out_count)), 5 * HZ);
+				(atomic_read(&prtd->out_count)), msecs_to_jiffies(5000));
 		if (!ret) {
 			pr_err("%s: wait_event_timeout failed\n", __func__);
 			ret = -ETIMEDOUT;
@@ -803,7 +803,7 @@ static int msm_pcm_capture_copy(struct snd_pcm_substream *substream,
 		return -ENETRESET;
 	}
 	ret = wait_event_timeout(the_locks.read_wait,
-			(atomic_read(&prtd->in_count)), 5 * HZ);
+			(atomic_read(&prtd->in_count)), msecs_to_jiffies(5000));
 	if (!ret) {
 		pr_debug("%s: wait_event_timeout failed\n", __func__);
 		goto fail;
