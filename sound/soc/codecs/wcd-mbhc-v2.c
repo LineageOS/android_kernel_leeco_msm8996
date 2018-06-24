@@ -2474,7 +2474,7 @@ static irqreturn_t wcd_mbhc_btn_press_handler(int irq, void *data)
 
 	pr_debug("%s: enter\n", __func__);
 #ifdef CONFIG_PRODUCT_LE_X2
-	wake_lock_timeout(&mbhc_button_wakelock, msecs_to_jiffies(150));
+	wake_lock_timeout(&mbhc_button_wakelock, msecs_to_jiffies(1500));
 #endif
 	complete(&mbhc->btn_press_compl);
 	WCD_MBHC_RSC_LOCK(mbhc);

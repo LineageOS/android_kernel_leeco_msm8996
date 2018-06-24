@@ -167,7 +167,7 @@ static int tty_read(unsigned char *buf, size_t buf_size, struct file *filp,
 					break;
 				set_current_state(TASK_INTERRUPTIBLE);
 				schedule_timeout(((timeout - elapsed) *
-							msecs_to_jiffies(100)) / 10000);
+							msecs_to_jiffies(1000)) / 10000);
 			}
 			poll_freewait(&table);
 
@@ -774,7 +774,7 @@ static void ap_check_for_interrupt(struct work_struct *work)
 			/* Queue check for interrupt work */
 			if (!queue_delayed_work(ap_check_for_intr_wq,
 					&my_ap_work->ap_check_for_intr_work,
-					msecs_to_jiffies(10))) {
+					msecs_to_jiffies(100))) {
 				warn("AP check for INTR task already queued\n");
 			}
 		} else {
@@ -827,7 +827,7 @@ static void isr_work_handler(struct work_struct *work)
 			    (NULL != isr_handler_work)) {
 				if (!queue_delayed_work(isr_handler_wq,
 						isr_handler_work,
-						msecs_to_jiffies(200))) {
+						msecs_to_jiffies(2000))) {
 					warn("Interrupt task already queued\n");
 				}
 			}
@@ -951,7 +951,7 @@ enum sii_status SiiHalInit(void)
 		/* Queue check for interrupt work */
 		if (!queue_delayed_work(ap_check_for_intr_wq,
 					&my_ap_work->ap_check_for_intr_work,
-					msecs_to_jiffies(10))) {
+					msecs_to_jiffies(100))) {
 			warn("AP check for interrupt task already queued\n");
 		}
 	}
