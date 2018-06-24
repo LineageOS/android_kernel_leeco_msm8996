@@ -891,7 +891,7 @@ static void SiiOsTimerRearm(struct SiiOsTimer *timerId)
  */
 uint32_t SiiOsGetTimeResolution(void)
 {
-	return msecs_to_jiffies(10);
+	return msecs_to_jiffies(100);
 }
 
 /*

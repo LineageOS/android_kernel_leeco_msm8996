@@ -365,7 +365,7 @@ void cable_disconnect(void *data)
 	flush_workqueue(ohio->workqueue);
 	ohio_power_standby();
 	wake_unlock(&ohio->ohio_lock);
-	wake_lock_timeout(&ohio->ohio_lock, msecs_to_jiffies(100000));
+	wake_lock_timeout(&ohio->ohio_lock, msecs_to_jiffies(1000000));
 
 }
 

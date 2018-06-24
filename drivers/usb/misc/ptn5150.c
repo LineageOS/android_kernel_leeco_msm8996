@@ -519,7 +519,7 @@ static void ptn5150_status_check(struct work_struct *work)
             if (Try_Sink_State == Try_Sink_Source_To_Sink)
             {
                 //schedule_delayed_work(&g_exttypec_ptn5150->trysnk_work1, msecs_to_jiffies(100));
-                schedule_delayed_work(&ptn5150_dev->trysink_check_work1, msecs_to_jiffies(100));
+                schedule_delayed_work(&ptn5150_dev->trysink_check_work1, msecs_to_jiffies(1000));
                 Try_Sink_State = Try_Sink_Attached_Wait_Src_Detached;
             }
             // aftung simplify
