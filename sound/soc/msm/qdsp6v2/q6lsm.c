@@ -34,7 +34,7 @@
 #include <sound/audio_cal_utils.h>
 #include <sound/adsp_err.h>
 
-#define APR_TIMEOUT	(5 * HZ)
+#define APR_TIMEOUT	msecs_to_jiffies(5000)
 #define LSM_ALIGN_BOUNDARY 512
 #define LSM_SAMPLE_RATE 16000
 #define QLSM_PARAM_ID_MINOR_VERSION 1

@@ -47,7 +47,7 @@ struct snd_msm {
 };
 
 #define CMD_EOS_MIN_TIMEOUT_LENGTH  50
-#define CMD_EOS_TIMEOUT_MULTIPLIER  (HZ * 50)
+#define CMD_EOS_TIMEOUT_MULTIPLIER  msecs_to_jiffies(50000)
 
 #define ATRACE_END() \
 	trace_printk("tracing_mark_write: E\n")

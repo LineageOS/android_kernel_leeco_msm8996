@@ -1694,7 +1694,7 @@ static int adm_memory_map_regions(phys_addr_t *buf_add, uint32_t mempool_id,
 
 	ret = wait_event_timeout(this_adm.adm_wait,
 				 atomic_read(&this_adm.adm_stat) >= 0,
-				 5 * HZ);
+				 msecs_to_jiffies(5000));
 	if (!ret) {
 		pr_err("%s: timeout. waited for memory_map\n", __func__);
 		ret = -EINVAL;
@@ -1744,7 +1744,7 @@ static int adm_memory_unmap_regions(void)
 
 	ret = wait_event_timeout(this_adm.adm_wait,
 				 atomic_read(&this_adm.adm_stat) >= 0,
-				 5 * HZ);
+				 msecs_to_jiffies(5000));
 	if (!ret) {
 		pr_err("%s: timeout. waited for memory_unmap\n",
 		       __func__);
