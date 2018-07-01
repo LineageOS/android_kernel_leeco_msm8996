@@ -19,7 +19,7 @@ static int throtl_grp_quantum = 8;
 static int throtl_quantum = 32;
 
 /* Throttling is performed over 100ms slice and after that slice is renewed */
-static unsigned long throtl_slice = HZ/10;	/* 100 ms */
+static unsigned long throtl_slice = msecs_to_jiffies(100);	/* 100 ms */
 
 static struct blkcg_policy blkcg_policy_throtl;
 
@@ -793,10 +793,10 @@ static inline void throtl_trim_slice(struct throtl_grp *tg, bool rw)
 	if (!nr_slices)
 		return;
 	tmp = tg->bps[rw] * throtl_slice * nr_slices;
-	do_div(tmp, HZ);
+	do_div(tmp, msecs_to_jiffies(1000));
 	bytes_trim = tmp;
 
-	io_trim = (tg->iops[rw] * throtl_slice * nr_slices)/HZ;
+	io_trim = (tg->iops[rw] * throtl_slice * nr_slices)/msecs_to_jiffies(1000);
 
 	if (!bytes_trim && !io_trim)
 		return;
@@ -843,7 +843,7 @@ static bool tg_with_in_iops_limit(struct throtl_grp *tg, struct bio *bio,
 	 */
 
 	tmp = (u64)tg->iops[rw] * jiffy_elapsed_rnd;
-	do_div(tmp, HZ);
+	do_div(tmp, msecs_to_jiffies(1000));
 
 	if (tmp > UINT_MAX)
 		io_allowed = UINT_MAX;
@@ -857,7 +857,7 @@ static bool tg_with_in_iops_limit(struct throtl_grp *tg, struct bio *bio,
 	}
 
 	/* Calc approx time to dispatch */
-	jiffy_wait = ((tg->io_disp[rw] + 1) * HZ)/tg->iops[rw] + 1;
+	jiffy_wait = ((tg->io_disp[rw] + 1) * msecs_to_jiffies(1000))/tg->iops[rw] + 1;
 
 	if (jiffy_wait > jiffy_elapsed)
 		jiffy_wait = jiffy_wait - jiffy_elapsed;
@@ -885,7 +885,7 @@ static bool tg_with_in_bps_limit(struct throtl_grp *tg, struct bio *bio,
 	jiffy_elapsed_rnd = roundup(jiffy_elapsed_rnd, throtl_slice);
 
 	tmp = tg->bps[rw] * jiffy_elapsed_rnd;
-	do_div(tmp, HZ);
+	do_div(tmp, msecs_to_jiffies(1000));
 	bytes_allowed = tmp;
 
 	if (tg->bytes_disp[rw] + bio->bi_iter.bi_size <= bytes_allowed) {
@@ -896,7 +896,7 @@ static bool tg_with_in_bps_limit(struct throtl_grp *tg, struct bio *bio,
 
 	/* Calc approx time to dispatch */
 	extra_bytes = tg->bytes_disp[rw] + bio->bi_iter.bi_size - bytes_allowed;
-	jiffy_wait = div64_u64(extra_bytes * HZ, tg->bps[rw]);
+	jiffy_wait = div64_u64(extra_bytes * msecs_to_jiffies(1000), tg->bps[rw]);
 
 	if (!jiffy_wait)
 		jiffy_wait = 1;
