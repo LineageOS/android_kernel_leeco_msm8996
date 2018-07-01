@@ -128,7 +128,7 @@ enum {
 	 * If flush has been pending longer than the following timeout,
 	 * it's issued even if flush_data requests are still in flight.
 	 */
-	FLUSH_PENDING_TIMEOUT	= 5 * HZ,
+	FLUSH_PENDING_TIMEOUT	= 5000,
 };
 
 static bool blk_kick_flush(struct request_queue *q,
