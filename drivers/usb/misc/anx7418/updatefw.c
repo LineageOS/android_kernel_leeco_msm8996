@@ -2215,7 +2215,7 @@ static void eeprom_burst_write(unsigned int eeprom_addr, const unsigned char *bu
 	// wait for write done
 	//	msleep(1);
    	{
-    	unchar c;
+    	unchar c = 0;
     	do {
 			mdelay(1);
 	//		msleep(1);
