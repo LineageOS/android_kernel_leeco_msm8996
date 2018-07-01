@@ -174,7 +174,7 @@ EXPORT_SYMBOL(cclogic_set_vconn_register);
 static int cclogic_reset_8904(void)
 {
 	struct usb_device *udev;
-	int ret;
+	int ret = 0;
 
 	if (letv_audio_mode_supported(&udev))
 		ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0), 0x0a,

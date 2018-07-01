@@ -163,7 +163,7 @@ void	download( OIS_UWORD u16_type, OIS_UWORD u16_coef_type ){
 	OIS_UWORD	block_cnt;
 	OIS_UWORD	total_cnt;
 	OIS_UWORD	lp;
-	OIS_UWORD	n;
+	OIS_UWORD	n = 0;
 	OIS_UWORD	u16_i;
         pr_err("%s,module_id:0x%x year:%d,month;%d,day:%d",__func__,module_id,otp_date_buf[0],otp_date_buf[1],otp_date_buf[2]);
 	if (module_id == LG_MODULE) {

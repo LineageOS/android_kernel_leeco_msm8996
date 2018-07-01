@@ -141,7 +141,7 @@ int init_mhi_dev_mem(struct mhi_device_ctxt *mhi_dev_ctxt)
 	size_t mhi_mem_index = 0, ring_len;
 	void *dev_mem_start;
 	dma_addr_t dma_dev_mem_start;
-	int i, r;
+	int i, r = 0;
 
 	mhi_dev_ctxt->dev_space.dev_mem_len =
 					calculate_mhi_space(mhi_dev_ctxt);
