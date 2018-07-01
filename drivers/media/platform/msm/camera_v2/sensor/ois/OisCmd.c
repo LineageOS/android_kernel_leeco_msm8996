@@ -3675,14 +3675,15 @@ void	SetDOFSTDAF_WT( unsigned char ucSetDat )
 
 void SmoothSvrOff(void)
 {
-	unsigned short	UsStep = 0x0100, UcCnt;
+	unsigned short	UcCnt;
+//UsStep = 0x0100, UcCnt;
 
 	unsigned short	UsDrv;
 
 
 	RegWriteA( WH_EQSWX , 0x02 ) ;			// 0x0170
 	RamAccFixMod( ON ) ;					// Fix mode
-	for (UsStep = 0; UcCnt < 200; UcCnt++) {
+	for (UcCnt = 0; UcCnt < 200; UcCnt ++) {
 		RamReadA( SXLMT, &UsDrv ) ;			// 0x1477
 		if( UsDrv > 0x8000 )
 		{
@@ -3712,7 +3713,7 @@ void SmoothSvrOff(void)
 	RamAccFixMod( OFF ) ;					// Float mode
 	RegWriteA( WH_EQSWY , 0x02 ) ;			// 0x0171
 	RamAccFixMod( ON ) ;					// Fix mode
-	for (UsStep = 0; UcCnt < 200; UcCnt++) {
+	for (UcCnt = 0; UcCnt < 200; UcCnt++) {
 		RamReadA( SYLMT, &UsDrv ) ;			// 0x14F7
 		if( UsDrv > 0x8000 )
 		{
