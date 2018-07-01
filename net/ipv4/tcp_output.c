@@ -3040,7 +3040,7 @@ static int tcp_send_syn_data(struct sock *sk, struct sk_buff *syn)
 			       &syn_loss, &last_syn_loss);
 	/* Recurring FO SYN losses: revert to regular handshake temporarily */
 	if (syn_loss > 1 &&
-	    time_before(jiffies, last_syn_loss + (60*HZ << syn_loss))) {
+	    time_before(jiffies, last_syn_loss + (60*1000 << syn_loss))) {
 		fo->cookie.len = -1;
 		goto fallback;
 	}
@@ -3171,7 +3171,7 @@ void tcp_send_delayed_ack(struct sock *sk)
 
 	if (ato > TCP_DELACK_MIN) {
 		const struct tcp_sock *tp = tcp_sk(sk);
-		int max_ato = HZ / 2;
+		int max_ato = 1000 / 2;
 
 		if (icsk->icsk_ack.pingpong ||
 		    (icsk->icsk_ack.pending & ICSK_ACK_PUSHED))

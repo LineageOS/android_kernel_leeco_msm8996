@@ -234,7 +234,7 @@ static inline void bictcp_update(struct bictcp *ca, u32 cwnd)
 	ca->ack_cnt++;	/* count the number of ACKs */
 
 	if (ca->last_cwnd == cwnd &&
-	    (s32)(tcp_time_stamp - ca->last_time) <= HZ / 32)
+	    (s32)(tcp_time_stamp - ca->last_time) <= 1000 / 32)
 		return;
 
 	ca->last_cwnd = cwnd;
@@ -276,7 +276,7 @@ static inline void bictcp_update(struct bictcp *ca, u32 cwnd)
 	t += msecs_to_jiffies(ca->delay_min >> 3);
 	/* change the unit from HZ to bictcp_HZ */
 	t <<= BICTCP_HZ;
-	do_div(t, HZ);
+	do_div(t, msecs_to_jiffies(1000));
 
 	if (t < ca->bic_K)		/* t - K */
 		offs = ca->bic_K - t;
@@ -438,7 +438,7 @@ static void bictcp_acked(struct sock *sk, u32 cnt, s32 rtt_us)
 		return;
 
 	/* Discard delay samples right after fast recovery */
-	if (ca->epoch_start && (s32)(tcp_time_stamp - ca->epoch_start) < HZ)
+	if (ca->epoch_start && (s32)(tcp_time_stamp - ca->epoch_start) < msecs_to_jiffies(1000))
 		return;
 
 	delay = (rtt_us << 3) / USEC_PER_MSEC;
