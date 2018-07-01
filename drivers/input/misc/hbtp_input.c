@@ -886,7 +886,7 @@ static int hbtp_parse_dt(struct device *dev)
 static int hbtp_pdev_probe(struct platform_device *pdev)
 {
 	int error;
-	struct regulator *vcc_ana, *vcc_dig;
+	struct regulator *vcc_ana = NULL, *vcc_dig = NULL;
 
 	if (pdev->dev.of_node) {
 		error = hbtp_parse_dt(&pdev->dev);

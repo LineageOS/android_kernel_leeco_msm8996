@@ -335,7 +335,7 @@ static struct vb2_mem_ops msm_fd_vb2_mem_ops = {
 static int msm_fd_vbif_error_handler(void *handle, uint32_t error)
 {
 	struct fd_ctx *ctx;
-	struct msm_fd_device *fd;
+	struct msm_fd_device *fd = NULL;
 	struct msm_fd_buffer *active_buf;
 	int ret;
 
