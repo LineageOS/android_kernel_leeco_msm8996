@@ -1214,9 +1214,9 @@ static void mxt_proc_t100_message(struct mxt_data *data, u8 *message)
 	struct input_dev *input_dev = data->input_dev;
 	int id;
 	u8 status;
-	int x;
-	int y;
-	int z;
+	int x = 0;
+	int y = 0;
+	int z = 0;
 	int tool;
 
 	id = message[0] - data->T100_reportid_min - 2;

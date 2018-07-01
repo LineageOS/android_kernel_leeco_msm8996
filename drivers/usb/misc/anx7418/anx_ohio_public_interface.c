@@ -132,7 +132,7 @@ static u8 report_battery_voltage(void)
 static u8 report_charging_status(void)
 {
 	int tmp;
-	u8 charging_status;
+	u8 charging_status = 0;
 
 	tmp = get_charging_status();
 	switch (tmp)

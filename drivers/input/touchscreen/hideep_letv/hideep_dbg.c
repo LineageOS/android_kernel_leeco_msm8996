@@ -270,7 +270,7 @@ static ssize_t hideep_debug_write(struct file *file, const char __user *buf, siz
 
 static loff_t hideep_debug_llseek(struct file *file, loff_t off, int whence)
 {
-	loff_t newpos;
+	loff_t newpos = 0;
 	struct hideep_debug_dev_t *drv_info = file->private_data;
 
 	HIDEEP3D_INFO("%s off = 0x%08x, whence = %d", __func__, (unsigned int)off, whence);

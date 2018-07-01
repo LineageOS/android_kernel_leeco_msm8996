@@ -942,7 +942,10 @@ void rndis_deregister(int configNr)
 {
 	pr_debug("%s:\n", __func__);
 
-	if (configNr >= RNDIS_MAX_CONFIGS) return;
+	if (configNr >= RNDIS_MAX_CONFIGS)
+		return;
+	if (configNr <= 0)
+		return;
 	rndis_per_dev_params[configNr].used = 0;
 	rndis_per_dev_params[configNr].flow_ctrl_enable = NULL;
 }
