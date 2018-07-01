@@ -157,7 +157,7 @@ static int __qpnp_typec_write(struct spmi_device *spmi, u8 *val, u16 addr,
 static int qpnp_typec_read(struct qpnp_typec_chip *chip, u8 *val, u16 addr,
 			int count)
 {
-	int rc;
+	int rc = 0;
 	unsigned long flags;
 	struct spmi_device *spmi = chip->spmi;
 

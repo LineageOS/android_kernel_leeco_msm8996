@@ -199,7 +199,7 @@ static inline bool fts_psensor_support_enabled(void)
 *******************************************************************************/
 int fts_i2c_read(struct i2c_client *client, char *writebuf, int writelen, char *readbuf, int readlen)
 {
-	int ret;
+	int ret = 0;
 
 	mutex_lock(&i2c_rw_access);
 
@@ -262,7 +262,7 @@ int fts_i2c_read(struct i2c_client *client, char *writebuf, int writelen, char *
 *******************************************************************************/
 int fts_i2c_write(struct i2c_client *client, char *writebuf, int writelen)
 {
-	int ret;
+	int ret = 0;
 
 	struct i2c_msg msgs[] = {
 		{

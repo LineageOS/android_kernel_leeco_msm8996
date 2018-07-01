@@ -5737,7 +5737,7 @@ static int cyccg_probe(struct i2c_client *client,
 	union i2c_smbus_data dummy;
 	struct cyccg *cyccg;
 	int err = 0;
-	struct cyccg_platform_data *pdata;
+	struct cyccg_platform_data *pdata = NULL;
 #if CYCCG_ENABLE_STATIC_FW_VER
 	u8 device_mode;
 #endif

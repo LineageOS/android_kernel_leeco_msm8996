@@ -7936,7 +7936,7 @@ static irqreturn_t aicl_done_handler(int irq, void *_chip)
 static irqreturn_t usbid_change_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
-	bool otg_present;
+	bool otg_present = false;
 	enum rid_state rid_sts;
 
 	pr_smb(PR_INTERRUPT, "triggered\n");
@@ -9642,7 +9642,7 @@ static void smbchg_pd_charger_init_work(struct work_struct *work)
 				struct smbchg_chip,
 				pd_charger_init_work.work);
 
-	int rc, vbus_vol;
+	int rc, vbus_vol = 0;
 	union power_supply_propval prop = {0,};
 	enum power_supply_type usb_supply_type;
 	char *usb_type_name;

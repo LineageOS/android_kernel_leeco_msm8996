@@ -731,7 +731,7 @@ static void hdmi_ddc_clear_status(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 
 static int hdmi_ddc_read_retry(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 {
-	u32 reg_val, ndx, time_out_count, wait_time;
+	u32 reg_val, ndx, time_out_count, wait_time = 0;
 	struct hdmi_tx_ddc_data *ddc_data;
 	int status;
 	int busy_wait_us = 0;
@@ -1211,7 +1211,7 @@ int hdmi_ddc_write(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 	int status;
 	u32 time_out_count;
 	struct hdmi_tx_ddc_data *ddc_data;
-	u32 wait_time;
+	u32 wait_time = 0;
 	int busy_wait_us = 0;
 
 	if (!ddc_ctrl || !ddc_ctrl->io) {
