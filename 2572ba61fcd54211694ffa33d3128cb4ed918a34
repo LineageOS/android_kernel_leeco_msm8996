@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c0384513_a44abae4",
+        "filename": "drivers/input/touchscreen/focaltech_letv/focaltech_core.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 12537
+      },
+      "writtenOn": "2018-07-03T15:16:08Z",
+      "side": 1,
+      "message": "It\u0027s probably better if this is -1 so the calling functions knows something went wrong if readlen \u003c\u003d 0\n\nThis also applies to other return values of course :)",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e9d15065_71b0cabd",
+        "filename": "drivers/media/platform/msm/camera_v2/sensor/io/msm_camera_qup_i2c.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 445,
+      "author": {
+        "id": 12537
+      },
+      "writtenOn": "2018-07-03T15:16:08Z",
+      "side": 1,
+      "message": "-1 so it\u0027s failsafe",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3cc22c5d_646557cc",
+        "filename": "drivers/platform/msm/mhi/mhi_init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 12537
+      },
+      "writtenOn": "2018-07-03T15:16:08Z",
+      "side": 1,
+      "message": "-1 so it\u0027s failsafe",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "39a0436c_02115f95",
+        "filename": "drivers/platform/msm/mhi/mhi_mmio_ops.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 12537
+      },
+      "writtenOn": "2018-07-03T15:16:08Z",
+      "side": 1,
+      "message": "-1 because it is returned in error case (ln 134)",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "227d61f9_842833f7",
+        "filename": "drivers/video/msm/mdss/mdss_dsi.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 12537
+      },
+      "writtenOn": "2018-07-03T15:16:08Z",
+      "side": 1,
+      "message": "-EINVAL to be failsafe",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
