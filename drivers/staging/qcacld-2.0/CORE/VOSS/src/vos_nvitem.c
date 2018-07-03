@@ -2690,3 +2690,4 @@ VOS_STATUS vos_init_wiphy_from_nv_bin(void)
 
     return VOS_STATUS_SUCCESS;
 }
+
