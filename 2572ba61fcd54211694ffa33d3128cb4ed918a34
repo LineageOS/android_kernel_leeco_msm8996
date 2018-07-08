@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "30e72e1d_baebbef7",
+        "filename": "drivers/input/touchscreen/focaltech_letv/focaltech_core.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 19659
+      },
+      "writtenOn": "2018-07-08T19:01:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c0384513_a44abae4",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e9d15065_71b0cabd",
         "filename": "drivers/media/platform/msm/camera_v2/sensor/io/msm_camera_qup_i2c.c",
         "patchSetId": 5
@@ -33,6 +51,24 @@
       "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "e35fcc0e_37843d71",
+        "filename": "drivers/media/platform/msm/camera_v2/sensor/io/msm_camera_qup_i2c.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 445,
+      "author": {
+        "id": 19659
+      },
+      "writtenOn": "2018-07-08T19:01:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "e9d15065_71b0cabd",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     },
     {
       "key": {
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "fe7f866b_b8fe695c",
+        "filename": "drivers/platform/msm/mhi/mhi_init.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 19659
+      },
+      "writtenOn": "2018-07-08T19:01:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3cc22c5d_646557cc",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "39a0436c_02115f95",
         "filename": "drivers/platform/msm/mhi/mhi_mmio_ops.c",
         "patchSetId": 5
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "91af4c50_70ce1094",
+        "filename": "drivers/platform/msm/mhi/mhi_mmio_ops.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 19659
+      },
+      "writtenOn": "2018-07-08T19:01:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "39a0436c_02115f95",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "227d61f9_842833f7",
         "filename": "drivers/video/msm/mdss/mdss_dsi.c",
         "patchSetId": 5
@@ -84,6 +156,24 @@
       "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "fb81e702_199b2b13",
+        "filename": "drivers/video/msm/mdss/mdss_dsi.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 19659
+      },
+      "writtenOn": "2018-07-08T19:01:46Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "227d61f9_842833f7",
+      "revId": "2572ba61fcd54211694ffa33d3128cb4ed918a34",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
