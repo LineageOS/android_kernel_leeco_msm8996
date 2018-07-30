@@ -1465,7 +1465,7 @@ static int msm_eeprom_spi_setup(struct spi_device *spi)
  * It should go to NULL for LeTV camera.
  * TODO: Re-do all this and try to use native camera APIs.
  */
-#ifndef CONFIG_MACH_LEECO
+#ifndef CONFIG_VENDOR_LEECO
 power_down:
 	msm_camera_power_down(power_info, e_ctrl->eeprom_device_type,
 		&e_ctrl->i2c_client);
