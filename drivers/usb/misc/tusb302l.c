@@ -95,7 +95,7 @@ static int tusb302l_write_byte(u8 start_reg, u8 value)
 
 	if (start_reg < 0)
 		return ret;
-	if ((tusb302l_device_info == NULL))
+	if (tusb302l_device_info == NULL)
 		return ret;
 
 	dev_info = tusb302l_device_info;
@@ -135,7 +135,7 @@ static int tusb302l_read_bytes(u8 start_reg, u8 *read_value, int count)
 	if ((start_reg < 0) || (read_value == NULL)
 						|| (count <= 0))
 		return ret;
-	if ((tusb302l_device_info == NULL))
+	if (tusb302l_device_info == NULL)
 		return ret;
 
 	dev_info = tusb302l_device_info;

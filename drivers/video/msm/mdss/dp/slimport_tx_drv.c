@@ -2446,25 +2446,25 @@ static void sp_tx_config_audio(void)
 
 	switch (c & 0x0f) {
 	case 0x00:
-		AUD_Freq = 44.1;
+		AUD_Freq = 441;
 		break;
 	case 0x02:
-		AUD_Freq = 48;
+		AUD_Freq = 480;
 		break;
 	case 0x03:
-		AUD_Freq = 32;
+		AUD_Freq = 320;
 		break;
 	case 0x08:
-		AUD_Freq = 88.2;
+		AUD_Freq = 882;
 		break;
 	case 0x0a:
-		AUD_Freq = 96;
+		AUD_Freq = 960;
 		break;
 	case 0x0c:
-		AUD_Freq = 176.4;
+		AUD_Freq = 1764;
 		break;
 	case 0x0e:
-		AUD_Freq = 192;
+		AUD_Freq = 1920;
 		break;
 	default:
 		break;
@@ -2490,7 +2490,7 @@ static void sp_tx_config_audio(void)
 	pr_info("%s %s : AUD_Freq = %ld , LS_CLK = %ld\n", LOG_TAG, __func__,
 		AUD_Freq, LS_Clk);
 
-	M_AUD = ((512 * AUD_Freq) / LS_Clk) * 32768;
+	M_AUD = ((512 * AUD_Freq / 10) / LS_Clk) * 32768;
 	M_AUD = M_AUD + 0x05;
 	sp_write_reg(TX_P1, SP_TX_AUD_INTERFACE_CTRL4, (M_AUD & 0xff));
 	M_AUD = M_AUD >> 8;

@@ -383,7 +383,7 @@ static int Ois_Write_OTP_SEMCO_imx318(void)
         {
           DOWNLOAD_CALIB_OTP[i] = (ois_otp_buf[i+3]<<24) | (ois_otp_buf[i+2]<<16) | (ois_otp_buf[i+1]<<8) | ois_otp_buf[i];
         }
-        DOWNLOAD_CALIB_OTP[9] = ((ois_otp_buf[4*i+1]<<24) | (ois_otp_buf[4*i]<<16)) && 0xFFFF0000  ;
+        DOWNLOAD_CALIB_OTP[9] = ((ois_otp_buf[4*i+1]<<24) | (ois_otp_buf[4*i]<<16)) & 0xFFFF0000  ;
 	OISDBG("Exit\n");
 	return rc;
 }

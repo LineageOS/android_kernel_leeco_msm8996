@@ -25,7 +25,7 @@
 
 static inline unsigned long __xchg(unsigned long x, volatile void *ptr, int size)
 {
-	unsigned long ret, tmp;
+	unsigned long ret = 0, tmp;
 
 	switch (size) {
 	case 1:
@@ -159,7 +159,7 @@ static inline int __cmpxchg_double(volatile void *ptr1, volatile void *ptr2,
 		unsigned long old1, unsigned long old2,
 		unsigned long new1, unsigned long new2, int size)
 {
-	unsigned long loop, lost;
+	unsigned long loop, lost = 0;
 
 	switch (size) {
 	case 8:
