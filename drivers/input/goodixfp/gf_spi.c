@@ -61,30 +61,20 @@
 #define GF_SPIDEV_NAME     "goodix,fingerprint"
 /*device name after register in charater*/
 #define GF_DEV_NAME            "goodix_fp"
-//#define	GF_INPUT_NAME	    "qwerty"	/*"goodix_fp" */
 #define	GF_INPUT_NAME	    "gf318m"
 
 #define	CHRD_DRIVER_NAME	"goodix_fp_spi"
 #define	CLASS_NAME		    "goodix_fp"
-#define SPIDEV_MAJOR		212//224	/* assigned */
+#define SPIDEV_MAJOR		212
 #define N_SPI_MINORS		32	/* ... up to 256 */
 
 
-struct gf_key_map key_map[] =
-{
-      {  "POWER",  KEY_POWER  },
-      {  "HOME" ,  KEY_HOME   },
-      {  "MENU" ,  KEY_MENU   },
-      {  "BACK" ,  KEY_BACK   },
-      {  "UP"   ,  KEY_UP     },
-      {  "DOWN" ,  KEY_DOWN   },
-      {  "LEFT" ,  KEY_LEFT   },
-      {  "RIGHT",  KEY_RIGHT  },
-      {  "FORCE",  KEY_F9     },
-      {  "CLICK",  KEY_F19    },
-      {  "CAMERA", KEY_CAMERA },
+struct gf_key_map maps[] = {
+	{ EV_KEY, GF_KEY_INPUT_HOME },
+	{ EV_KEY, GF_KEY_INPUT_MENU },
+	{ EV_KEY, GF_KEY_INPUT_BACK },
+	{ EV_KEY, GF_KEY_INPUT_POWER },
 };
-
 
 /**************************debug******************************/
 //#define GF_DEBUG
@@ -266,12 +256,43 @@ static int gfspi_ioctl_clk_uninit(struct gf_dev *data)
 }
 #endif
 
+static void gf_kernel_key_input(struct gf_dev *gf_dev, struct gf_key *gf_key)
+{
+	uint32_t key_input = 0;
+	if (GF_KEY_HOME == gf_key->key) {
+		key_input = GF_KEY_INPUT_HOME;
+	} else if (GF_KEY_POWER == gf_key->key) {
+		key_input = GF_KEY_INPUT_POWER;
+	} else if (GF_KEY_CAMERA == gf_key->key) {
+		key_input = GF_KEY_INPUT_CAMERA;
+	} else {
+		/* add special key define */
+		key_input = gf_key->key;
+	}
+	pr_info("%s: received key event[%d], key=%d, value=%d\n",
+			__func__, key_input, gf_key->key, gf_key->value);
+
+	if ((GF_KEY_POWER == gf_key->key || GF_KEY_CAMERA == gf_key->key)
+			&& (gf_key->value == 1)) {
+		input_report_key(gf_dev->input, key_input, 1);
+		input_sync(gf_dev->input);
+		input_report_key(gf_dev->input, key_input, 0);
+		input_sync(gf_dev->input);
+	}
+
+	if (GF_KEY_HOME == gf_key->key) {
+		input_report_key(gf_dev->input, key_input, gf_key->value);
+		input_sync(gf_dev->input);
+	}
+}
+
 static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct gf_dev *gf_dev = &gf;
 	struct gf_key gf_key = { 0 };
 	int retval = 0;
-        int i;
+	u8 netlink_route = NETLINK_TEST;
+	struct gf_ioc_chip_info info;
 #ifdef AP_CONTROL_CLK
 	unsigned int speed = 0;
 #endif
@@ -289,20 +310,30 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (retval)
 		return -EFAULT;
     
-    if(gf_dev->device_available == 0) 
-    {
-        if((cmd == GF_IOC_POWER_ON) || (cmd == GF_IOC_POWER_OFF))
-        {
-            pr_info("power cmd\n");
-        }
-        else
-        {
-            pr_info("Sensor is power off currently. \n");
-            return -ENODEV;
-        }
-    }
+	if(gf_dev->device_available == 0) 
+	{
+		if((cmd == GF_IOC_ENABLE_POWER) || (cmd == GF_IOC_DISABLE_POWER))
+		{
+			pr_info("power cmd\n");
+		}
+		else
+		{
+			pr_info("Sensor is power off currently. \n");
+			return -ENODEV;
+		}
+	}
 
 	switch (cmd) {
+	case GF_IOC_INIT:
+		pr_debug("%s GF_IOC_INIT\n", __func__);
+		if (copy_to_user((void __user *)arg, (void *)&netlink_route, sizeof(u8))) {
+			retval = -EFAULT;
+			break;
+		}
+		break;
+	case GF_IOC_EXIT:
+		pr_debug("%s GF_IOC_EXIT\n", __func__);
+		break;
 	case GF_IOC_DISABLE_IRQ:
 		    gf_disable_irq(gf_dev);
 		break;
@@ -333,7 +364,7 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		mdelay(5);
 		gf_power_on_8996(gf_dev);
 		break;
-	case GF_IOC_SENDKEY:
+	case GF_IOC_INPUT_KEY_EVENT:
 		if (copy_from_user
 		    (&gf_key, (struct gf_key *)arg, sizeof(struct gf_key))) {
 			pr_warn("Failed to copy data from user space.\n");
@@ -341,30 +372,18 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			break;
 		}
 
-                for(i = 0; i< ARRAY_SIZE(key_map); i++) {
-                    if(key_map[i].val == gf_key.key){
-                        if(key_map[i].val == KEY_HOME) {
-                             input_report_key(gf_dev->input, KEY_CAMERA, gf_key.value);
-                        } else {
-                        input_report_key(gf_dev->input, gf_key.key, gf_key.value);
-                        }
-                        input_sync(gf_dev->input);
-                        break;
-                    }
-                }
-                if(i == ARRAY_SIZE(key_map)) {
-                    pr_warn("key %d not support yet \n", gf_key.key);
-                    retval = -EFAULT;
-                }
+		gf_kernel_key_input(gf_dev, &gf_key);
                break;
-	case GF_IOC_CLK_READY:
+	case GF_IOC_ENABLE_SPI_CLK:
+		pr_debug("%s GF_IOC_ENABLE_SPI_CLK\n", __func__);
 #ifdef AP_CONTROL_CLK
         gfspi_ioctl_clk_enable(gf_dev);
 #else
         pr_info("Doesn't support control clock.\n");
 #endif
 		break;
-	case GF_IOC_CLK_UNREADY:
+	case GF_IOC_DISABLE_SPI_CLK:
+		pr_debug("%s GF_IOC_DISABLE_SPI_CLK\n", __func__);
 #ifdef AP_CONTROL_CLK
         gfspi_ioctl_clk_disable(gf_dev);
 #else
@@ -374,27 +393,37 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case GF_IOC_PM_FBCABCK:
 		__put_user(gf_dev->fb_black, (u8 __user *) arg);
 		break;
-    case GF_IOC_POWER_ON:
+    case GF_IOC_ENABLE_POWER:
         if(gf_dev->device_available == 1)
             pr_info("Sensor has already powered-on.\n");
         else
             gf_power_on_8996(gf_dev);
         gf_dev->device_available = 1;
         break;
-    case GF_IOC_POWER_OFF:
+    case GF_IOC_DISABLE_POWER:
         if(gf_dev->device_available == 0)
             pr_info("Sensor has already powered-off.\n");
         else
             gf_power_off_8996(gf_dev);
         gf_dev->device_available = 0;
         break;
-	case GF_IOC_RELEASE_WAKELOCK:
+	case GF_IOC_ENTER_SLEEP_MODE:
         if(wake_lock_active(&FP_wakelock))      
         {
                 wake_unlock(&FP_wakelock);      
                 pr_info("szj:release fp_wakelock ok.\n");
         }
         break;
+	case GF_IOC_CHIP_INFO:
+		pr_debug("%s GF_IOC_CHIP_INFO\n", __func__);
+		if (copy_from_user(&info, (struct gf_ioc_chip_info *)arg, sizeof(struct gf_ioc_chip_info))) {
+			retval = -EFAULT;
+			break;
+		}
+		pr_info("vendor_id : 0x%x\n", info.vendor_id);
+		pr_info("mode : 0x%x\n", info.mode);
+		pr_info("operation: 0x%x\n", info.operation);
+		break;
 	default:
 		gf_dbg("Unsupport cmd:0x%x\n", cmd);
 		break;
@@ -405,8 +434,7 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 }
 
 #ifdef CONFIG_COMPAT
-static long
-gf_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+static long gf_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	return gf_ioctl(filp, cmd, (unsigned long)compat_ptr(arg));
 }
@@ -576,8 +604,8 @@ static void gf_reg_key_kernel(struct gf_dev *gf_dev)
     int i;
 
     set_bit(EV_KEY, gf_dev->input->evbit); //tell the kernel is key event
-    for(i = 0; i< ARRAY_SIZE(key_map); i++) {
-        set_bit(key_map[i].val, gf_dev->input->keybit);
+    for(i = 0; i< ARRAY_SIZE(maps); i++) {
+        set_bit(maps[i].code, gf_dev->input->keybit);
     }
 
     gf_dev->input->name = GF_INPUT_NAME;
