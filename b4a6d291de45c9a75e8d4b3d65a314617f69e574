@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ee5f2f02_c8f98317",
+        "filename": ".gitignore",
+        "patchSetId": 1
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 11801
+      },
+      "writtenOn": "2018-09-13T16:17:46Z",
+      "side": 1,
+      "message": "this is probably wrong, I don\u0027t really care",
+      "range": {
+        "startLine": 104,
+        "startChar": 8,
+        "endLine": 104,
+        "endChar": 16
+      },
+      "revId": "b4a6d291de45c9a75e8d4b3d65a314617f69e574",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
