@@ -28,9 +28,7 @@
 #include <linux/slab.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
-#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 #include "hideep_letv/hideep3d.h"
-#endif
 
 #define CONFIG_FB_PM
 

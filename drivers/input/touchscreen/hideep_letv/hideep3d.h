@@ -358,9 +358,23 @@ int hideep3d_fuse_ucode(struct i2c_client *client, u8 *code, size_t len, int off
 void hideep3d_reset_ic(struct hideep3d_t *h3d);
 int hideep3d_enter_pgm(struct i2c_client *client);
 void hideep3d_power(struct hideep3d_t *h3d, int on);
+#ifdef CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV
 unsigned short hideep3d_get_value(unsigned short x, unsigned short y);
 void hideep3d_release_flag(void);
 int hideep3d_dev_state_init_updating(void);
+#else
+static inline unsigned short hideep3d_get_value(unsigned short x, unsigned short y)
+{
+	return 0;
+}
+static inline void hideep3d_release_flag(void)
+{
+}
+static inline int hideep3d_dev_state_init_updating(void)
+{
+	return 0;
+}
+#endif
 
 /*************************************************************************
  * debug message

@@ -50,9 +50,7 @@
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
 #endif
-#if defined(CONFIG_TOUCHSCREEN_HIDEEP_TP_LETV)
 #include "../hideep_letv/hideep3d.h"
-#endif
 
 
 #define INPUT_PHYS_NAME "synaptics_dsx/touch_input"
