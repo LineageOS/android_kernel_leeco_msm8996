@@ -43,9 +43,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_dsx_v26.h>
 #include "synaptics_dsx_core.h"
-#ifdef OPEN_CHARGE_BIT
-#include <linux/power_supply.h>
-#endif
 
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
@@ -153,10 +150,6 @@ static void synaptics_key_ctrl(struct synaptics_rmi4_data *rmi4_data, bool enabl
 static int synaptics_rmi4_fb_notifier_cb(struct notifier_block *self,
 		unsigned long event, void *data);
 static void fb_notify_resume_work(struct work_struct* work);
-#endif
-#ifdef OPEN_CHARGE_BIT
-static int synaptics_rmi4_power_notifier_cb(struct notifier_block *self,
-		unsigned long event, void *data);
 #endif
 #ifdef ESD_CHECK_SUPPORT
 void synaptics_rmi4_esd_switch(struct synaptics_rmi4_data *rmi4_data,int on);
@@ -3994,46 +3987,6 @@ static void synaptics_rmi4_sleep_enable(struct synaptics_rmi4_data *rmi4_data,
 	return;
 }
 
-#ifdef OPEN_CHARGE_BIT
-static void synaptics_rmi4_charge_work(struct work_struct *work)
-{
-	int retval;
-	unsigned char device_ctrl;
-
-	struct delayed_work *delayed_work =
-			container_of(work, struct delayed_work, work);
-	struct synaptics_rmi4_data *rmi4_data =
-			container_of(delayed_work, struct synaptics_rmi4_data,
-			charge_work);
-
-	retval = synaptics_rmi4_reg_read(rmi4_data,
-			rmi4_data->f01_ctrl_base_addr,
-			&device_ctrl,
-			sizeof(device_ctrl));
-	if (retval < 0) {
-		dev_err(rmi4_data->pdev->dev.parent,
-				"%s: Failed to read device control\n",
-				__func__);
-		return ;
-	}
-	if (rmi4_data->is_charging){
-		device_ctrl = device_ctrl | (1<<5);
-	}else{
-		device_ctrl = device_ctrl & (~(1<<5));
-	}
-	retval = synaptics_rmi4_reg_write(rmi4_data,
-			rmi4_data->f01_ctrl_base_addr,
-			&device_ctrl,
-			sizeof(device_ctrl));
-	if (retval < 0) {
-		dev_err(rmi4_data->pdev->dev.parent,
-				"%s: Failed to write device control\n",
-				__func__);
-		return ;
-	}
-	pr_info("%s:%d  device_ctrl=%#x \n",__func__,__LINE__,device_ctrl);
-}
-#endif
 #ifdef ESD_CHECK_SUPPORT
 static void synaptics_rmi4_esd_check_work(struct work_struct *work)
 {
@@ -4326,15 +4279,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 				__func__);
 	}
 #endif
-#ifdef OPEN_CHARGE_BIT
-	rmi4_data->power_notifier.notifier_call = synaptics_rmi4_power_notifier_cb;
-	retval = power_supply_reg_notifier(&rmi4_data->power_notifier);
-	if (retval < 0) {
-		dev_err(&pdev->dev,
-				"%s: Failed to register power notifier client\n",
-				__func__);
-	}
-#endif
 #ifdef USE_EARLYSUSPEND
 	rmi4_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	rmi4_data->early_suspend.suspend = synaptics_rmi4_early_suspend;
@@ -4403,11 +4347,6 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	rmi4_data->rb_workqueue =
 			create_singlethread_workqueue("dsx_rebuild_workqueue");
 	INIT_DELAYED_WORK(&rmi4_data->rb_work, synaptics_rmi4_rebuild_work);
-#ifdef OPEN_CHARGE_BIT
-	rmi4_data->charge_workqueue =
-			create_singlethread_workqueue("dsx_charge_workqueue");
-	INIT_DELAYED_WORK(&rmi4_data->charge_work, synaptics_rmi4_charge_work);
-#endif
 #ifdef ESD_CHECK_SUPPORT
 	rmi4_data->esd_check_workqueue =
 			create_singlethread_workqueue("dsx_esd_workqueue");
@@ -4509,11 +4448,6 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 	flush_workqueue(rmi4_data->rb_workqueue);
 	destroy_workqueue(rmi4_data->rb_workqueue);
 
-#ifdef OPEN_CHARGE_BIT
-	cancel_delayed_work_sync(&rmi4_data->charge_work);
-	flush_workqueue(rmi4_data->charge_workqueue);
-	destroy_workqueue(rmi4_data->charge_workqueue);
-#endif
 #ifdef ESD_CHECK_SUPPORT
 	cancel_delayed_work_sync(&rmi4_data->esd_check_work);
 	flush_workqueue(rmi4_data->esd_check_workqueue);
@@ -4710,66 +4644,6 @@ static int synaptics_rmi4_fb_notifier_cb(struct notifier_block *self,
 }
 #endif
 
-#ifdef OPEN_CHARGE_BIT
-static int synaptics_rmi4_power_notifier_cb(struct notifier_block *self,
-		unsigned long val, void *v)
-{
-	struct synaptics_rmi4_data *rmi4_data =
-			container_of(self, struct synaptics_rmi4_data,
-			power_notifier);
-
-	struct power_supply *psy = v;
-	union power_supply_propval prop;
-	int retval;
-	int status;
-	static int last_status;
-
-	if(val != PSY_EVENT_PROP_CHANGED){
-		return NOTIFY_OK;
-	}
-	if(IS_ERR(psy)){
-		pr_err("%s:%d  psy  is  NULL \n",__func__,__LINE__);
-		return NOTIFY_OK;
-	}
-	if(IS_ERR(psy->get_property) || psy->get_property == NULL){
-		pr_err("%s:%d  psy  get_property  is  NULL \n",__func__,__LINE__);
-		return NOTIFY_OK;
-	}
-	if(strcmp(psy->name,"battery")){
-		return NOTIFY_OK;
-	}
-
-	if(psy->get_property != NULL ){
-		retval = psy->get_property(psy,POWER_SUPPLY_PROP_STATUS,&prop);
-	}
-	if(retval != 0){
-		pr_err("%s:%d  retval  error \n",__func__,__LINE__);
-		return NOTIFY_OK;
-	}
-	status = prop.intval;
-	if(status != POWER_SUPPLY_STATUS_DISCHARGING && last_status == POWER_SUPPLY_STATUS_DISCHARGING){
-		last_status = status;
-		rmi4_data->is_charging = true;
-		if(!rmi4_data->suspend && !rmi4_data->stay_awake){
-			queue_delayed_work(rmi4_data->charge_workqueue,
-					&rmi4_data->charge_work,
-					msecs_to_jiffies(1));
-		}
-	}else if( status == POWER_SUPPLY_STATUS_DISCHARGING && last_status != POWER_SUPPLY_STATUS_DISCHARGING){
-		last_status = status;
-		rmi4_data->is_charging = false;
-		if(!rmi4_data->suspend && !rmi4_data->stay_awake){
-			queue_delayed_work(rmi4_data->charge_workqueue,
-					&rmi4_data->charge_work,
-					msecs_to_jiffies(1));
-		}
-	}else{
-		last_status = status;
-	}
-	return 0;
-}
-#endif
-
 #ifdef USE_EARLYSUSPEND
 static void synaptics_rmi4_early_suspend(struct early_suspend *h)
 {
@@ -4938,13 +4812,6 @@ static int synaptics_rmi4_resume(struct device *dev)
 	}
 
 	rmi4_data->current_page = MASK_8BIT;
-#ifdef OPEN_CHARGE_BIT
-	if(rmi4_data->is_charging){
-		queue_delayed_work(rmi4_data->charge_workqueue,
-				&rmi4_data->charge_work,
-				msecs_to_jiffies(1));
-	}
-#endif
 	synaptics_rmi4_sleep_enable(rmi4_data, false);
 	synaptics_rmi4_irq_enable(rmi4_data, true, false);
 #ifdef ESD_CHECK_SUPPORT
