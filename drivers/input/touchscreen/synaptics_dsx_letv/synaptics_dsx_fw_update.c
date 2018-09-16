@@ -3959,9 +3959,6 @@ int synaptics_fw_updater(const unsigned char *fw_data)
 {
 	int retval;
 	int retry = 3;
-#ifdef OPEN_CHARGE_BIT
-	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
-#endif
 
 	if (!fwu)
 		return -ENODEV;
@@ -3983,11 +3980,6 @@ int synaptics_fw_updater(const unsigned char *fw_data)
 	}while((retval !=0) && (retry-- > 0));
 	pr_err("%s syna fwu retry=%d \n",__func__,3-retry);
 
-#ifdef OPEN_CHARGE_BIT
-	queue_delayed_work(rmi4_data->charge_workqueue,
-					&rmi4_data->charge_work,
-					msecs_to_jiffies(1));
-#endif
 	fwu->image = NULL;
 
 	return retval;

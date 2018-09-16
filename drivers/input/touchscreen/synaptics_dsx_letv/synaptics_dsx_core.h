@@ -40,7 +40,6 @@
 #define SYNAPTICS_DSX_DRIVER_VERSION 0x2050
 
 #ifdef CONFIG_PRODUCT_LE_ZL1
-#define OPEN_CHARGE_BIT
 #define ESD_CHECK_SUPPORT
 #endif
 
@@ -332,12 +331,6 @@ struct synaptics_rmi4_data {
 	struct mutex rmi4_exp_init_mutex;
 	struct delayed_work rb_work;
 	struct workqueue_struct *rb_workqueue;
-#ifdef OPEN_CHARGE_BIT
-	bool is_charging;
-	struct delayed_work  charge_work;
-	struct workqueue_struct *charge_workqueue;
-	struct notifier_block 	power_notifier;
-#endif
 #ifdef ESD_CHECK_SUPPORT
 	bool esd_is_running;
 	struct delayed_work  esd_check_work;
