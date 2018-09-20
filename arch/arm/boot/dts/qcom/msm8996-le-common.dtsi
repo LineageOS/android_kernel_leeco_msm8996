@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#include "msm8996-synchronized-leds.dtsi"
+
 /delete-node/ &firmware;
 
 &peripheral_mem {
@@ -359,34 +361,4 @@
 &pm8994_l29 {
 	/delete-property/ regulator-max-microvolt;
 	regulator-max-microvolt = <3050000>;
-};
-
-&red_led {
-	linux,default-trigger = "none";
-	qcom,start-idx = <0>;
-	qcom,ramp-step-ms = <100>;
-	qcom,duty-pcts = [00 03 06 09 0c 0f 12 15 18 1b 1e 1e 1b 18 15 12 0f 0c 09 06 03 00];
-	qcom,pause-lo = <1000>;
-	qcom,lut-flags = <27>;
-	qcom,use-blink;
-};
-
-&green_led {
-	linux,default-trigger = "none";
-	qcom,start-idx = <0>;
-	qcom,ramp-step-ms = <100>;
-	qcom,duty-pcts = [00 03 06 09 0c 0f 12 15 18 1b 1e 1e 1b 18 15 12 0f 0c 09 06 03 00];
-	qcom,pause-lo = <1000>;
-	qcom,lut-flags = <27>;
-	qcom,use-blink;
-};
-
-&blue_led {
-	linux,default-trigger = "none";
-	qcom,start-idx = <0>;
-	qcom,ramp-step-ms = <100>;
-	qcom,duty-pcts = [00 03 06 09 0c 0f 12 15 18 1b 1e 1e 1b 18 15 12 0f 0c 09 06 03 00];
-	qcom,pause-lo = <1000>;
-	qcom,lut-flags = <27>;
-	qcom,use-blink;
 };

@@ -17,7 +17,6 @@
 #include "dsi-panel-truly-dualmipi-cmd-le_x2-dvt2.dtsi"
 #include "letv-tp-atmel_mxt_ts-le_x2_na-dvt1.dtsi"
 #include "msm8996-camera-sensor-x2-dvt1.dtsi"
-#include "msm8996-synchronized-leds.dtsi"
 
 &sdhc_2 {
 	status = "disabled";
