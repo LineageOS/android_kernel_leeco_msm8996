@@ -25,6 +25,7 @@
 			input-device-name = "gf318m";
 			interrupt-parent = <&tlmm>;
 			interrupts = <121 0>;
+			qcom,master-id = <84>;
 			spi-max-frequency = <1920000>;
 			gfvdda-supply = <&pm8994_l21>;
 			spi-qup-id = <11>;
