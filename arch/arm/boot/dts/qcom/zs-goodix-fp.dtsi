@@ -17,6 +17,7 @@
 		      <0x07544000 0x2b000>;
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 95 0>, <0 238 0>;
+		qcom,master-id = <84>;
 		spi-max-frequency = <19200000>;
 
 		goodixfp@0 {
