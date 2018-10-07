@@ -1840,13 +1840,16 @@ config TEST_UDELAY
 
 	  If unsure, say N.
 
-
-config PANIC_ON_DATA_CORRUPTION
-	bool "Cause a Kernel Panic When Data Corruption is detected"
+config BUG_ON_DATA_CORRUPTION
+	bool "Trigger a BUG when data corruption is detected"
+	select CONFIG_DEBUG_LIST
 	help
-	 Select this option to upgrade warnings for potentially
-	 recoverable data corruption scenarios to system-halting panics,
-	 for easier detection and debug.
+	  Select this option if the kernel should BUG when it encounters
+	  data corruption in kernel memory structures when they get checked
+	  for validity.
+
+	  If unsure, say N.
+
 config MEMTEST
 	bool "Memtest"
 	depends on HAVE_MEMBLOCK
@@ -1858,17 +1861,6 @@ config MEMTEST
 	        ...
 	        memtest=17, mean do 17 test patterns.
 	  If you are unsure how to answer this question, answer N.
-
-config BUG_ON_DATA_CORRUPTION
-	bool "Trigger a BUG when data corruption is detected"
-	select CONFIG_DEBUG_LIST
-	help
-	  Select this option if the kernel should BUG when it encounters
-	  data corruption in kernel memory structures when they get checked
-	  for validity.
-
-	  If unsure, say N.
-
 
 source "samples/Kconfig"
 

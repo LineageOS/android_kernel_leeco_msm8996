@@ -11,7 +11,6 @@
 #include <linux/kernel.h>
 #include <linux/rculist.h>
 
-
 /*
  * Check that the data structures for the list manipulations are reasonably
  * valid. Failures here indicate memory corruption (and possibly an exploit
