@@ -328,6 +328,7 @@
 
 &usb3 {
 	qcom,vbus_set_by_cclogic;
+    qcom,no-wakeup-src-in-hostmode;
 };
 
 &spi_0_active {
