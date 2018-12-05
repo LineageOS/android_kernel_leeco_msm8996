@@ -395,10 +395,18 @@
 
 &pmi8994_charger {
 	qcom,float-voltage-mv = <4400>;
-	qcom,fastchg-current-ma = <4000>;
-	qcom,thermal-mitigation = <4000 3500 3000 2000 500>;
-	qcom,usb-thermal-mitigation = <3400 3000 2000 0>;
+	qcom,fastchg-current-ma = <4500>;
+	qcom,thermal-mitigation = <4500 3800 3000 2000 500>;
+	qcom,usb-thermal-mitigation = <3000 2000 1000 0>;
 };
+
+&pmi8994_fg {
+	qcom,warm-bat-decidegc = <450>;
+	qcom,hot-bat-decidegc = <500>;
+	qcom,cool-bat-decidegc = <150>;
+	qcom,cold-bat-decidegc = <0>;
+};
+
 
 &uartblsp2dm1 {
         pinctrl-names = "default", "sleep";
