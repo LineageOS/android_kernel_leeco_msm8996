@@ -61,7 +61,7 @@
 
 #define DWC3_IDEV_CHG_MAX 1500
 #define DWC3_HVDCP_CHG_MAX 1800
-#define DWC3_WAKEUP_SRC_TIMEOUT 5000
+#define DWC3_WAKEUP_SRC_TIMEOUT 1000
 #define MICRO_5V    5000000
 #define MICRO_9V    9000000
 
@@ -2591,12 +2591,11 @@ int pi5usb_set_msm_usb_host_mode(bool mode)
         if (mode) {
                 /* host mode:bsv=0,id=0 */
                 //mdwc->ext_xceiv.id = false;
-		mdwc->id_state = DWC3_ID_GROUND;
+    		mdwc->id_state = DWC3_ID_GROUND;
         } else {
                 /* device mode:bsv=1,id=1 */
                 //mdwc->ext_xceiv.id = true;
-		mdwc->id_state = DWC3_ID_FLOAT;
-
+	    	mdwc->id_state = DWC3_ID_FLOAT;
         }
 
         if (atomic_read(&dwc->in_lpm)) {
@@ -2608,8 +2607,7 @@ int pi5usb_set_msm_usb_host_mode(bool mode)
                 //        mdwc->ext_xceiv.notify_ext_events(mdwc->otg_xceiv->otg,
                 //                                        DWC3_EVENT_XCEIV_STATE);
 
-		dwc3_ext_event_notify(mdwc);
-
+    		dwc3_ext_event_notify(mdwc);
         }
 
         return mode;
@@ -2665,7 +2663,9 @@ get_prop_usbin_voltage_now(struct dwc3_msm *mdwc)
 		return results.physical;
 	}
 }
+#endif
 
+#ifdef CONFIG_VENDOR_LEECO
 extern void letv_pd_set_typec_temperature(int temp);
 /*
  * Function to read Type-C temp
@@ -2856,7 +2856,7 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		dbg_event(0xFF, "TYPE C CURMAX)", val->intval);
 		/* Update chg_current as per type-c charger detection on VBUS */
 		if (mdwc->chg_type != DWC3_INVALID_CHARGER) {
-			dev_dbg(mdwc->dev, "update type-c charger\n");
+			dev_info(mdwc->dev, "update type-c charger\n");
 			dwc3_msm_gadget_vbus_draw(mdwc,
 						mdwc->bc1p2_current_max);
 		}
@@ -2905,7 +2905,7 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		if (mdwc->chg_type != DWC3_INVALID_CHARGER)
 			mdwc->chg_state = USB_CHG_STATE_DETECTED;
 
-		dev_dbg(mdwc->dev, "%s: charger type: %s\n", __func__,
+		dev_info(mdwc->dev, "%s: charger type: %s\n", __func__,
 				chg_to_string(mdwc->chg_type));
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
@@ -2955,6 +2955,8 @@ static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {
 	POWER_SUPPLY_PROP_REAL_TYPE,
 #ifdef CONFIG_VENDOR_LEECO
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
+#endif
+#ifdef CONFIG_VENDOR_LEECO
 	POWER_SUPPLY_PROP_LE_USBIN_TEMP,
 	POWER_SUPPLY_PROP_LE_VPH_VOLTAGE,
 #endif
@@ -3669,9 +3671,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		mdwc->id_state = DWC3_ID_GROUND;
 		dwc3_ext_event_notify(mdwc);
 	}
-#ifdef CONFIG_VENDOR_LEECO
+
 	_msm_dwc = mdwc;
-#endif
+
 	return 0;
 
 put_dwc3:
@@ -3921,7 +3923,7 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 	}
 
 	if (on) {
-		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
+		dev_info(mdwc->dev, "%s: turn on host\n", __func__);
 
 #ifdef CONFIG_VENDOR_LEECO
 		if (mdwc->in_host_mode) {
@@ -4164,13 +4166,13 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA)
 		return 0;
 
 	if (mdwc->chg_type != DWC3_INVALID_CHARGER) {
-		dev_dbg(mdwc->dev,
+		dev_info(mdwc->dev,
 			"SKIP setting power supply type again,chg_type = %d\n",
 			mdwc->chg_type);
 		goto skip_psy_type;
 	}
 
-	dev_dbg(mdwc->dev, "Requested curr from USB = %u, max-type-c:%u\n",
+	dev_info(mdwc->dev, "Requested curr from USB = %u, max-type-c:%u\n",
 					mA, mdwc->typec_current_max);
 
 	if (mdwc->chg_type == DWC3_SDP_CHARGER)
@@ -4229,7 +4231,7 @@ skip_psy_type:
 	return 0;
 
 psy_error:
-	dev_dbg(mdwc->dev, "power supply error when setting property\n");
+	dev_info(mdwc->dev, "power supply error when setting property\n");
 	return -ENXIO;
 }
 
@@ -4245,7 +4247,7 @@ static void dwc3_check_float_lines(struct dwc3_msm *mdwc)
 	dpdm = usb_phy_dpdm_with_idp_src(mdwc->hs_phy);
 	if (dpdm == 0x2) {
 		/* DP is HIGH = lines are floating */
-		mdwc->chg_type = DWC3_PROPRIETARY_CHARGER;
+		mdwc->chg_type = DWC3_PROPRIETARY_CHARGER; /* Should set ACA for LeTV. */
 		mdwc->otg_state = OTG_STATE_B_IDLE;
 		pm_runtime_put_sync(mdwc->dev);
 		dbg_event(0xFF, "FLT psync",
@@ -4655,6 +4657,10 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 	dev_dbg(dev, "dwc3-msm PM suspend\n");
 	dbg_event(0xFF, "PM Sus", 0);
 
+	/* TODO:
+	 * Host mode API has changed, we need to adapt or remove the
+	 * OEM code.
+	 */
 	flush_workqueue(mdwc->dwc3_resume_wq);
 	if (!atomic_read(&dwc->in_lpm) && !mdwc->no_wakeup_src_in_hostmode) {
 		dev_err(mdwc->dev, "Abort PM suspend!! (USB is outside LPM)\n");
@@ -4675,6 +4681,7 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 
 	dbg_event(0xFF, "vbus_active", mdwc->vbus_active);
 	dbg_event(0xFF, "otg_state", mdwc->otg_state);
+
 	return ret;
 }
 
