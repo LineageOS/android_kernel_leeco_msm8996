@@ -352,6 +352,7 @@ struct mxt_data {
 	struct regulator *reg_vcc_i2c;
 	char *fw_name;
 	char *cfg_name;
+	bool keys_off;
 
 	/* Cached T8 configuration */
 	struct t81_configuration t81_cfg;
@@ -1310,6 +1311,10 @@ static void mxt_proc_t15_messages(struct mxt_data *data, u8 *msg)
 	bool curr_state, new_state;
 	bool sync = false;
 	unsigned long keystates = le32_to_cpu(msg[2]);
+
+	if(data->keys_off) {
+		return;
+	}
 
 	for (key = 0; key < data->pdata->t15_num_keys; key++) {
 		curr_state = test_bit(key, &data->t15_keystatus);
@@ -4039,6 +4044,35 @@ static ssize_t mxt_read_t25_store(struct device *dev,
 	return ret;
 }
 
+static ssize_t mxt_keys_off_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	int count;
+	char c;
+
+	c = data->keys_off ? '1' : '0';
+	count = sprintf(buf, "%c\n", c);
+
+	return count;
+}
+
+static ssize_t mxt_keys_off_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct mxt_data *data = dev_get_drvdata(dev);
+	int i;
+
+	if (sscanf(buf, "%u", &i) == 1 && i < 2) {
+		data->keys_off = (i == 1);
+
+		dev_dbg(dev, "%s\n", i ? "hw keys off" : "hw keys on");
+		return count;
+	} else {
+		dev_dbg(dev, "keys_off write error\n");
+		return -EINVAL;
+	}
+}
 
 #if 0  /* liuzhengliang temporary modification */
 static DEVICE_ATTR(fw_version, S_IRUGO, mxt_fw_version_show, NULL);
@@ -4063,6 +4097,9 @@ static DEVICE_ATTR(open_circuit_test, S_IRUGO,
 static DEVICE_ATTR(raw_cap_data, S_IRUGO, mxt_raw_cap_data_show, NULL);
 static DEVICE_ATTR(read_t25, S_IWUSR | S_IRUSR, mxt_read_t25_show, mxt_read_t25_store);
 
+static DEVICE_ATTR(keys_off, S_IWUSR | S_IRUSR, mxt_keys_off_show,
+			mxt_keys_off_store);
+
 
 static struct attribute *mxt_attrs[] = {
 //	&dev_attr_fw_version.attr, /* liuzhengliang temporary modification */
@@ -4080,6 +4117,7 @@ static struct attribute *mxt_attrs[] = {
 	//&dev_attr_open_circuit_test.attr,
 	//&dev_attr_raw_cap_data.attr,
 	&dev_attr_read_t25.attr,
+	&dev_attr_keys_off.attr,
 	NULL
 };
 
