@@ -26,7 +26,6 @@
 #include "tfa98xx_genregs_N1C.h"
 
 /* handle macro for bitfield */
-#define DEBUG
 
 #define TFA_MK_BF(reg, pos, len) ((reg<<8)|(pos<<4)|(len-1))
 
