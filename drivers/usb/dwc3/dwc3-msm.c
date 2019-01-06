@@ -59,9 +59,15 @@
 #include "debug.h"
 #include "xhci.h"
 
+
+static void sdv_pm_stay_awake(int line, struct device *dev);
+static void sdv_pm_relax(int line, struct device *dev);
+static void sdv_pm_wakeup_event(int line, struct device *dev, int timeout);
+
+
 #define DWC3_IDEV_CHG_MAX 1500
-#define DWC3_HVDCP_CHG_MAX 1800
-#define DWC3_WAKEUP_SRC_TIMEOUT 1000
+#define DWC3_HVDCP_CHG_MAX 2000
+#define DWC3_WAKEUP_SRC_TIMEOUT 500
 #define MICRO_5V    5000000
 #define MICRO_9V    9000000
 
@@ -2189,9 +2195,9 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 	if (mdwc->lpm_to_suspend_delay) {
 		dev_dbg(mdwc->dev, "defer suspend with %d(msecs)\n",
 					mdwc->lpm_to_suspend_delay);
-		pm_wakeup_event(mdwc->dev, mdwc->lpm_to_suspend_delay);
+		sdv_pm_wakeup_event(1,mdwc->dev, mdwc->lpm_to_suspend_delay);
 	} else {
-		pm_relax(mdwc->dev);
+		sdv_pm_relax(1,mdwc->dev);
 	}
 
 	atomic_set(&dwc->in_lpm, 1);
@@ -2231,7 +2237,7 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 		return 0;
 	}
 
-	pm_stay_awake(mdwc->dev);
+	sdv_pm_stay_awake(1,mdwc->dev);
 
 	/* Vote for TCXO while waking up USB HSPHY */
 	ret = clk_prepare_enable(mdwc->xo_clk);
@@ -2382,7 +2388,9 @@ static void dwc3_ext_event_notify(struct dwc3_msm *mdwc)
 		return;
 	}
 
-	pm_stay_awake(mdwc->dev);
+    if( mdwc->in_host_mode || mdwc->vbus_active ) {
+    	sdv_pm_stay_awake(2,mdwc->dev);
+    }
 	queue_delayed_work(mdwc->sm_usb_wq, &mdwc->sm_work, 0);
 }
 
@@ -2636,8 +2644,8 @@ static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 	 * all other power events.
 	 */
 	if (atomic_read(&dwc->in_lpm)) {
-		if (!mdwc->no_wakeup_src_in_hostmode || !mdwc->in_host_mode)
-			pm_stay_awake(mdwc->dev);
+		//if (!mdwc->no_wakeup_src_in_hostmode || !mdwc->in_host_mode)
+		sdv_pm_stay_awake(3,mdwc->dev);
 
 		/* set this to call dwc3_msm_resume() */
 		mdwc->resume_pending = true;
@@ -2801,7 +2809,7 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		dbg_event(0xFF, "id_state", mdwc->id_state);
 		if (dwc->is_drd) {
 			dbg_event(0xFF, "stayID", 0);
-			pm_stay_awake(mdwc->dev);
+			sdv_pm_stay_awake(4,mdwc->dev);
 			queue_delayed_work(mdwc->dwc3_resume_wq,
 					&mdwc->resume_work, 0);
 		}
@@ -2841,7 +2849,7 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 			dbg_event(0xFF, "stayVbus", 0);
 			/* Ignore !vbus on stop_host */
 			if (mdwc->vbus_active || test_bit(ID, &mdwc->inputs)) {
-				pm_stay_awake(mdwc->dev);
+				sdv_pm_stay_awake(5,mdwc->dev);
 				queue_delayed_work(mdwc->dwc3_resume_wq,
 					&mdwc->resume_work, 0);
 			}
@@ -2979,7 +2987,7 @@ static irqreturn_t dwc3_pmic_id_irq(int irq, void *data)
 	if (mdwc->id_state != id) {
 		mdwc->id_state = id;
 		dbg_event(0xFF, "stayIDIRQ", 0);
-		pm_stay_awake(mdwc->dev);
+		sdv_pm_stay_awake(6,mdwc->dev);
 		queue_delayed_work(mdwc->dwc3_resume_wq, &mdwc->resume_work, 0);
 	}
 
@@ -3529,8 +3537,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	mdwc->disable_host_mode_pm = of_property_read_bool(node,
 				"qcom,disable-host-mode-pm");
 
-	mdwc->no_wakeup_src_in_hostmode = of_property_read_bool(node,
-				"qcom,no-wakeup-src-in-hostmode");
+	//mdwc->no_wakeup_src_in_hostmode = of_property_read_bool(node,
+	//			"qcom,no-wakeup-src-in-hostmode");
 	if (mdwc->no_wakeup_src_in_hostmode)
 		dev_dbg(&pdev->dev, "dwc3 host not using wakeup source\n");
 
@@ -3634,7 +3642,7 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		register_cpu_notifier(&mdwc->dwc3_cpu_notifier);
 
 	device_init_wakeup(mdwc->dev, 1);
-	pm_stay_awake(mdwc->dev);
+	sdv_pm_stay_awake(7,mdwc->dev);
 
 #ifdef CONFIG_VENDOR_LEECO
 	/* Register headset on Type-C. */
@@ -4350,9 +4358,9 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 			 * in probe for host mode.
 			 */
 			if (ret != -EPROBE_DEFER) {
-				if (mdwc->no_wakeup_src_in_hostmode
-						&& mdwc->in_host_mode)
-					pm_relax(mdwc->dev);
+				//if (mdwc->no_wakeup_src_in_hostmode
+				//		&& mdwc->in_host_mode)
+					sdv_pm_relax(2,mdwc->dev);
 				return;
 			}
 			/*
@@ -4376,7 +4384,7 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 						dcp_max_current);
 				atomic_set(&dwc->in_lpm, 1);
 				dbg_event(0xFF, "RelaxDCP", 0);
-				pm_relax(mdwc->dev);
+				sdv_pm_relax(3,mdwc->dev);
 				break;
 			case DWC3_CDP_CHARGER:
 			case DWC3_SDP_CHARGER:
@@ -4433,7 +4441,7 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 				dwc3_msm_gadget_vbus_draw(mdwc,
 						dcp_max_current);
 				dbg_event(0xFF, "RelDCPBIDLE", 0);
-				pm_relax(mdwc->dev);
+				sdv_pm_relax(4,mdwc->dev);
 				break;
 			case DWC3_CDP_CHARGER:
 				dbg_event(0xFF, "CDPCharger", 0);
@@ -4473,7 +4481,7 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 				dwc3_msm_gadget_vbus_draw(mdwc, 0);
 			dev_dbg(mdwc->dev, "No device, allowing suspend\n");
 			dbg_event(0xFF, "RelNodev", 0);
-			pm_relax(mdwc->dev);
+			sdv_pm_relax(5,mdwc->dev);
 		}
 		break;
 
@@ -4557,9 +4565,9 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 				mdwc->otg_state = OTG_STATE_A_IDLE;
 				goto ret;
 			}
-			if (mdwc->no_wakeup_src_in_hostmode &&
-						mdwc->in_host_mode)
-				pm_wakeup_event(mdwc->dev,
+			//if (mdwc->no_wakeup_src_in_hostmode &&
+			//			mdwc->in_host_mode)
+				sdv_pm_wakeup_event(2,mdwc->dev,
 						DWC3_WAKEUP_SRC_TIMEOUT);
 		}
 		break;
@@ -4581,8 +4589,8 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 			dbg_event(0xFF, "XHCIResume", 0);
 			if (dwc)
 				pm_runtime_resume(&dwc->xhci->dev);
-			if (mdwc->no_wakeup_src_in_hostmode)
-				pm_wakeup_event(mdwc->dev,
+			//if (mdwc->no_wakeup_src_in_hostmode)
+				sdv_pm_wakeup_event(3,mdwc->dev,
 						DWC3_WAKEUP_SRC_TIMEOUT);
 		}
 		break;
@@ -4607,7 +4615,7 @@ static int dwc3_msm_pm_prepare(struct device *dev)
 	struct xhci_hcd	*xhci;
 	bool stop_ss_host = false;
 
-	dev_dbg(dev, "dwc3-msm PM prepare,lpm:%u\n", atomic_read(&dwc->in_lpm));
+	dev_err(dev, "dwc3-msm PM prepare,lpm:%u\n", atomic_read(&dwc->in_lpm));
 
 	if (!mdwc->in_host_mode || !mdwc->no_wakeup_src_in_hostmode)
 		return 0;
@@ -4630,7 +4638,7 @@ static int dwc3_msm_pm_prepare(struct device *dev)
 		mdwc->stop_host = true;
 		queue_delayed_work(mdwc->dwc3_resume_wq, &mdwc->resume_work, 0);
 		/* pm_relax will happen at the end of stop_host */
-		pm_stay_awake(mdwc->dev);
+		sdv_pm_stay_awake(8,mdwc->dev);
 		return -EBUSY;
 	}
 	/* If in lpm then prevent usb core to runtime_resume from pm_suspend */
@@ -4790,3 +4798,31 @@ static void __exit dwc3_msm_exit(void)
 	platform_driver_unregister(&dwc3_msm_driver);
 }
 module_exit(dwc3_msm_exit);
+
+
+
+/* SDV Debug for CDLA und wakesource */
+
+static bool _wake_active = 0;
+static void sdv_pm_stay_awake(int line, struct device *dev) {
+    pr_err("%s: line: %d\n",__func__, line);
+    if( ! _wake_active ) {
+        _wake_active = 1;
+        pm_stay_awake(dev);
+    }
+}
+
+static void sdv_pm_relax(int line, struct device *dev) {
+    pr_err("%s: line: %d\n",__func__, line);
+    if( _wake_active ) {
+        _wake_active = 0;
+        pm_relax(dev);
+    }
+}
+
+static void sdv_pm_wakeup_event(int line, struct device *dev, int timeout) {
+    pr_err("%s: line: %d, timeout:%d\n",__func__, line, timeout);
+    pm_wakeup_event(dev,timeout);
+}
+
+
