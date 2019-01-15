@@ -16,6 +16,24 @@
       "revId": "e6a9b22373a2cfb545cfb729b8252ba62585e890",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "f7338596_8e5a16b1",
+        "filename": "drivers/usb/dwc3/dwc3-msm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2391,
+      "author": {
+        "id": 19252
+      },
+      "writtenOn": "2019-01-15T05:33:36Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "462b495d_97875677",
+      "revId": "e6a9b22373a2cfb545cfb729b8252ba62585e890",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
