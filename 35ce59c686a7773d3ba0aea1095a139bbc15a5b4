@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cb37473b_adb62f91",
+        "filename": "drivers/usb/dwc3/dwc3-msm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2019-01-18T13:32:40Z",
+      "side": 1,
+      "message": "add ifdef? what\u0027s qcom default?",
+      "range": {
+        "startLine": 64,
+        "startChar": 0,
+        "endLine": 64,
+        "endChar": 1
+      },
+      "revId": "35ce59c686a7773d3ba0aea1095a139bbc15a5b4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "5f7c7e93_dbea867d",
+        "filename": "drivers/usb/dwc3/dwc3-msm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2672,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2019-01-18T13:32:40Z",
+      "side": 1,
+      "message": "not needed",
+      "range": {
+        "startLine": 2672,
+        "startChar": 0,
+        "endLine": 2672,
+        "endChar": 6
+      },
+      "revId": "35ce59c686a7773d3ba0aea1095a139bbc15a5b4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "13fb59fe_83add482",
+        "filename": "drivers/usb/dwc3/dwc3-msm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2674,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2019-01-18T13:32:40Z",
+      "side": 1,
+      "message": "not needed",
+      "range": {
+        "startLine": 2674,
+        "startChar": 0,
+        "endLine": 2674,
+        "endChar": 1
+      },
+      "revId": "35ce59c686a7773d3ba0aea1095a139bbc15a5b4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "3d21b4c7_0c58a6fa",
+        "filename": "drivers/usb/dwc3/dwc3-msm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2965,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2019-01-18T13:32:40Z",
+      "side": 1,
+      "message": "not needed",
+      "range": {
+        "startLine": 2964,
+        "startChar": 0,
+        "endLine": 2965,
+        "endChar": 26
+      },
+      "revId": "35ce59c686a7773d3ba0aea1095a139bbc15a5b4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
