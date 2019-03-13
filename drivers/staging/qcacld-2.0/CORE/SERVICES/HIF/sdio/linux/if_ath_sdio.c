@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2019 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -159,7 +159,7 @@ ath_hif_sdio_probe(void *context, void *hif_handle)
 
     sc->aps_osdev.device = os_dev_info.pOSDevice;
     sc->aps_osdev.bc.bc_bustype = HAL_BUS_TYPE_SDIO;
-    spin_lock_init(&sc->target_lock);
+    adf_os_spinlock_init(&sc->target_lock);
 
     {
         /*
@@ -479,6 +479,13 @@ HIFCancelDeferredTargetSleep(HIF_DEVICE *hif_device)
 void hif_reset_soc(void *ol_sc)
 {
     ENTER("- dummy function!");
+}
+
+void hif_get_reg(void *ol_sc, u32 address, u32 *data)
+{
+	struct ol_softc *scn = (struct ol_softc *)ol_sc;
+
+	HIFDiagReadAccess(scn->hif_hdl, address, data);
 }
 
 void hif_get_hw_info(void *ol_sc, u32 *version, u32 *revision)
