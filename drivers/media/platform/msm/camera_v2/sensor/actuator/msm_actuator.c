@@ -38,7 +38,9 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 #define PARK_LENS_SMALL_STEP 3
 #define MAX_QVALUE 4096
 
+#ifdef CONFIG_PRODUCT_LE_X2
 static bool use_focus_fix __read_mostly;
+#endif
 
 static struct v4l2_file_operations msm_actuator_v4l2_subdev_fops;
 static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl);
@@ -328,6 +330,7 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 			else if(strcmp(a_ctrl->project_name,"x2")==0)
 			{
 				out[0] = i2c_byte1;
+#ifdef CONFIG_PRODUCT_LE_X2
                 if( use_focus_fix ) {
 				    pr_info("======   Using focus fix =====\n");
 				    out[1] = 0x90;
@@ -335,6 +338,9 @@ static int msm_actuator_bivcm_handle_i2c_ops(
 				    pr_info("======   Not using focus fix =====\n");
 				    out[1] = 0xD0;
                 }
+#else
+				out[1] = 0x90;
+#endif
 				out[2] = 0x0;
 				out[3] = i2c_byte2 / 256;
 				out[4] = i2c_byte2 % 256;
@@ -2549,7 +2555,9 @@ static struct msm_actuator msm_bivcm_actuator_table = {
 	},
 };
 
+#ifdef CONFIG_PRODUCT_LE_X2
 module_param(use_focus_fix, bool, 0664);
+#endif
 module_init(msm_actuator_init_module);
 MODULE_DESCRIPTION("MSM ACTUATOR");
 MODULE_LICENSE("GPL v2");
