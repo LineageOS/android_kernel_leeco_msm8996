@@ -5869,9 +5869,8 @@ static void __wma_fill_tx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 	struct sir_wifi_ll_ext_peer_stats *peer_stats;
 	uint8_t *counter;
 	uint32_t *tx_mpdu_aggr, *tx_succ_mcs, *tx_fail_mcs, *tx_delay;
-	uint32_t len, dst_len, param_len, tx_mpdu_aggr_array_len,
-		 tx_succ_mcs_array_len, tx_fail_mcs_array_len,
-		 tx_delay_array_len;
+	uint32_t len, dst_len, tx_mpdu_aggr_array_len, tx_succ_mcs_array_len,
+		 tx_fail_mcs_array_len, tx_delay_array_len;
 
 	result = *buf;
 	dst_len = *buf_length;
@@ -5888,8 +5887,7 @@ static void __wma_fill_tx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 
 	len = fix_param->num_peer_ac_tx_stats *
 		WLAN_MAX_AC * tx_mpdu_aggr_array_len;
-	param_len = param_buf->num_tx_mpdu_aggr * sizeof(uint32_t);
-	if (len * sizeof(uint32_t) <= dst_len && len <= param_len) {
+	if (len * sizeof(uint32_t) <= dst_len) {
 		tx_mpdu_aggr = (uint32_t *)result;
 		counter = (uint8_t *)param_buf->tx_mpdu_aggr;
 		for (i = 0; i < len; i++) {
@@ -5899,15 +5897,13 @@ static void __wma_fill_tx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 		result += len * sizeof(uint32_t);
 		dst_len -= len * sizeof(uint32_t);
 	} else {
-		WMA_LOGE(FL("TX_MPDU_AGGR invalid arg, %d, %d, %d"),
-			 len, dst_len, param_len);
+		WMA_LOGE(FL("TX_MPDU_AGGR buffer length is wrong."));
 		tx_mpdu_aggr = NULL;
 	}
 
 	len = fix_param->num_peer_ac_tx_stats * WLAN_MAX_AC *
 		tx_succ_mcs_array_len;
-	param_len = param_buf->num_tx_succ_mcs * sizeof(uint32_t);
-	if (len * sizeof(uint32_t) <= dst_len && len <= param_len) {
+	if (len * sizeof(uint32_t) <= dst_len) {
 		tx_succ_mcs = (uint32_t *)result;
 		counter = (uint8_t *)param_buf->tx_succ_mcs;
 		for (i = 0; i < len; i++) {
@@ -5918,15 +5914,13 @@ static void __wma_fill_tx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 		result += len;
 		dst_len -= len;
 	} else {
-		WMA_LOGE(FL("TX_SUCC_MCS invalid arg, %d, %d, %d"),
-			 len, dst_len, param_len);
+		WMA_LOGE(FL("TX_SUCC_MCS buffer length is wrong."));
 		tx_succ_mcs = NULL;
 	}
 
 	len = fix_param->num_peer_ac_tx_stats * WLAN_MAX_AC *
 		tx_fail_mcs_array_len;
-	param_len = param_buf->num_tx_fail_mcs * sizeof(uint32_t);
-	if (len * sizeof(uint32_t) <= dst_len && len <= param_len) {
+	if (len * sizeof(uint32_t) <= dst_len) {
 		tx_fail_mcs = (uint32_t *)result;
 		counter = (uint8_t *)param_buf->tx_fail_mcs;
 		for (i = 0; i < len; i++) {
@@ -5937,15 +5931,13 @@ static void __wma_fill_tx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 		result += len;
 		dst_len -= len;
 	} else {
-		WMA_LOGE(FL("TX_FAIL_MCS invalid arg, %d, %d %d"),
-			 len, dst_len, param_len);
+		WMA_LOGE(FL("TX_FAIL_MCS buffer length is wrong."));
 		tx_fail_mcs = NULL;
 	}
 
 	len = fix_param->num_peer_ac_tx_stats *
 		WLAN_MAX_AC * tx_delay_array_len;
-	param_len = param_buf->num_tx_ppdu_delay * sizeof(uint32_t);
-	if (len * sizeof(uint32_t) <= dst_len && len <= param_len) {
+	if (len * sizeof(uint32_t) <= dst_len) {
 		tx_delay = (uint32_t *)result;
 		counter = (uint8_t *)param_buf->tx_ppdu_delay;
 		for (i = 0; i < len; i++) {
@@ -5956,8 +5948,7 @@ static void __wma_fill_tx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 		result += len;
 		dst_len -= len;
 	} else {
-		WMA_LOGE(FL("TX_DELAY invalid arg, %d, %d, %d"),
-			 len, dst_len, param_len);
+		WMA_LOGE(FL("TX_DELAY buffer length is wrong."));
 		tx_delay = NULL;
 	}
 
@@ -6042,8 +6033,7 @@ static void __wma_fill_rx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 	wmi_peer_ac_rx_stats *wmi_peer_rx;
 	struct sir_wifi_rx *rx_stats;
 	struct sir_wifi_ll_ext_peer_stats *peer_stats;
-	uint32_t len, dst_len, param_len,
-		 rx_mpdu_aggr_array_len, rx_mcs_array_len;
+	uint32_t len, dst_len, rx_mpdu_aggr_array_len, rx_mcs_array_len;
 	uint8_t *counter;
 
 	rx_mpdu_aggr_array_len = fix_param->rx_mpdu_aggr_array_len;
@@ -6057,8 +6047,7 @@ static void __wma_fill_rx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 	dst_len = *buf_length;
 	len = fix_param->num_peer_ac_rx_stats *
 		  WLAN_MAX_AC * rx_mpdu_aggr_array_len;
-	param_len = param_buf->num_rx_mpdu_aggr * sizeof(uint32_t);
-	if (len * sizeof(uint32_t) <= dst_len && len <= param_len) {
+	if (len * sizeof(uint32_t) <= dst_len) {
 		rx_mpdu_aggr = (uint32_t *)result;
 		counter = (uint8_t *)param_buf->rx_mpdu_aggr;
 		for (i = 0; i < len; i++) {
@@ -6069,15 +6058,13 @@ static void __wma_fill_rx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 		result += len;
 		dst_len -= len;
 	} else {
-		WMA_LOGE(FL("RX_MPDU_AGGR invalid arg %d, %d, %d"),
-			 len, dst_len, param_len);
+		WMA_LOGE(FL("RX_MPDU_AGGR array length is wrong."));
 		rx_mpdu_aggr = NULL;
 	}
 
 	len = fix_param->num_peer_ac_rx_stats *
 		  WLAN_MAX_AC * rx_mcs_array_len;
-	param_len = param_buf->num_rx_mcs * sizeof(uint32_t);
-	if (len * sizeof(uint32_t) <= dst_len && len <= param_len ) {
+	if (len * sizeof(uint32_t) <= dst_len) {
 		rx_mcs = (uint32_t *)result;
 		counter = (uint8_t *)param_buf->rx_mcs;
 		for (i = 0; i < len; i++) {
@@ -6088,8 +6075,7 @@ static void __wma_fill_rx_stats(struct sir_wifi_ll_ext_stats *ll_stats,
 		result += len;
 		dst_len -= len;
 	} else {
-		WMA_LOGE(FL("RX_MCS invalid arg %d, %d, %d"),
-			 len, dst_len, param_len);
+		WMA_LOGE(FL("RX_MCS array length is wrong."));
 		rx_mcs = NULL;
 	}
 
@@ -6199,7 +6185,6 @@ static int wma_ll_stats_evt_handler(void *handle, u_int8_t *event,
 	struct ol_txrx_peer_t *peer;
 	ol_txrx_pdev_handle pdev;
 	wmi_stats_period *period;
-	wmi_stats_interference *intf_stats;
 
 	mac = (tpAniSirGlobal)vos_get_context(VOS_MODULE_ID_PE,
 					      wma_handle->vos_context);
@@ -6227,7 +6212,6 @@ static int wma_ll_stats_evt_handler(void *handle, u_int8_t *event,
 	wmi_peer_signal = param_buf->peer_signal_stats;
 	wmi_peer_rx = param_buf->peer_ac_rx_stats;
 	period = param_buf->stats_period;
-	intf_stats = param_buf->stats_interference;
 	WMA_LOGD("%s: stats period length is %d. ", __func__,
 		 fixed_param->stats_period_array_len);
 
@@ -6239,10 +6223,8 @@ static int wma_ll_stats_evt_handler(void *handle, u_int8_t *event,
 	peer_num = peer_num > fixed_param->num_peer_ac_rx_stats ?
 			peer_num : fixed_param->num_peer_ac_rx_stats;
 
-	if (peer_num == 0) {
-		WMA_LOGE("%s: Peer number is zero", __func__);
+	if (peer_num == 0)
 		return -EINVAL;
-	}
 
 	link_stats_results = __wma_get_ll_stats_ext_buf(&result_size,
 							peer_num,
@@ -6264,13 +6246,6 @@ static int wma_ll_stats_evt_handler(void *handle, u_int8_t *event,
 	ll_stats->rx_chgd_bitmap = fixed_param->rx_chgd_bitmap;
 	ll_stats->channel_num = fixed_param->num_chan_cca_stats;
 	ll_stats->peer_num = peer_num;
-
-	if (intf_stats) {
-		WMA_LOGD("%s: Pop interference stats", __func__);
-		ll_stats->maxtrix = intf_stats->sa_ant_matrix;
-		ll_stats->phyerr_count = intf_stats->phyerr_count;
-		ll_stats->timestamp = intf_stats->timestamp;
-	}
 
 	__wma_ll_stats_time_stamp(period, &ll_stats->time_stamp);
 	result = (uint8_t *)ll_stats->stats;
@@ -6421,38 +6396,6 @@ void wma_tx_failure_cb(void *ctx, uint32_t num_msdu, uint8_t tid, uint32 status)
 		WMA_LOGP(FL("Failed to post tx failure msg!"));
 		vos_mem_free(results);
 	}
-}
-
-/**
- * wma_config_stats_ext_primary_mac() - Set primary peer ID
- * @wma: wma handle
- * @params: MAC address for the primary peer
- *
- */
-static void wma_config_stats_primary_mac(struct wma_handle *wma,
-					 struct hal_primary_params *params)
-{
-	uint8_t peer_id;
-	ol_txrx_peer_handle peer;
-	ol_txrx_pdev_handle pdev;
-
-	pdev = vos_get_context(VOS_MODULE_ID_TXRX, wma->vos_context);
-
-	/* Get the peer ID */
-	peer = ol_txrx_find_peer_by_addr(pdev, params->bssid, &peer_id);
-
-	if (!peer) {
-		WMA_LOGD(FL(" Peer not exist for MAC addree " MAC_ADDRESS_STR),
-			 MAC_ADDR_ARRAY(params->bssid));
-		return;
-	}
-
-	WMA_LOGD(FL("MAC addree is " MAC_ADDRESS_STR " PeerID is %d"),
-		 MAC_ADDR_ARRAY(params->bssid), peer_id);
-
-	wma_set_peer_param(wma, params->bssid,
-			   WMI_PEER_PARAM_MISC_STATS_ENABLE, peer_id,
-			   params->session_id);
 }
 
 /**
@@ -17775,10 +17718,6 @@ static void wma_process_cli_set_cmd(tp_wma_handle wma,
 #endif
 		case GEN_PARAM_MODULATED_DTIM:
 			wma_set_modulated_dtim(wma, privcmd);
-			break;
-		case GEN_PARAM_PS_TDCC:
-			wma_ps_set_tx_duty_cycle_control(wma,
-				privcmd->param_value, privcmd->param_sec_value);
 			break;
 		case GEN_PDEV_MONITOR_MODE:
 			wma_send_pdev_monitor_mode_cmd(wma, privcmd);
@@ -35454,11 +35393,6 @@ VOS_STATUS wma_mc_process_msg(v_VOID_t *vos_context, vos_msg_t *msg)
 						       msg->bodyptr);
 			vos_mem_free(msg->bodyptr);
 			break;
-		case WDA_LINK_LAYER_STATS_SET_PRIMARY_PEER:
-			wma_config_stats_primary_mac(wma_handle,
-						     msg->bodyptr);
-			vos_mem_free(msg->bodyptr);
-			break;
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
 		case SIR_HAL_UNIT_TEST_CMD:
 			wma_process_unit_test_cmd(wma_handle,
@@ -35792,7 +35726,8 @@ VOS_STATUS wma_mc_process_msg(v_VOID_t *vos_context, vos_msg_t *msg)
 			vos_mem_free(msg->bodyptr);
 			break;
 		case WDA_SET_AC_TXQ_OPTIMIZE:
-			wma_set_ac_txq_optimize(wma_handle, msg->bodyval);
+			wma_set_ac_txq_optimize(wma_handle, msg->bodyptr);
+			vos_mem_free(msg->bodyptr);
 			break;
 		case WDA_MNT_FILTER_TYPE_CMD:
 			wma_mnt_filter_type_cmd(wma_handle,
@@ -35818,9 +35753,6 @@ VOS_STATUS wma_mc_process_msg(v_VOID_t *vos_context, vos_msg_t *msg)
 			wma_set_hpcs_pulse_params(wma_handle,
 						  (struct hal_hpcs_pulse_params*) msg->bodyptr);
 			vos_mem_free(msg->bodyptr);
-			break;
-		case WDA_SET_RX_ANTENNA:
-			wma_set_rx_antanna(wma_handle, 0, msg->bodyval);
 			break;
 		default:
 			WMA_LOGD("unknow msg type %x", msg->type);
@@ -38487,13 +38419,6 @@ static void wma_update_hdd_cfg(tp_wma_handle wma_handle)
                 wma_handle->wlan_resource_config.num_multicast_filter_entries;
 	wma_handle->tgt_cfg_update_cb(hdd_ctx, &hdd_tgt_cfg);
 }
-
-#ifdef WLAN_SMART_ANTENNA_FEATURE
-#define WMA_ENABLE_TX_PPDU_STATS(flag) \
-	WMI_RSRC_CFG_FLAG_SET((flag), TX_PPDU_STATS_ENABLE, 1)
-#else
-#define WMA_ENABLE_TX_PPDU_STATS(flag)
-#endif
 static wmi_buf_t wma_setup_wmi_init_msg(tp_wma_handle wma_handle,
 				wmi_service_ready_event_fixed_param *ev,
 				WMI_SERVICE_READY_EVENTID_param_tlvs *param_buf,
@@ -38534,7 +38459,7 @@ static wmi_buf_t wma_setup_wmi_init_msg(tp_wma_handle wma_handle,
 	WMITLV_SET_HDR(&resource_cfg->tlv_header,
 		       WMITLV_TAG_STRUC_wmi_resource_config,
 		       WMITLV_GET_STRUCT_TLVLEN(wmi_resource_config));
-	WMA_ENABLE_TX_PPDU_STATS(resource_cfg->flag1);
+
 	/* allocate memory requested by FW */
 	if (ev->num_mem_reqs > WMI_MAX_MEM_REQS) {
 		VOS_ASSERT(0);
@@ -40237,7 +40162,7 @@ VOS_STATUS wma_set_cts2self_for_p2p_go(void *wda_handle,
  * Return: VOS_STATUS.
  */
 static int32_t
-wmi_unified_ac_txq_optimize_send(wmi_unified_t wmi, uint8_t ac_txq_optimize)
+wmi_unified_ac_txq_optimize_send(wmi_unified_t wmi, uint8_t *ac_txq_optimize)
 {
 	wmi_pdev_set_ac_tx_queue_optimized_cmd_fixed_param *cmd;
 	wmi_buf_t buf;
@@ -40257,12 +40182,11 @@ wmi_unified_ac_txq_optimize_send(wmi_unified_t wmi, uint8_t ac_txq_optimize)
 		       wmi_pdev_set_ac_tx_queue_optimized_cmd_fixed_param));
 
 	cmd->pdev_id = 0;
-	if ((ac_txq_optimize & 0x0f) < NUM_AC)
-		cmd->ac = ac_txq_optimize & 0x0f;
-	else {
-		WMA_LOGE("%s: error conf val 0x%x", __func__, ac_txq_optimize);
+	if ((*ac_txq_optimize & 0x0f) < NUM_AC)
+		cmd->ac = *ac_txq_optimize & 0x0f;
+	else
 		return -EINVAL;
-	}
+
 	cmd->ac_tx_queue_optimize_enable = 1;
 
 	if (wmi_unified_cmd_send(wmi, buf, len,
@@ -40283,18 +40207,18 @@ wmi_unified_ac_txq_optimize_send(wmi_unified_t wmi, uint8_t ac_txq_optimize)
  *
  * Return: VOS_STATUS.
  */
-VOS_STATUS wma_set_ac_txq_optimize(void *wda_handle, uint8_t value)
+VOS_STATUS wma_set_ac_txq_optimize(void *wda_handle, uint8_t *value)
 {
 	int32_t ret;
 	tp_wma_handle wma = (tp_wma_handle)wda_handle;
 
 	ret = wmi_unified_ac_txq_optimize_send(wma->wmi_handle, value);
 	if (ret) {
-		WMA_LOGE("Fail to Set AC queue, input 0x%02x", value);
+		WMA_LOGE("Fail to Set AC queue, input 0x%02x", *value);
 		return VOS_STATUS_E_FAILURE;
 	}
 
-	WMA_LOGI("Successfully Set AC queue, input 0x%02x", value);
+	WMA_LOGI("Successfully Set AC queue, input 0x%02x", *value);
 	return VOS_STATUS_SUCCESS;
 }
 
@@ -42233,50 +42157,6 @@ int wma_btc_set_bt_wlan_interval(tp_wma_handle wma_handle,
 	return 0;
 }
 
-int wma_ps_set_tx_duty_cycle_control(tp_wma_handle wma_handle,
-				     uint32_t enable,
-				     uint32_t tx_cycle_percentage)
-{
-	int ret;
-	uint32_t len;
-	wmi_buf_t buf;
-	wmi_sta_tdcc_config_cmd_fixed_param *cmd;
-
-	if (!WMI_SERVICE_EXT_IS_ENABLED(wma_handle->wmi_service_bitmap,
-					wma_handle->wmi_service_ext_bitmap,
-					WMI_SERVICE_PS_TDCC)) {
-		WMA_LOGE(FL("TDCC not support"));
-		return 0;
-	}
-
-	len = sizeof(*cmd);
-	buf = wmi_buf_alloc(wma_handle->wmi_handle, len);
-	if (!buf) {
-		WMA_LOGE(FL("wmi_buf_alloc failed"));
-		return -ENOMEM;
-	}
-
-	cmd = (wmi_sta_tdcc_config_cmd_fixed_param *)wmi_buf_data(buf);
-	WMITLV_SET_HDR(&cmd->tlv_header,
-		WMITLV_TAG_STRUC_wmi_sta_tdcc_config_cmd_fixed_param,
-		WMITLV_GET_STRUCT_TLVLEN(wmi_sta_tdcc_config_cmd_fixed_param));
-
-	cmd->enabled = enable;
-	cmd->tx_cycle_percentage = tx_cycle_percentage;
-
-	ret = wmi_unified_cmd_send(wma_handle->wmi_handle, buf, len,
-				   WMI_STA_TDCC_CONFIG_CMDID);
-	if (ret != EOK) {
-		WMA_LOGE(FL("Fail to set tx duty cycle control"));
-		wmi_buf_free(buf);
-		return -EIO;
-	}
-
-	WMA_LOGI("Set tx ducy cycle control: enable %d, percentage %d",
-		 enable, tx_cycle_percentage);
-	return 0;
-}
-
 /**
  * wma_set_tx_power_scale() - set tx power scale
  * @vdev_id: vdev id
@@ -42339,52 +42219,4 @@ VOS_STATUS wma_set_tx_power_scale_decr_db(uint8_t vdev_id, int value)
 		WMA_LOGE("Decrease tx power value failed");
 
 	return ret;
-}
-
-/**
- * wma_set_rx_antanna() - Set matrix for smart antenna
- * @wma_handle: pointer to WMA handle
- * @pdev_id: PDEV ID
- * @matrix: smart antenna matrix
- *
- * Return: VOS_STATUS_SUCCESS for success.
- */
-VOS_STATUS wma_set_rx_antanna(void *handle,
-			      uint8_t pdev_id, uint32_t matrix)
-{
-	tp_wma_handle wma_handle;
-	wmi_buf_t buf;
-	wmi_pdev_smart_ant_set_rx_antenna_cmd_fixed_param *cmd;
-	int status;
-	int len = sizeof(*cmd);
-	uint32_t tag;
-
-	if (!handle) {
-		WMA_LOGP(FL("Invalid handle."));
-		return VOS_STATUS_E_INVAL;
-	}
-
-	wma_handle = handle;
-	buf = wmi_buf_alloc(wma_handle->wmi_handle, len);
-	if (!buf) {
-		WMA_LOGP("%s: failed to allocate memory for setting rx antenna cmd",
-			 __func__);
-		return VOS_STATUS_E_NOMEM;
-	}
-
-	cmd = (wmi_pdev_smart_ant_set_rx_antenna_cmd_fixed_param *)wmi_buf_data(buf);
-	tag = WMITLV_TAG_STRUC_wmi_pdev_smart_ant_set_rx_antenna_cmd_fixed_param;
-	len = WMITLV_GET_STRUCT_TLVLEN(wmi_pdev_smart_ant_set_rx_antenna_cmd_fixed_param);
-	WMITLV_SET_HDR(&cmd->tlv_header, tag, len);
-	cmd->pdev_id = pdev_id;
-	cmd->rx_antenna = matrix;
-	status = wmi_unified_cmd_send(wma_handle->wmi_handle, buf,
-				      sizeof(*cmd),
-				      WMI_PDEV_SMART_ANT_SET_RX_ANTENNA_CMDID);
-	if (status) {
-		WMA_LOGE("Failed to send set_rx_antenna cmd");
-		wmi_buf_free(buf);
-		return VOS_STATUS_E_FAILURE;
-	}
-	return VOS_STATUS_SUCCESS;
 }
