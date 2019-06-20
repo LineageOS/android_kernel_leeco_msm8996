@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011,2013,2015-2016,2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011,2013,2015-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -44,9 +44,6 @@
 #endif
 
 #include <i_vos_types.h>
-#ifdef CONFIG_VOS_MEM_PRE_ALLOC
-#include <vos_memory.h>
-#endif
 
 /**
  * struct adf_os_mem_dma_page_t - Allocated dmaable page
@@ -99,9 +96,11 @@ adf_os_mem_free_debug(void *buf);
 static inline void *
 adf_os_mem_alloc(adf_os_device_t osdev, adf_os_size_t size)
 {
-#if defined(CONFIG_WCNSS_MEM_PRE_ALLOC) || defined(CONFIG_VOS_MEM_PRE_ALLOC)
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
     void *p_mem;
+#endif
 
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
    if (size > WCNSS_PRE_ALLOC_GET_THRESHOLD)
    {
        p_mem = wcnss_prealloc_get(size);
@@ -121,7 +120,7 @@ adf_os_mem_alloc(adf_os_device_t osdev, adf_os_size_t size)
 static inline void
 adf_os_mem_free(void *buf)
 {
-#if defined(CONFIG_WCNSS_MEM_PRE_ALLOC) || defined(CONFIG_VOS_MEM_PRE_ALLOC)
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
     if (wcnss_prealloc_put(buf))
     {
         return;
