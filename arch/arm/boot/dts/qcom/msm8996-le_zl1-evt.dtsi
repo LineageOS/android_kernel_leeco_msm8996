@@ -410,6 +410,7 @@
 		qcom,batt-id-range-pct = <15>;
 		#include "batterydata-zl1-pro-lishen-4000mAh.dtsi"
 		#include "batterydata-zl1-pro-scud-4000mAh.dtsi"
+		/* #include "batterydata-itech-3000mah.dtsi" */
 	};
 };
 

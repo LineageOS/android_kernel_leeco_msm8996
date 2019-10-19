@@ -14,7 +14,7 @@
         qcom,hvdcp-icl-ma = <1200>;
         qcom,jeita-monitor-enable;*/
         qcom,warm-bat-ma =<1200>;
-        /*qcom,cool-bat-ma = <1100>;*/
+        qcom,cool-bat-ma = <0>; /* 1100 */
         qcom,thermal-scn-support;
         qcom,thermal-mitigation-scn = <4500 3800 3000 1000 500>;
         qcom,main-chg-fcc-percent-scn = <25 50 50 100 100>;
