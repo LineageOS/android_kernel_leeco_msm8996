@@ -239,8 +239,6 @@ struct smbchg_chip {
 	unsigned int			usb_therm_lvl_sel;
 	unsigned int			*usb_thermal_mitigation;
 	unsigned int			usb_prev_therm_lvl;
-#endif
-#ifdef CONFIG_VENDOR_LEECO
 	unsigned int			prev_black_call_mode;
 	unsigned int			prev_quick_charge_mode;
 #endif
@@ -292,13 +290,9 @@ struct smbchg_chip {
 	struct delayed_work		vfloat_adjust_work;
 	struct delayed_work		hvdcp_det_work;
 #ifdef CONFIG_VENDOR_LEECO
-	struct delayed_work	    letv_pd_set_vol_cur_work;
+	struct delayed_work		letv_pd_set_vol_cur_work;
 	struct delayed_work		pd_charger_init_work;
-#endif
-#ifdef CONFIG_VENDOR_LEECO
 	struct delayed_work		weak_charger_timeout_work;
-#endif
-#ifdef CONFIG_VENDOR_LEECO
 	struct delayed_work	    	first_detect_float_work;
 #endif
 
@@ -310,8 +304,6 @@ struct smbchg_chip {
 	struct mutex			therm_lvl_lock;
 #ifdef CONFIG_VENDOR_LEECO
 	struct mutex			usb_therm_lvl_lock;
-#endif
-#ifdef CONFIG_VENDOR_LEECO
 	struct mutex			black_call_mode_lock;
 	struct mutex			quick_charge_mode_lock;
 #endif
@@ -476,7 +468,7 @@ extern char g_boot_mode[];
 
 #ifdef CONFIG_VENDOR_LEECO
 /* maybe unused? */
-	/* battery charging disabled while system thermal levels rise */
+/* battery charging disabled while system thermal levels rise */
 #define BATTCHG_THERMAL_EN_VOTER "BATTCHG_THERMAL_EN_VOTER"
 #endif
 
