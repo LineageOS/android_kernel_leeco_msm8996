@@ -415,6 +415,7 @@
 
 &pmi8994_fg {
 	qcom,thermal-coefficients = [C2 86 BB 50 CF 37];
+	qcom,use-otp-profile;
 };
 
 &pmi8994_haptics {
