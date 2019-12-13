@@ -35,6 +35,7 @@
         qcom,fg-chg-iterm-ma = <80>;
         qcom,fg-cutoff-voltage-mv = <3300>;
         qcom,irq-volt-empty-mv = <3200>;
+        qcom,use-otp-profile;
 };
 
 &pm8994_mpps {
