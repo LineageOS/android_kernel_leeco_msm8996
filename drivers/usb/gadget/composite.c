@@ -2061,8 +2061,9 @@ void composite_disconnect(struct usb_gadget *gadget)
 	 * disconnect callbacks?
 	 */
 	spin_lock_irqsave(&cdev->lock, flags);
+	cdev->suspended = 0;
 	if (cdev->config) {
-		if (!gadget_is_dwc3(gadget) && !cdev->suspended) {
+		if (!gadget_is_dwc3(gadget)) {
 			spin_unlock_irqrestore(&cdev->lock, flags);
 			msm_do_bam_disable_enable(CI_CTRL);
 			spin_lock_irqsave(&cdev->lock, flags);
@@ -2246,11 +2247,15 @@ void composite_dev_cleanup(struct usb_composite_dev *cdev)
 	}
 	if (cdev->os_desc_req) {
 		kfree(cdev->os_desc_req->buf);
+		cdev->os_desc_req->buf = NULL;
 		usb_ep_free_request(cdev->gadget->ep0, cdev->os_desc_req);
+		cdev->os_desc_req = NULL;
 	}
 	if (cdev->req) {
 		kfree(cdev->req->buf);
+		cdev->req->buf = NULL;
 		usb_ep_free_request(cdev->gadget->ep0, cdev->req);
+		cdev->req = NULL;
 	}
 	cdev->next_string_id = 0;
 	device_remove_file(&cdev->gadget->dev, &dev_attr_suspended);

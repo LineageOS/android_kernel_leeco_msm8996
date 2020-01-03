@@ -1126,10 +1126,10 @@ static int azx_free(struct azx *chip)
 	}
 
 	if (chip->initialized) {
+		azx_stop_chip(chip);
 		azx_clear_irq_pending(chip);
 		for (i = 0; i < chip->num_streams; i++)
 			azx_stream_stop(chip, &chip->azx_dev[i]);
-		azx_stop_chip(chip);
 	}
 
 	if (chip->irq >= 0)
@@ -1527,9 +1527,6 @@ static int azx_first_init(struct azx *chip)
 			chip->msi = 0;
 	}
 
-	if (azx_acquire_irq(chip, 0) < 0)
-		return -EBUSY;
-
 	pci_set_master(pci);
 	synchronize_irq(chip->irq);
 
@@ -1637,6 +1634,9 @@ static int azx_first_init(struct azx *chip)
 		dev_err(card->dev, "no codecs found!\n");
 		return -ENODEV;
 	}
+
+	if (azx_acquire_irq(chip, 0) < 0)
+		return -EBUSY;
 
 	strcpy(card->driver, "HDA-Intel");
 	strlcpy(card->shortname, driver_short_names[chip->driver_type],
@@ -1987,9 +1987,17 @@ out_free:
 static void azx_remove(struct pci_dev *pci)
 {
 	struct snd_card *card = pci_get_drvdata(pci);
+	struct azx *chip;
+	struct hda_intel *hda;
 
-	if (card)
+	if (card) {
+		/* cancel the pending probing work */
+		chip = card->private_data;
+		hda = container_of(chip, struct hda_intel, chip);
+		cancel_work_sync(&hda->probe_work);
+
 		snd_card_free(card);
+	}
 }
 
 /* PCI IDs */
