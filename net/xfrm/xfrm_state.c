@@ -1361,6 +1361,15 @@ out:
 		if (x1->curlft.use_time)
 			xfrm_state_check_expire(x1);
 
+		if (x->props.output_mark) {
+			spin_lock_bh(&net->xfrm.xfrm_state_lock);
+
+			x1->props.output_mark = x->props.output_mark;
+
+			__xfrm_state_bump_genids(x1);
+			spin_unlock_bh(&net->xfrm.xfrm_state_lock);
+		}
+
 		err = 0;
 		x->km.state = XFRM_STATE_DEAD;
 		__xfrm_state_put(x);
@@ -1851,11 +1860,6 @@ int xfrm_user_policy(struct sock *sk, int optname, u8 __user *optval, int optlen
 	u8 *data;
 	struct xfrm_mgr *km;
 	struct xfrm_policy *pol = NULL;
-
-#ifdef CONFIG_COMPAT
-	if (is_compat_task())
-		return -EOPNOTSUPP;
-#endif
 
 	if (!optval && !optlen) {
 		xfrm_sk_policy_insert(sk, XFRM_POLICY_IN, NULL);
