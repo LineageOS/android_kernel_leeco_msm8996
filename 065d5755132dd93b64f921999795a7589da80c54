@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4dc9b7f5_650cbd4a",
+        "filename": "arch/arm/boot/dts/qcom/msm8996-le_zl1-dvt1.dtsi",
+        "patchSetId": 2
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 19252
+      },
+      "writtenOn": "2020-03-03T21:34:11Z",
+      "side": 1,
+      "message": "This doesn\u0027t need to be decommonized since it\u0027s being set on x2 and zl1. Only the \"qcom,use-otp-profile;\" line needs to be decommonized.",
+      "revId": "065d5755132dd93b64f921999795a7589da80c54",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
