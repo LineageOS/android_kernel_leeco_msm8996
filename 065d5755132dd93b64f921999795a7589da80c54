@@ -34,6 +34,24 @@
       "revId": "065d5755132dd93b64f921999795a7589da80c54",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "ac4890e9_0f2b8843",
+        "filename": "arch/arm/boot/dts/qcom/msm8996-le_zl1-dvt1.dtsi",
+        "patchSetId": 2
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 19252
+      },
+      "writtenOn": "2020-03-03T21:48:19Z",
+      "side": 1,
+      "message": "Done. Please review",
+      "parentUuid": "dacec80b_15507205",
+      "revId": "065d5755132dd93b64f921999795a7589da80c54",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
