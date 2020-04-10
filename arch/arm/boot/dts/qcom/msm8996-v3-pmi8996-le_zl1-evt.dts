@@ -15,7 +15,7 @@
 
 #include "msm8996-v3.dtsi"
 #include "msm-pmi8996.dtsi"
-#include "msm8996-le_zl1-evt.dtsi"
+#include "leeco/msm8996-le_zl1-evt.dtsi"
 
 
 / {

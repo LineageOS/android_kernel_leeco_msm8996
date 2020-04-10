@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8996-pinctrl.dtsi"
+#include "../msm8996-pinctrl.dtsi"
 
 / {
 	bluetooth: bt_qca6174 {
@@ -333,8 +333,8 @@
 	};
 };
 
-#include "msm8996-sde-display.dtsi"
-#include "msm8996-mdss-panels.dtsi"
+#include "../msm8996-sde-display.dtsi"
+#include "../msm8996-mdss-panels.dtsi"
 
 &mdss_mdp {
 	qcom,mdss-pref-prim-intf = "dsi";
