@@ -14,7 +14,7 @@
 /dts-v1/;
 
 #include "msm8996-v3.dtsi"
-#include "msm8996-le_x2-dvt1.1.dtsi"
+#include "leeco/msm8996-le_x2-dvt1.1.dtsi"
 
 / {
 	model = "Letv Technologies, Inc. MSM 8996 v3 + PMI8994 LE_X2-DVT1.1";

@@ -15,8 +15,8 @@
 
 #include "msm8996pro.dtsi"
 #include "msm-pmi8996.dtsi"
-#include "msm8996-le_zl1-na.dtsi"
-#include "msm8996-le_zl1-common.dtsi"
+#include "leeco/msm8996-le_zl1-na.dtsi"
+#include "leeco/msm8996-le_zl1-common.dtsi"
 
 / {
 	model = "Letv Technologies, Inc. MSM 8996pro + PMI8996 LE_ZL1-NA";
