@@ -321,6 +321,10 @@ DEVICE_CHANNEL(ch4_dimm_label, S_IRUGO | S_IWUSR,
 	channel_dimm_label_show, channel_dimm_label_store, 4);
 DEVICE_CHANNEL(ch5_dimm_label, S_IRUGO | S_IWUSR,
 	channel_dimm_label_show, channel_dimm_label_store, 5);
+DEVICE_CHANNEL(ch6_dimm_label, S_IRUGO | S_IWUSR,
+	channel_dimm_label_show, channel_dimm_label_store, 6);
+DEVICE_CHANNEL(ch7_dimm_label, S_IRUGO | S_IWUSR,
+	channel_dimm_label_show, channel_dimm_label_store, 7);
 
 /* Total possible dynamic DIMM Label attribute file table */
 static struct device_attribute *dynamic_csrow_dimm_attr[] = {
@@ -329,7 +333,9 @@ static struct device_attribute *dynamic_csrow_dimm_attr[] = {
 	&dev_attr_legacy_ch2_dimm_label.attr,
 	&dev_attr_legacy_ch3_dimm_label.attr,
 	&dev_attr_legacy_ch4_dimm_label.attr,
-	&dev_attr_legacy_ch5_dimm_label.attr
+	&dev_attr_legacy_ch5_dimm_label.attr,
+	&dev_attr_legacy_ch6_dimm_label.attr,
+	&dev_attr_legacy_ch7_dimm_label.attr,
 };
 
 /* possible dynamic channel ce_count attribute files */
@@ -345,6 +351,10 @@ DEVICE_CHANNEL(ch4_ce_count, S_IRUGO,
 		   channel_ce_count_show, NULL, 4);
 DEVICE_CHANNEL(ch5_ce_count, S_IRUGO,
 		   channel_ce_count_show, NULL, 5);
+DEVICE_CHANNEL(ch6_ce_count, S_IRUGO,
+		   channel_ce_count_show, NULL, 6);
+DEVICE_CHANNEL(ch7_ce_count, S_IRUGO,
+		   channel_ce_count_show, NULL, 7);
 
 /* Total possible dynamic ce_count attribute file table */
 static struct device_attribute *dynamic_csrow_ce_count_attr[] = {
@@ -353,7 +363,9 @@ static struct device_attribute *dynamic_csrow_ce_count_attr[] = {
 	&dev_attr_legacy_ch2_ce_count.attr,
 	&dev_attr_legacy_ch3_ce_count.attr,
 	&dev_attr_legacy_ch4_ce_count.attr,
-	&dev_attr_legacy_ch5_ce_count.attr
+	&dev_attr_legacy_ch5_ce_count.attr,
+	&dev_attr_legacy_ch6_ce_count.attr,
+	&dev_attr_legacy_ch7_ce_count.attr,
 };
 
 static inline int nr_pages_per_csrow(struct csrow_info *csrow)
@@ -977,21 +989,26 @@ nomem:
  */
 int edac_create_sysfs_mci_device(struct mem_ctl_info *mci)
 {
+	char *name;
 	int i, err;
 
 	/*
 	 * The memory controller needs its own bus, in order to avoid
 	 * namespace conflicts at /sys/bus/edac.
 	 */
-	mci->bus->name = kasprintf(GFP_KERNEL, "mc%d", mci->mc_idx);
-	if (!mci->bus->name)
+	name = kasprintf(GFP_KERNEL, "mc%d", mci->mc_idx);
+	if (!name)
 		return -ENOMEM;
+
+	mci->bus->name = name;
 
 	edac_dbg(0, "creating bus %s\n", mci->bus->name);
 
 	err = bus_register(mci->bus);
-	if (err < 0)
+	if (err < 0) {
+		kfree(name);
 		return err;
+	}
 
 	/* get the /sys/devices/system/edac subsys reference */
 	mci->dev.type = &mci_attr_type;
@@ -1075,7 +1092,8 @@ fail:
 fail2:
 	device_unregister(&mci->dev);
 	bus_unregister(mci->bus);
-	kfree(mci->bus->name);
+	kfree(name);
+
 	return err;
 }
 
@@ -1106,10 +1124,12 @@ void edac_remove_sysfs_mci_device(struct mem_ctl_info *mci)
 
 void edac_unregister_sysfs(struct mem_ctl_info *mci)
 {
+	const char *name = mci->bus->name;
+
 	edac_dbg(1, "Unregistering device %s\n", dev_name(&mci->dev));
 	device_unregister(&mci->dev);
 	bus_unregister(mci->bus);
-	kfree(mci->bus->name);
+	kfree(name);
 }
 
 static void mc_attr_release(struct device *dev)
