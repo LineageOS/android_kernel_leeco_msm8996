@@ -76,7 +76,7 @@
 #include <net/netns/generic.h>
 #include <net/pkt_sched.h>
 #include <linux/rculist.h>
-#include <net/flow_keys.h>
+#include <net/flow_dissector.h>
 #include "bonding.h"
 #include "bond_3ad.h"
 #include "bond_alb.h"
@@ -211,6 +211,8 @@ static void bond_uninit(struct net_device *bond_dev);
 static struct rtnl_link_stats64 *bond_get_stats(struct net_device *bond_dev,
 						struct rtnl_link_stats64 *stats);
 static void bond_slave_arr_handler(struct work_struct *work);
+static bool bond_time_in_interval(struct bonding *bond, unsigned long last_act,
+				  int mod);
 
 /*---------------------------- General routines -----------------------------*/
 
@@ -2310,7 +2312,7 @@ int bond_arp_rcv(const struct sk_buff *skb, struct bonding *bond,
 		 struct slave *slave)
 {
 	struct arphdr *arp = (struct arphdr *)skb->data;
-	struct slave *curr_active_slave;
+	struct slave *curr_active_slave, *curr_arp_slave;
 	unsigned char *arp_ptr;
 	__be32 sip, tip;
 	int alen, is_arp = skb->protocol == __cpu_to_be16(ETH_P_ARP);
@@ -2357,26 +2359,41 @@ int bond_arp_rcv(const struct sk_buff *skb, struct bonding *bond,
 		     &sip, &tip);
 
 	curr_active_slave = rcu_dereference(bond->curr_active_slave);
+	curr_arp_slave = rcu_dereference(bond->current_arp_slave);
 
-	/* Backup slaves won't see the ARP reply, but do come through
-	 * here for each ARP probe (so we swap the sip/tip to validate
-	 * the probe).  In a "redundant switch, common router" type of
-	 * configuration, the ARP probe will (hopefully) travel from
-	 * the active, through one switch, the router, then the other
-	 * switch before reaching the backup.
+	/* We 'trust' the received ARP enough to validate it if:
 	 *
-	 * We 'trust' the arp requests if there is an active slave and
-	 * it received valid arp reply(s) after it became active. This
-	 * is done to avoid endless looping when we can't reach the
+	 * (a) the slave receiving the ARP is active (which includes the
+	 * current ARP slave, if any), or
+	 *
+	 * (b) the receiving slave isn't active, but there is a currently
+	 * active slave and it received valid arp reply(s) after it became
+	 * the currently active slave, or
+	 *
+	 * (c) there is an ARP slave that sent an ARP during the prior ARP
+	 * interval, and we receive an ARP reply on any slave.  We accept
+	 * these because switch FDB update delays may deliver the ARP
+	 * reply to a slave other than the sender of the ARP request.
+	 *
+	 * Note: for (b), backup slaves are receiving the broadcast ARP
+	 * request, not a reply.  This request passes from the sending
+	 * slave through the L2 switch(es) to the receiving slave.  Since
+	 * this is checking the request, sip/tip are swapped for
+	 * validation.
+	 *
+	 * This is done to avoid endless looping when we can't reach the
 	 * arp_ip_target and fool ourselves with our own arp requests.
 	 */
-
 	if (bond_is_active_slave(slave))
 		bond_validate_arp(bond, slave, sip, tip);
 	else if (curr_active_slave &&
 		 time_after(slave_last_rx(bond, curr_active_slave),
 			    curr_active_slave->last_link_up))
 		bond_validate_arp(bond, slave, tip, sip);
+	else if (curr_arp_slave && (arp->ar_op == htons(ARPOP_REPLY)) &&
+		 bond_time_in_interval(bond,
+				       dev_trans_start(curr_arp_slave->dev), 1))
+		bond_validate_arp(bond, slave, sip, tip);
 
 out_unlock:
 	if (arp != (struct arphdr *)skb->data)
@@ -3004,16 +3021,16 @@ static bool bond_flow_dissect(struct bonding *bond, struct sk_buff *skb,
 	int noff, proto = -1;
 
 	if (bond->params.xmit_policy > BOND_XMIT_POLICY_LAYER23)
-		return skb_flow_dissect(skb, fk);
+		return skb_flow_dissect_flow_keys(skb, fk);
 
-	fk->ports = 0;
+	fk->ports.ports = 0;
 	noff = skb_network_offset(skb);
 	if (skb->protocol == htons(ETH_P_IP)) {
 		if (unlikely(!pskb_may_pull(skb, noff + sizeof(*iph))))
 			return false;
 		iph = ip_hdr(skb);
-		fk->src = iph->saddr;
-		fk->dst = iph->daddr;
+		fk->addrs.src = iph->saddr;
+		fk->addrs.dst = iph->daddr;
 		noff += iph->ihl << 2;
 		if (!ip_is_fragment(iph))
 			proto = iph->protocol;
@@ -3021,15 +3038,15 @@ static bool bond_flow_dissect(struct bonding *bond, struct sk_buff *skb,
 		if (unlikely(!pskb_may_pull(skb, noff + sizeof(*iph6))))
 			return false;
 		iph6 = ipv6_hdr(skb);
-		fk->src = (__force __be32)ipv6_addr_hash(&iph6->saddr);
-		fk->dst = (__force __be32)ipv6_addr_hash(&iph6->daddr);
+		fk->addrs.src = (__force __be32)ipv6_addr_hash(&iph6->saddr);
+		fk->addrs.dst = (__force __be32)ipv6_addr_hash(&iph6->daddr);
 		noff += sizeof(*iph6);
 		proto = iph6->nexthdr;
 	} else {
 		return false;
 	}
 	if (bond->params.xmit_policy == BOND_XMIT_POLICY_LAYER34 && proto >= 0)
-		fk->ports = skb_flow_get_ports(skb, noff, proto);
+		fk->ports.ports = skb_flow_get_ports(skb, noff, proto);
 
 	return true;
 }
@@ -3055,8 +3072,8 @@ u32 bond_xmit_hash(struct bonding *bond, struct sk_buff *skb)
 	    bond->params.xmit_policy == BOND_XMIT_POLICY_ENCAP23)
 		hash = bond_eth_hash(skb);
 	else
-		hash = (__force u32)flow.ports;
-	hash ^= (__force u32)flow.dst ^ (__force u32)flow.src;
+		hash = (__force u32)flow.ports.ports;
+	hash ^= (__force u32)flow.addrs.dst ^ (__force u32)flow.addrs.src;
 	hash ^= (hash >> 16);
 	hash ^= (hash >> 8);
 

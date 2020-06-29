@@ -2182,6 +2182,8 @@ lpfc_sli_def_mbox_cmpl(struct lpfc_hba *phba, LPFC_MBOXQ_t *pmb)
 	    !pmb->u.mb.mbxStatus) {
 		rpi = pmb->u.mb.un.varWords[0];
 		vpi = pmb->u.mb.un.varRegLogin.vpi;
+		if (phba->sli_rev == LPFC_SLI_REV4)
+			vpi -= phba->sli4_hba.max_cfg_param.vpi_base;
 		lpfc_unreg_login(phba, vpi, rpi, pmb);
 		pmb->mbox_cmpl = lpfc_sli_def_mbox_cmpl;
 		rc = lpfc_sli_issue_mbox(phba, pmb, MBX_NOWAIT);
@@ -11726,13 +11728,19 @@ send_current_mbox:
 	phba->sli.sli_flag &= ~LPFC_SLI_MBOX_ACTIVE;
 	/* Setting active mailbox pointer need to be in sync to flag clear */
 	phba->sli.mbox_active = NULL;
+	if (bf_get(lpfc_trailer_consumed, mcqe))
+		lpfc_sli4_mq_release(phba->sli4_hba.mbx_wq);
 	spin_unlock_irqrestore(&phba->hbalock, iflags);
 	/* Wake up worker thread to post the next pending mailbox command */
 	lpfc_worker_wake_up(phba);
+	return workposted;
+
 out_no_mqe_complete:
+	spin_lock_irqsave(&phba->hbalock, iflags);
 	if (bf_get(lpfc_trailer_consumed, mcqe))
 		lpfc_sli4_mq_release(phba->sli4_hba.mbx_wq);
-	return workposted;
+	spin_unlock_irqrestore(&phba->hbalock, iflags);
+	return false;
 }
 
 /**
@@ -14840,10 +14848,12 @@ lpfc_fc_frame_add(struct lpfc_vport *vport, struct hbq_dmabuf *dmabuf)
 	struct lpfc_dmabuf *h_buf;
 	struct hbq_dmabuf *seq_dmabuf = NULL;
 	struct hbq_dmabuf *temp_dmabuf = NULL;
+	uint8_t	found = 0;
 
 	INIT_LIST_HEAD(&dmabuf->dbuf.list);
 	dmabuf->time_stamp = jiffies;
 	new_hdr = (struct fc_frame_header *)dmabuf->hbuf.virt;
+
 	/* Use the hdr_buf to find the sequence that this frame belongs to */
 	list_for_each_entry(h_buf, &vport->rcv_buffer_list, list) {
 		temp_hdr = (struct fc_frame_header *)h_buf->virt;
@@ -14883,7 +14893,8 @@ lpfc_fc_frame_add(struct lpfc_vport *vport, struct hbq_dmabuf *dmabuf)
 		return seq_dmabuf;
 	}
 	/* find the correct place in the sequence to insert this frame */
-	list_for_each_entry_reverse(d_buf, &seq_dmabuf->dbuf.list, list) {
+	d_buf = list_entry(seq_dmabuf->dbuf.list.prev, typeof(*d_buf), list);
+	while (!found) {
 		temp_dmabuf = container_of(d_buf, struct hbq_dmabuf, dbuf);
 		temp_hdr = (struct fc_frame_header *)temp_dmabuf->hbuf.virt;
 		/*
@@ -14893,9 +14904,17 @@ lpfc_fc_frame_add(struct lpfc_vport *vport, struct hbq_dmabuf *dmabuf)
 		if (be16_to_cpu(new_hdr->fh_seq_cnt) >
 			be16_to_cpu(temp_hdr->fh_seq_cnt)) {
 			list_add(&dmabuf->dbuf.list, &temp_dmabuf->dbuf.list);
-			return seq_dmabuf;
+			found = 1;
+			break;
 		}
+
+		if (&d_buf->list == &seq_dmabuf->dbuf.list)
+			break;
+		d_buf = list_entry(d_buf->list.prev, typeof(*d_buf), list);
 	}
+
+	if (found)
+		return seq_dmabuf;
 	return NULL;
 }
 
@@ -15747,6 +15766,13 @@ lpfc_sli4_alloc_rpi(struct lpfc_hba *phba)
 static void
 __lpfc_sli4_free_rpi(struct lpfc_hba *phba, int rpi)
 {
+	/*
+	 * if the rpi value indicates a prior unreg has already
+	 * been done, skip the unreg.
+	 */
+	if (rpi == LPFC_RPI_ALLOC_ERROR)
+		return;
+
 	if (test_and_clear_bit(rpi, phba->sli4_hba.rpi_bmask)) {
 		phba->sli4_hba.rpi_count--;
 		phba->sli4_hba.max_cfg_param.rpi_used--;
@@ -16170,7 +16196,7 @@ fail_fcf_read:
 }
 
 /**
- * lpfc_check_next_fcf_pri
+ * lpfc_check_next_fcf_pri_level
  * phba pointer to the lpfc_hba struct for this port.
  * This routine is called from the lpfc_sli4_fcf_rr_next_index_get
  * routine when the rr_bmask is empty. The FCF indecies are put into the
@@ -16313,21 +16339,18 @@ next_priority:
 			goto initial_priority;
 		lpfc_printf_log(phba, KERN_WARNING, LOG_FIP,
 				"2844 No roundrobin failover FCF available\n");
-		if (next_fcf_index >= LPFC_SLI4_FCF_TBL_INDX_MAX)
-			return LPFC_FCOE_FCF_NEXT_NONE;
-		else {
-			lpfc_printf_log(phba, KERN_WARNING, LOG_FIP,
-				"3063 Only FCF available idx %d, flag %x\n",
-				next_fcf_index,
-			phba->fcf.fcf_pri[next_fcf_index].fcf_rec.flag);
-			return next_fcf_index;
-		}
+
+		return LPFC_FCOE_FCF_NEXT_NONE;
 	}
 
 	if (next_fcf_index < LPFC_SLI4_FCF_TBL_INDX_MAX &&
 		phba->fcf.fcf_pri[next_fcf_index].fcf_rec.flag &
-		LPFC_FCF_FLOGI_FAILED)
+		LPFC_FCF_FLOGI_FAILED) {
+		if (list_is_singular(&phba->fcf.fcf_pri_list))
+			return LPFC_FCOE_FCF_NEXT_NONE;
+
 		goto next_priority;
+	}
 
 	lpfc_printf_log(phba, KERN_INFO, LOG_FIP,
 			"2845 Get next roundrobin failover FCF (x%x)\n",

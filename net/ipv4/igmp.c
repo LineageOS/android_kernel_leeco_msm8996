@@ -370,9 +370,8 @@ static struct sk_buff *igmpv3_newpack(struct net_device *dev, unsigned int mtu)
 	skb_dst_set(skb, &rt->dst);
 	skb->dev = dev;
 
-	skb->reserved_tailroom = skb_end_offset(skb) -
-				 min(mtu, skb_end_offset(skb));
 	skb_reserve(skb, hlen);
+	skb_tailroom_reserve(skb, mtu, tlen);
 
 	skb_reset_network_header(skb);
 	pip = ip_hdr(skb);
@@ -391,7 +390,7 @@ static struct sk_buff *igmpv3_newpack(struct net_device *dev, unsigned int mtu)
 
 	pip->protocol = IPPROTO_IGMP;
 	pip->tot_len  = 0;	/* filled in later */
-	ip_select_ident(skb, NULL);
+	ip_select_ident(net, skb, NULL);
 	((u8 *)&pip[1])[0] = IPOPT_RA;
 	((u8 *)&pip[1])[1] = 4;
 	((u8 *)&pip[1])[2] = 0;
@@ -741,7 +740,7 @@ static int igmp_send_report(struct in_device *in_dev, struct ip_mc_list *pmc,
 	iph->daddr    = dst;
 	iph->saddr    = fl4.saddr;
 	iph->protocol = IPPROTO_IGMP;
-	ip_select_ident(skb, NULL);
+	ip_select_ident(net, skb, NULL);
 	((u8 *)&iph[1])[0] = IPOPT_RA;
 	((u8 *)&iph[1])[1] = 4;
 	((u8 *)&iph[1])[2] = 0;

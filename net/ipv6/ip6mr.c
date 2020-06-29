@@ -1078,6 +1078,7 @@ static struct mfc6_cache *ip6mr_cache_alloc(void)
 	struct mfc6_cache *c = kmem_cache_zalloc(mrt_cachep, GFP_KERNEL);
 	if (c == NULL)
 		return NULL;
+	c->mfc_un.res.last_assert = jiffies - MFC_ASSERT_THRESH - 1;
 	c->mfc_un.res.minvif = MAXMIFS;
 	return c;
 }
@@ -1593,14 +1594,15 @@ static int ip6mr_sk_init(struct mr6_table *mrt, struct sock *sk)
 	if (likely(mrt->mroute6_sk == NULL)) {
 		mrt->mroute6_sk = sk;
 		net->ipv6.devconf_all->mc_forwarding++;
+	} else {
+		err = -EADDRINUSE;
+	}
+	write_unlock_bh(&mrt_lock);
+
+	if (!err)
 		inet6_netconf_notify_devconf(net, NETCONFA_MC_FORWARDING,
 					     NETCONFA_IFINDEX_ALL,
 					     net->ipv6.devconf_all);
-	}
-	else
-		err = -EADDRINUSE;
-	write_unlock_bh(&mrt_lock);
-
 	rtnl_unlock();
 
 	return err;
@@ -1618,11 +1620,11 @@ int ip6mr_sk_done(struct sock *sk)
 			write_lock_bh(&mrt_lock);
 			mrt->mroute6_sk = NULL;
 			net->ipv6.devconf_all->mc_forwarding--;
+			write_unlock_bh(&mrt_lock);
 			inet6_netconf_notify_devconf(net,
 						     NETCONFA_MC_FORWARDING,
 						     NETCONFA_IFINDEX_ALL,
 						     net->ipv6.devconf_all);
-			write_unlock_bh(&mrt_lock);
 
 			mroute_clean_tables(mrt, false);
 			err = 0;
