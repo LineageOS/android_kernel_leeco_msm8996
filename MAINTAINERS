@@ -5179,13 +5179,6 @@ F:	include/linux/isdn/
 F:	include/uapi/linux/isdn.h
 F:	include/uapi/linux/isdn/
 
-ISDN SUBSYSTEM (Eicon active card driver)
-M:	Armin Schindler <mac@melware.de>
-L:	isdn4linux@listserv.isdn4linux.de (subscribers-only)
-W:	http://www.melware.de
-S:	Maintained
-F:	drivers/isdn/hardware/eicon/
-
 IT87 HARDWARE MONITORING DRIVER
 M:	Jean Delvare <jdelvare@suse.de>
 L:	lm-sensors@lm-sensors.org
@@ -8548,6 +8541,13 @@ S:	Supported
 F:	arch/arm/mach-s3c24xx/mach-bast.c
 F:	arch/arm/mach-s3c24xx/bast-ide.c
 F:	arch/arm/mach-s3c24xx/bast-irq.c
+
+SIPHASH PRF ROUTINES
+M:	Jason A. Donenfeld <Jason@zx2c4.com>
+S:	Maintained
+F:	lib/siphash.c
+F:	lib/test_siphash.c
+F:	include/linux/siphash.h
 
 TI DAVINCI MACHINE SUPPORT
 M:	Sekhar Nori <nsekhar@ti.com>

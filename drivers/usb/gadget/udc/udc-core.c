@@ -57,6 +57,8 @@ static DEFINE_MUTEX(udc_lock);
 int usb_gadget_map_request(struct usb_gadget *gadget,
 		struct usb_request *req, int is_in)
 {
+	struct device *dev = gadget->dev.parent;
+
 	if (req->length == 0)
 		return 0;
 
@@ -66,7 +68,7 @@ int usb_gadget_map_request(struct usb_gadget *gadget,
 		mapped = dma_map_sg(&gadget->dev, req->sg, req->num_sgs,
 				is_in ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
 		if (mapped == 0) {
-			dev_err(&gadget->dev, "failed to map SGs\n");
+			dev_err(dev, "failed to map SGs\n");
 			return -EFAULT;
 		}
 
@@ -92,7 +94,7 @@ void usb_gadget_unmap_request(struct usb_gadget *gadget,
 		return;
 
 	if (req->num_mapped_sgs) {
-		dma_unmap_sg(&gadget->dev, req->sg, req->num_mapped_sgs,
+		dma_unmap_sg(&gadget->dev, req->sg, req->num_sgs,
 				is_in ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
 
 		req->num_mapped_sgs = 0;
