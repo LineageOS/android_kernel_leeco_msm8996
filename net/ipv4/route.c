@@ -480,6 +480,10 @@ u32 ip_idents_reserve(u32 hash, int segs)
 	if (old != now && cmpxchg(&bucket->stamp32, old, now) == old)
 		delta = prandom_u32_max(now - old);
 
+	/* If UBSAN reports an error there, please make sure your compiler
+	 * supports -fno-strict-overflow before reporting it that was a bug
+	 * in UBSAN, and it has been fixed in GCC-8.
+	 */
 	return atomic_add_return(segs + delta, &bucket->id) - segs;
 }
 EXPORT_SYMBOL(ip_idents_reserve);
@@ -755,7 +759,9 @@ static void __ip_do_redirect(struct rtable *rt, struct sk_buff *skb, struct flow
 			goto reject_redirect;
 	}
 
-	n = ipv4_neigh_lookup(&rt->dst, NULL, &new_gw);
+	n = __ipv4_neigh_lookup(rt->dst.dev, new_gw);
+	if (!n)
+		n = neigh_create(&arp_tbl, &new_gw, rt->dst.dev);
 	if (!IS_ERR(n)) {
 		if (!(n->nud_state & NUD_VALID)) {
 			neigh_event_send(n, NULL);
@@ -885,7 +891,7 @@ void ip_rt_send_redirect(struct sk_buff *skb)
 	/* Check for load limit; set rate_last to the latest sent
 	 * redirect.
 	 */
-	if (peer->rate_tokens == 0 ||
+	if (peer->n_redirects == 0 ||
 	    time_after(jiffies,
 		       (peer->rate_last +
 			(ip_rt_redirect_load << peer->n_redirects)))) {
