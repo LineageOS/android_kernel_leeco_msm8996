@@ -4597,8 +4597,8 @@ static void dwc3_msm_otg_sm_work(struct work_struct *w)
 		} else {
 			dev_dbg(mdwc->dev, "still in a_host state. Resuming root hub.\n");
 			dbg_event(0xFF, "XHCIResume", 0);
-			if (dwc)
-				pm_runtime_resume(&dwc->xhci->dev);
+				if (dwc)
+					pm_runtime_resume(&dwc->xhci->dev);
 			//if (mdwc->no_wakeup_src_in_hostmode)
 				sdv_pm_wakeup_event(3,mdwc->dev,
 						DWC3_WAKEUP_SRC_TIMEOUT);
