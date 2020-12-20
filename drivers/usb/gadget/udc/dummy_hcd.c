@@ -269,7 +269,7 @@ static void nuke(struct dummy *dum, struct dummy_ep *ep)
 /* caller must hold lock */
 static void stop_activity(struct dummy *dum)
 {
-	struct dummy_ep	*ep;
+	int i;
 
 	/* prevent any more requests */
 	dum->address = 0;
@@ -277,8 +277,8 @@ static void stop_activity(struct dummy *dum)
 	/* The timer is left running so that outstanding URBs can fail */
 
 	/* nuke any pending requests first, so driver i/o is quiesced */
-	list_for_each_entry(ep, &dum->gadget.ep_list, ep.ep_list)
-		nuke(dum, ep);
+	for (i = 0; i < DUMMY_ENDPOINTS; ++i)
+		nuke(dum, &dum->ep[i]);
 
 	/* driver now does any non-usb quiescing necessary */
 }
@@ -380,20 +380,13 @@ static void set_link_state(struct dummy_hcd *dum_hcd)
 		    (dum_hcd->old_status & USB_PORT_STAT_RESET) == 0 &&
 		    dum->driver) {
 			stop_activity(dum);
-			spin_unlock(&dum->lock);
 			dum->driver->disconnect(&dum->gadget);
-			spin_lock(&dum->lock);
 		}
 	} else if (dum_hcd->active != dum_hcd->old_active) {
-		if (dum_hcd->old_active && dum->driver->suspend) {
-			spin_unlock(&dum->lock);
+		if (dum_hcd->old_active && dum->driver->suspend)
 			dum->driver->suspend(&dum->gadget);
-			spin_lock(&dum->lock);
-		} else if (!dum_hcd->old_active &&  dum->driver->resume) {
-			spin_unlock(&dum->lock);
+		else if (!dum_hcd->old_active &&  dum->driver->resume)
 			dum->driver->resume(&dum->gadget);
-			spin_lock(&dum->lock);
-		}
 	}
 
 	dum_hcd->old_status = dum_hcd->port_status;
@@ -927,7 +920,9 @@ static int dummy_udc_stop(struct usb_gadget *g,
 		dev_dbg(udc_dev(dum), "unregister gadget driver '%s'\n",
 				driver->driver.name);
 
+	spin_lock_irq(&dum->lock);
 	dum->driver = NULL;
+	spin_unlock_irq(&dum->lock);
 
 	return 0;
 }

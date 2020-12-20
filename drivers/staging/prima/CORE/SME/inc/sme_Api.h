@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2019 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -233,6 +233,7 @@ sme_SetLinkLayerStatsIndCB
 
 void sme_set_vowifi_mode(tpAniSirGlobal pMac, bool enable);
 void sme_set_qpower(tpAniSirGlobal pMac, uint8_t enable);
+void sme_set_olpc_mode(tpAniSirGlobal pMac, bool enable);
 
 #ifdef WLAN_FEATURE_EXTSCAN
 /* ---------------------------------------------------------------------------
@@ -4133,14 +4134,17 @@ eHalStatus sme_send_mgmt_tx(tHalHandle hal, uint8_t session_id,
  * @hal: The handle returned by mac_open
  * @session_id: session id
  * @sae_status: status of SAE authentication
+ * @peer_mac_addr: mac address of the peer to be authenticated
  *
  * Return: HAL_STATUS
  */
 eHalStatus sme_handle_sae_msg(tHalHandle hal, uint8_t session_id,
-                              uint8_t sae_status);
+                            uint8_t sae_status,
+                            tSirMacAddr peer_mac_addr);
 #else
 static inline eHalStatus sme_handle_sae_msg(tHalHandle hal, uint8_t session_id,
-                                            uint8_t sae_status)
+                                            uint8_t sae_status,
+                                            tSirMacAddr peer_mac_addr)
 {
 	return eHAL_STATUS_SUCCESS;
 }
@@ -4164,4 +4168,14 @@ struct roam_ext_params {
  */
 eHalStatus sme_UpdateBlacklist(tHalHandle hHal, uint8_t session_id,
                                struct roam_ext_params *roam_params);
+
+/**
+ * sme_update_olpc_mode() - Send OLPC mode command received from user space
+ * @hal: The handle returned by mac_open
+ * @enable: OLPC mode enable/disable
+ *
+ * Return: HAL_STATUS
+ */
+eHalStatus sme_update_olpc_mode(tHalHandle hHal, bool enable);
+
 #endif //#if !defined( __SME_API_H )
